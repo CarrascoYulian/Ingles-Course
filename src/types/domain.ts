@@ -1,0 +1,189 @@
+/**
+ * Modelo de dominio. Es la única forma que conocen los componentes:
+ * la capa `services/` traduce filas de Supabase (snake_case) a estos tipos.
+ */
+
+export const CEFR_LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1'] as const;
+export type CefrLevel = (typeof CEFR_LEVELS)[number];
+
+export const USER_ROLES = ['admin', 'instructor', 'student'] as const;
+export type UserRole = (typeof USER_ROLES)[number];
+
+export const BLOCK_TYPES = ['Video', 'PDF', 'Ejercicio', 'Audio', 'Evaluación'] as const;
+export type BlockType = (typeof BLOCK_TYPES)[number];
+
+export const LESSON_STATES = ['done', 'current', 'locked'] as const;
+export type LessonState = (typeof LESSON_STATES)[number];
+
+export interface Profile {
+  id: string;
+  role: UserRole;
+  fullName: string;
+  /** Matrícula visible al usuario, p. ej. ING-000072. */
+  enrollmentCode: string | null;
+  level: CefrLevel | null;
+  avatarColor: string | null;
+}
+
+export interface Course {
+  id: string;
+  name: string;
+  level: CefrLevel;
+  /** Nº de estudiantes matriculados (agregado). */
+  students: number;
+  /** Avance medio 0-100 (agregado). */
+  progress: number;
+  modules: number;
+  published: boolean;
+  position: number;
+}
+
+export interface Module {
+  id: string;
+  courseId: string;
+  title: string;
+  position: number;
+  /** Módulo que debe completarse antes de abrir éste. */
+  requiresModuleId: string | null;
+}
+
+export interface ContentBlock {
+  id: string;
+  moduleId: string;
+  type: BlockType;
+  title: string;
+  /** Texto ya formateado para la UI: "14 min · 1080p", "820 KB"… */
+  meta: string;
+  position: number;
+  /**
+   * Ruta del objeto en Supabase Storage (bucket `course-files`). La base de
+   * datos NO guarda binarios, sólo esta referencia; la URL se firma en el
+   * servidor bajo demanda.
+   */
+  mediaKey: string | null;
+  /** Quién lo subió y cuándo — null en bloques creados sin archivo (p. ej. "Ejercicio"). */
+  uploadedBy: string | null;
+  createdAt: string;
+}
+
+export interface Lesson {
+  id: string;
+  moduleId: string;
+  order: number;
+  title: string;
+  /** Duración legible: "14 min". */
+  duration: string;
+  state: LessonState;
+}
+
+export interface StudentSummary {
+  id: string;
+  enrollmentCode: string;
+  name: string;
+  level: CefrLevel;
+  /** 0-100 */
+  progress: number;
+  hours: number;
+  lessons: number;
+  active: boolean;
+  avatarColor: string;
+}
+
+export interface CourseResource {
+  id: string;
+  type: 'PDF' | 'MP3' | 'DOC';
+  title: string;
+  meta: string;
+  mediaKey: string | null;
+}
+
+export interface Badge {
+  id: string;
+  name: string;
+  /** Texto de estado: "Obtenida", "Faltan 18 días"… */
+  state: string;
+  earned: boolean;
+}
+
+export interface ActivityEvent {
+  id: string;
+  tone: 'success' | 'info' | 'warning' | 'danger';
+  /** Segmentos: los marcados `strong` se resaltan en la UI. */
+  segments: Array<{ text: string; strong?: boolean }>;
+  timeAgo: string;
+}
+
+export interface LeaderboardEntry {
+  id: string;
+  rank: number;
+  name: string;
+  enrollmentCode: string;
+  level: CefrLevel;
+  score: number;
+  avatarColor: string;
+  initials: string;
+}
+
+export interface DashboardMetrics {
+  activeStudents: { value: number; deltaLabel: string; ratio: number; caption: string };
+  averageProgress: { value: number; deltaLabel: string; caption: string };
+  watchedHours: { value: string; deltaLabel: string; sparkline: number[] };
+  library: { courses: number; modules: number; videos: number; drafts: number };
+  weeklyLessons: Array<{ label: string; current: number; previous: number }>;
+}
+
+export type ReportRange = '7 días' | '30 días' | 'Trimestre' | 'Año';
+
+export interface ReportSnapshot {
+  range: ReportRange;
+  bars: number[];
+  retention: { value: string; delta: string };
+  dropOff: { lesson: string; rate: string };
+  recommendation: string;
+}
+
+export interface PracticeOption {
+  id: string;
+  key: 'A' | 'B' | 'C' | 'D';
+  text: string;
+  /** Texto abreviado para móvil (el diseño trunca las opciones largas). */
+  shortText?: string;
+}
+
+export interface PracticeQuestion {
+  id: string;
+  category: string;
+  xpReward: number;
+  prompt: string;
+  sourceText: string;
+  audioKey: string | null;
+  options: PracticeOption[];
+  /**
+   * Sólo presente en servidor y en modo demo. La API pública lo omite: si
+   * viajara al navegador, la respuesta sería visible en las DevTools antes
+   * de contestar. La corrección la hace `submitAnswer`.
+   */
+  correctOptionId?: string;
+  explanationCorrect: string;
+  explanationWrong: string;
+}
+
+export interface PracticeLevel {
+  id: string;
+  order: number;
+  title: string;
+  state: 'done' | 'current' | 'locked';
+  xp: number | null;
+  totalSteps: number;
+  completedSteps: number;
+}
+
+export interface PracticeSession {
+  levelId: string;
+  step: number;
+  totalSteps: number;
+  xp: number;
+  coins: number;
+  streak: number;
+  hearts: { total: number; remaining: number };
+}

@@ -1,0 +1,67 @@
+'use client';
+
+import { Search } from 'lucide-react';
+import { usePathname } from 'next/navigation';
+import type { ReactNode } from 'react';
+
+import { LogoutButton } from '@/components/shared/logout-button';
+import { Avatar } from '@/components/ui/avatar';
+import { Input } from '@/components/ui/input';
+import { ADMIN_PAGE_META } from '@/constants/navigation';
+import { useAdminSearch } from '@/features/students/hooks/use-admin-search';
+
+export interface AdminTopbarProps {
+  subtitle: string;
+  teacherName: string;
+  /** Acción primaria de la sección (varía por ruta). */
+  action: ReactNode;
+}
+
+/**
+ * Cabecera del panel. En móvil se reordena: el título pasa arriba con el
+ * avatar y el buscador ocupa toda la línea siguiente, como en el diseño.
+ */
+export function AdminTopbar({ subtitle, teacherName, action }: AdminTopbarProps) {
+  const pathname = usePathname();
+  const { query, setQuery } = useAdminSearch();
+  const meta = ADMIN_PAGE_META[pathname];
+
+  return (
+    <header className="border-b border-line bg-surface px-5 py-3 lg:px-[30px] lg:py-[22px]">
+      <div className="flex items-center justify-between gap-5">
+        <div className="min-w-0">
+          <p className="text-meta font-bold text-fg-ghost lg:hidden">Panel docente</p>
+          <h1 className="truncate text-[20px] font-extrabold tracking-heading text-fg lg:text-heading">
+            {meta?.title ?? 'Panel docente'}
+          </h1>
+          <p className="mt-0.5 hidden text-body-sm font-medium text-fg-dim lg:block">{subtitle}</p>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-2.5">
+          <Input
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Buscar estudiante o curso…"
+            aria-label="Buscar estudiante o curso"
+            icon={<Search size={15} strokeWidth={2} />}
+            className="hidden w-[230px] lg:flex"
+          />
+          <div className="hidden lg:block">{action}</div>
+          <Avatar name={teacherName} color="#0F5257" size={34} className="lg:hidden" />
+          <LogoutButton iconOnly className="lg:hidden" />
+        </div>
+      </div>
+
+      <Input
+        type="search"
+        value={query}
+        onChange={(event) => setQuery(event.target.value)}
+        placeholder="Buscar estudiante…"
+        aria-label="Buscar estudiante"
+        icon={<Search size={15} strokeWidth={2} />}
+        className="mt-3.5 lg:hidden"
+      />
+    </header>
+  );
+}

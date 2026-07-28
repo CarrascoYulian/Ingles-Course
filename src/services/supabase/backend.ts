@@ -1,0 +1,390 @@
+import { inferBlockType } from '@/features/content/infer-block-type';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { DEMO_MODULE, DEMO_QUESTION } from '../demo/data';
+import type { AttachUploadInput, Backend } from '../ports';
+import { toContentBlock, toCourse, toLesson, toModule, toStudentSummary } from './mappers';
+import type { Course, PracticeSession, ReportRange } from '@/types';
+import type { Database } from '@/types';
+
+type Row<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Row'];
+
+/**
+ * Adaptador Supabase. Ejecuta en el navegador bajo RLS: cada consulta ya
+ * viene filtrada por las políticas del servidor, así que aquí no se repite
+ * ninguna comprobación de autorización.
+ */
+
+function db() {
+  const client = getSupabaseBrowserClient();
+  if (!client) throw new Error('Supabase no está configurado');
+  return client;
+}
+
+/**
+ * Normaliza el error de PostgREST a algo accionable en la UI.
+ *
+ * El parámetro de tipo se fija explícitamente en cada llamada
+ * (`unwrap<Row>(...)`), en lugar de dejar que TypeScript lo infiera del
+ * argumento: `PostgrestSingleResponse<T>` es una unión `{data:T,error:null} |
+ * {data:null,error:PostgrestError}`, y al inferir T desde una unión así
+ * TypeScript ensancha el resultado a `T | null` — el propio `null` se cuela
+ * como parte de T y esta función deja de proteger nada.
+ */
+function unwrap<T>(response: { data: T | null; error: { message: string } | null }): T {
+  if (response.error) throw new Error(response.error.message);
+  if (response.data === null) throw new Error('Respuesta vacía del servidor');
+  return response.data;
+}
+
+type ActivityTone = 'success' | 'info' | 'warning' | 'danger';
+type ActivitySegment = { text: string; strong?: boolean };
+
+/**
+ * Registra una entrada real en `activity_log`. Es lo que hace que
+ * "Actividad reciente" del dashboard muestre hechos de verdad en vez de la
+ * lista de ejemplo fija que se servía antes sin importar qué pasara.
+ *
+ * Falla en silencio a propósito: la actividad es un efecto secundario de
+ * auditoría, nunca debe poder tumbar la acción principal (publicar un
+ * curso no debe fallar porque el log falló).
+ */
+async function logActivity(tone: ActivityTone, segments: ActivitySegment[]): Promise<void> {
+  try {
+    await db().from('activity_log').insert({ tone, segments });
+  } catch {
+    // Ver comentario arriba.
+  }
+}
+
+export const supabaseBackend: Backend = {
+  courses: {
+    async list() {
+      const rows = unwrap(
+        await db()
+          .from('courses')
+          .select('*, modules(count), enrollments(progress)')
+          .order('position', { ascending: true }),
+      );
+
+      return rows.map((row) => {
+        const enrollments = (row as unknown as { enrollments: { progress: number }[] }).enrollments;
+        const modules = (row as unknown as { modules: { count: number }[] }).modules;
+        const average =
+          enrollments.length > 0
+            ? enrollments.reduce((sum, e) => sum + e.progress, 0) / enrollments.length
+            : 0;
+        return toCourse(row, {
+          students: enrollments.length,
+          progress: average,
+          modules: modules[0]?.count ?? 0,
+        });
+      });
+    },
+
+    async create({ name, level }) {
+      const { count } = await db().from('courses').select('*', { count: 'exact', head: true });
+      const row = unwrap<Row<'courses'>>(
+        await db()
+          .from('courses')
+          .insert({ name, level, published: false, position: count ?? 0, created_by: null })
+          .select()
+          .single(),
+      );
+      return toCourse(row, { students: 0, progress: 0, modules: 0 });
+    },
+
+    async setPublished(id, published) {
+      const row = unwrap<Row<'courses'>>(
+        await db().from('courses').update({ published }).eq('id', id).select().single(),
+      );
+      await logActivity(published ? 'success' : 'warning', [
+        { text: published ? 'Curso publicado · ' : 'Curso ocultado · ' },
+        { text: row.name, strong: true },
+      ]);
+      return toCourse(row, { students: 0, progress: 0, modules: 0 }) as Course;
+    },
+
+    async remove(id) {
+      const { error } = await db().from('courses').delete().eq('id', id);
+      if (error) throw new Error(error.message);
+    },
+  },
+
+  content: {
+    async getModule(moduleId) {
+      return toModule(unwrap(await db().from('modules').select('*').eq('id', moduleId).single()));
+    },
+
+    async listBlocks(moduleId) {
+      const rows = unwrap(
+        await db()
+          .from('content_blocks')
+          .select('*')
+          .eq('module_id', moduleId)
+          .order('position', { ascending: true }),
+      );
+      return rows.map(toContentBlock);
+    },
+
+    async addBlock(moduleId, type) {
+      const { count } = await db()
+        .from('content_blocks')
+        .select('*', { count: 'exact', head: true })
+        .eq('module_id', moduleId);
+
+      const row = unwrap<Row<'content_blocks'>>(
+        await db()
+          .from('content_blocks')
+          .insert({
+            module_id: moduleId,
+            type,
+            title: `${type} sin título`,
+            meta: 'Pendiente de subir',
+            position: count ?? 0,
+            media_key: null,
+            uploaded_by: null,
+          })
+          .select()
+          .single(),
+      );
+      return toContentBlock(row);
+    },
+
+    async moveBlock(moduleId, blockId, direction) {
+      const blocks = await supabaseBackend.content.listBlocks(moduleId);
+      const from = blocks.findIndex((b) => b.id === blockId);
+      const to = from + direction;
+      if (from < 0 || to < 0 || to >= blocks.length) return blocks;
+
+      const a = blocks[from]!;
+      const b = blocks[to]!;
+      await Promise.all([
+        db().from('content_blocks').update({ position: b.position }).eq('id', a.id),
+        db().from('content_blocks').update({ position: a.position }).eq('id', b.id),
+      ]);
+      return supabaseBackend.content.listBlocks(moduleId);
+    },
+
+    async removeBlock(blockId) {
+      const { error } = await db().from('content_blocks').delete().eq('id', blockId);
+      if (error) throw new Error(error.message);
+    },
+
+    async attachUpload(input: AttachUploadInput) {
+      const { count } = await db()
+        .from('content_blocks')
+        .select('*', { count: 'exact', head: true })
+        .eq('module_id', input.moduleId);
+
+      const {
+        data: { user },
+      } = await db().auth.getUser();
+
+      const row = unwrap<Row<'content_blocks'>>(
+        await db()
+          .from('content_blocks')
+          .insert({
+            module_id: input.moduleId,
+            type: inferBlockType(input.contentType),
+            title: input.fileName,
+            meta: input.sizeLabel,
+            position: count ?? 0,
+            media_key: input.mediaKey,
+            uploaded_by: user?.id ?? null,
+          })
+          .select()
+          .single(),
+      );
+      return toContentBlock(row);
+    },
+
+    async getFileUrl(mediaKey) {
+      const response = await fetch(`/api/media?key=${encodeURIComponent(mediaKey)}`);
+      if (!response.ok) return null;
+      const { url } = (await response.json()) as { url: string };
+      return url;
+    },
+  },
+
+  students: {
+    async list({ query = '', level = 'Todos' }) {
+      let request = db()
+        .from('profiles')
+        .select('*, enrollments(progress, watched_minutes, completed_lessons)')
+        .eq('role', 'student');
+
+      if (level !== 'Todos') request = request.eq('level', level);
+      if (query.trim()) {
+        const needle = `%${query.trim()}%`;
+        request = request.or(`full_name.ilike.${needle},enrollment_code.ilike.${needle}`);
+      }
+
+      const rows = unwrap(await request.order('full_name'));
+      return rows.map((row) => {
+        const enrollments = (
+          row as unknown as {
+            enrollments: { progress: number; watched_minutes: number; completed_lessons: number }[];
+          }
+        ).enrollments;
+        return toStudentSummary(row, enrollments[0] ?? null);
+      });
+    },
+
+    async resetProgress(id) {
+      await db()
+        .from('enrollments')
+        .update({ progress: 0, watched_minutes: 0, completed_lessons: 0 })
+        .eq('student_id', id);
+      await db().from('lesson_progress').delete().eq('student_id', id);
+
+      const row = unwrap<Row<'profiles'>>(await db().from('profiles').select('*').eq('id', id).single());
+      await logActivity('danger', [
+        { text: 'Progreso reiniciado · ' },
+        { text: row.full_name, strong: true },
+      ]);
+      return toStudentSummary(row, null);
+    },
+
+    async invite(email) {
+      // La invitación real necesita service role: se delega a un Route Handler.
+      const response = await fetch('/api/students/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(body?.error ?? 'No se pudo enviar la invitación');
+      }
+      return (await response.json()) as { enrollmentCode: string };
+    },
+
+    async sendMessage(id, body) {
+      const response = await fetch('/api/students/message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studentId: id, body }),
+      });
+      if (!response.ok) throw new Error('No se pudo enviar el mensaje');
+    },
+  },
+
+  analytics: {
+    async getMetrics() {
+      const response = await fetch('/api/analytics/metrics');
+      if (!response.ok) throw new Error('No se pudieron cargar las métricas');
+      return response.json();
+    },
+    async getActivity() {
+      const response = await fetch('/api/analytics/activity');
+      if (!response.ok) throw new Error('No se pudo cargar la actividad');
+      return response.json();
+    },
+    async getLeaderboard() {
+      const response = await fetch('/api/analytics/leaderboard');
+      if (!response.ok) throw new Error('No se pudo cargar el ranking');
+      return response.json();
+    },
+    async getReport(range: ReportRange) {
+      const response = await fetch(`/api/analytics/report?range=${encodeURIComponent(range)}`);
+      if (!response.ok) throw new Error('No se pudo cargar el reporte');
+      return response.json();
+    },
+  },
+
+  learning: {
+    async getCurrentModule() {
+      const rows = unwrap(
+        await db().from('modules').select('*').order('position').limit(1),
+      );
+      return rows[0] ? toModule(rows[0]) : DEMO_MODULE;
+    },
+
+    async listLessons(moduleId) {
+      const rows = unwrap(
+        await db().from('lessons').select('*').eq('module_id', moduleId).order('position'),
+      );
+      const progress = unwrap(
+        await db()
+          .from('lesson_progress')
+          .select('lesson_id, watched_percent, completed_at')
+          .in('lesson_id', rows.map((r) => r.id)),
+      );
+      const byLesson = new Map(
+        progress.map((p) => [
+          p.lesson_id,
+          { watchedPercent: p.watched_percent, completed: Boolean(p.completed_at) },
+        ]),
+      );
+
+      let previousCompleted = true;
+      return rows.map((row) => {
+        const lesson = toLesson(row, byLesson.get(row.id), previousCompleted);
+        previousCompleted = lesson.state === 'done';
+        return lesson;
+      });
+    },
+
+    async listResources() {
+      const response = await fetch('/api/resources');
+      if (!response.ok) throw new Error('No se pudieron cargar los recursos');
+      return response.json();
+    },
+
+    async listBadges() {
+      const response = await fetch('/api/badges');
+      if (!response.ok) throw new Error('No se pudieron cargar las insignias');
+      return response.json();
+    },
+
+    async saveWatchedPercent(lessonId, percent) {
+      const { error } = await db()
+        .from('lesson_progress')
+        .upsert(
+          {
+            lesson_id: lessonId,
+            student_id: (await db().auth.getUser()).data.user?.id ?? '',
+            watched_percent: percent,
+            completed_at: percent >= 100 ? new Date().toISOString() : null,
+          },
+          { onConflict: 'student_id,lesson_id' },
+        );
+      if (error) throw new Error(error.message);
+    },
+  },
+
+  practice: {
+    async getSession(): Promise<PracticeSession> {
+      const response = await fetch('/api/practice/session');
+      if (!response.ok) throw new Error('No se pudo cargar la sesión de práctica');
+      return response.json();
+    },
+    async listLevels() {
+      const response = await fetch('/api/practice/levels');
+      if (!response.ok) throw new Error('No se pudieron cargar los niveles');
+      return response.json();
+    },
+    async getQuestion(step) {
+      const response = await fetch(`/api/practice/question?step=${step}`);
+      if (!response.ok) throw new Error('No se pudo cargar el ejercicio');
+      return response.json();
+    },
+    async submitAnswer(questionId, optionId) {
+      const response = await fetch('/api/practice/answer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questionId, optionId }),
+      });
+      if (!response.ok) throw new Error('No se pudo comprobar la respuesta');
+      return response.json();
+    },
+    async advance() {
+      const response = await fetch('/api/practice/advance', { method: 'POST' });
+      if (!response.ok) throw new Error('No se pudo avanzar');
+      return response.json();
+    },
+  },
+};
+
+/** Referencia usada por los Route Handlers de práctica. */
+export const PRACTICE_FALLBACK_QUESTION = DEMO_QUESTION;

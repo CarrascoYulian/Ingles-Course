@@ -1,0 +1,178 @@
+/* ============================================================================
+ * TOKENS · Extraídos 1:1 del diseño original (Claude Design).
+ * Ningún valor de esta capa es inventado: cada color, radio, tamaño y curva
+ * aparece literalmente en el mockup. Los componentes NUNCA usan hex sueltos.
+ * ========================================================================== */
+
+@theme {
+  /* ── Tipografía ─────────────────────────────────────────────────────── */
+  --font-sans:
+    'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    sans-serif;
+
+  /* Escala real del diseño (incluye medios píxeles: es intencional). */
+  --text-micro: 10px;
+  --text-micro--line-height: 1.3;
+  --text-caption: 10.5px;
+  --text-caption--line-height: 1.35;
+  --text-tiny: 11px;
+  --text-tiny--line-height: 1.35;
+  --text-meta: 11.5px;
+  --text-meta--line-height: 1.4;
+  --text-label: 12px;
+  --text-label--line-height: 1.4;
+  --text-body-sm: 12.5px;
+  --text-body-sm--line-height: 1.45;
+  --text-body: 13px;
+  --text-body--line-height: 1.5;
+  --text-body-lg: 13.5px;
+  --text-body-lg--line-height: 1.55;
+  --text-title-xs: 14px;
+  --text-title-xs--line-height: 1.35;
+  --text-title-sm: 14.5px;
+  --text-title-sm--line-height: 1.35;
+  --text-title: 16px;
+  --text-title--line-height: 1.35;
+  --text-title-lg: 17px;
+  --text-title-lg--line-height: 1.3;
+  --text-heading-sm: 19px;
+  --text-heading-sm--line-height: 1.25;
+  --text-heading: 21px;
+  --text-heading--line-height: 1.2;
+  --text-heading-lg: 22px;
+  --text-heading-lg--line-height: 1.2;
+  --text-display-sm: 26px;
+  --text-display-sm--line-height: 1.1;
+  --text-display: 29px;
+  --text-display--line-height: 1;
+  --text-display-lg: 32px;
+  --text-display-lg--line-height: 1;
+
+  --tracking-heading: -0.03em;
+  --tracking-display: -0.035em;
+  --tracking-display-lg: -0.04em;
+  --tracking-tight-2: -0.02em;
+  --tracking-eyebrow: 0.1em;
+  --tracking-badge: 0.04em;
+
+  /* ── Marca ──────────────────────────────────────────────────────────── */
+  --color-brand: #0f5257;
+  --color-brand-hover: #0b4247;
+  --color-brand-soft: #e6f0f0;
+
+  /* ── Superficies oscuras (sidebar, reproductor, tarjetas "insight") ─── */
+  --color-ink: #0b1620;
+  --color-ink-raised: #111f2b;
+  --color-ink-elevated: #16303c;
+  --color-ink-line: #1e2e3c;
+  --color-ink-fg: #9fb0c0;
+  --color-ink-fg-soft: #8fa0b0;
+  --color-ink-fg-dim: #66788a;
+  --color-ink-fg-faint: #4e5f72;
+  --color-ink-fg-strong: #cdd8e2;
+  --color-ink-nav: #8496a6;
+  --color-ink-nav-label: #4e5f72;
+  --color-ink-accent: #7fe0b0;
+
+  /* ── Texto sobre superficies claras ─────────────────────────────────── */
+  --color-fg: #0f172a;
+  --color-fg-strong: #26313d;
+  --color-fg-muted: #3e4a59;
+  --color-fg-body: #4b5765;
+  --color-fg-subtle: #5c6876;
+  --color-fg-soft: #6b7684;
+  --color-fg-dim: #7c8797;
+  --color-fg-faint: #8b95a4;
+  --color-fg-ghost: #939dab;
+  --color-fg-disabled: #a8b2bf;
+  --color-fg-locked: #b6bfc9;
+  --color-fg-placeholder: #c9d1da;
+
+  /* ── Superficies claras ─────────────────────────────────────────────── */
+  --color-canvas: #eef0f4;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f7f8fa;
+  --color-surface-subtle: #fcfcfd;
+  --color-surface-sunken: #f1f3f7;
+
+  /* ── Bordes ─────────────────────────────────────────────────────────── */
+  --color-line: #e7eaef;
+  --color-line-strong: #e1e5eb;
+  --color-line-soft: #edf0f4;
+  --color-line-dashed: #d7dde5;
+  --color-line-chart: #dce3ec;
+
+  /* ── Semánticos ─────────────────────────────────────────────────────── */
+  --color-accent: #2f6bff;
+  --color-accent-hover: #1e4fd8;
+  --color-accent-soft: #e9effe;
+  --color-accent-tint: #f5f8ff;
+
+  --color-success: #16a34a;
+  --color-success-strong: #12803c;
+  --color-success-soft: #effaf3;
+  --color-success-tint: #f2fbf5;
+
+  --color-warning: #f59e0b;
+  --color-warning-strong: #b4790c;
+  --color-warning-deep: #7a5205;
+  --color-warning-soft: #fffbeb;
+  --color-warning-tint: #fef6e7;
+  --color-warning-line: #f1dfb4;
+
+  --color-danger: #dc2626;
+  --color-danger-strong: #b42318;
+  --color-danger-soft: #fef3f2;
+  --color-danger-line: #f3c7c3;
+
+  --color-violet: #7a5af8;
+  --color-violet-strong: #6d4de0;
+  --color-violet-soft: #f3f0fe;
+
+  --color-teal: #0ea5a8;
+  --color-slate: #475569;
+
+  /* ── Radios ─────────────────────────────────────────────────────────── */
+  --radius-xs: 7px;
+  --radius-sm: 8px;
+  --radius-md: 9px;
+  --radius-lg: 10px;
+  --radius-xl: 11px;
+  --radius-2xl: 12px;
+  --radius-3xl: 13px;
+  --radius-4xl: 14px;
+  --radius-5xl: 15px;
+  --radius-6xl: 16px;
+  --radius-7xl: 17px;
+  --radius-8xl: 18px;
+  --radius-9xl: 20px;
+  --radius-10xl: 22px;
+  --radius-pill: 99px;
+
+  /* ── Sombras ────────────────────────────────────────────────────────── */
+  --shadow-segment: 0 1px 3px rgb(15 23 42 / 0.14);
+  --shadow-card: 0 30px 70px rgb(15 23 42 / 0.14), 0 2px 6px rgb(15 23 42 / 0.06);
+  --shadow-dialog: 0 30px 70px rgb(15 23 42 / 0.3);
+  --shadow-toast: 0 18px 40px rgb(15 23 42 / 0.28);
+  --shadow-player: 0 14px 34px rgb(11 22 32 / 0.22);
+
+  /* ── Movimiento ─────────────────────────────────────────────────────────
+   * Curvas fuertes: las nativas de CSS son demasiado planas y hacen que la
+   * interfaz se sienta lenta. Nunca usamos ease-in en UI.
+   * ------------------------------------------------------------------- */
+  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out-strong: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
+  --duration-press: 160ms;
+  --duration-hover: 160ms;
+  --duration-popover: 180ms;
+  --duration-dropdown: 200ms;
+  --duration-progress: 300ms;
+  --duration-dialog: 220ms;
+
+  /* ── Layout ─────────────────────────────────────────────────────────── */
+  --spacing-sidebar: 236px;
+  --spacing-rail: 288px;
+  --spacing-aside: 352px;
+}

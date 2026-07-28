@@ -1,0 +1,242 @@
+import { inferBlockType } from '@/features/content/infer-block-type';
+import type { AttachUploadInput, Backend } from '../ports';
+import {
+  DEMO_ACTIVITY,
+  DEMO_BADGES,
+  DEMO_BLOCKS,
+  DEMO_COURSES,
+  DEMO_LEADERBOARD,
+  DEMO_LESSONS,
+  DEMO_METRICS,
+  DEMO_MODULE,
+  DEMO_PRACTICE_LEVELS,
+  DEMO_QUESTION,
+  DEMO_REPORT_BARS,
+  DEMO_RESOURCES,
+  DEMO_STUDENTS,
+  DEMO_TEACHER,
+} from './data';
+import type {
+  Badge,
+  BlockType,
+  ContentBlock,
+  Course,
+  CourseResource,
+  Lesson,
+  PracticeSession,
+  ReportRange,
+  StudentSummary,
+} from '@/types';
+
+/**
+ * Adaptador en memoria. Reproduce toda la lógica del prototipo (crear curso,
+ * publicar, reordenar bloques, reiniciar progreso, corregir ejercicio) para
+ * que la interfaz sea plenamente navegable sin infraestructura.
+ */
+
+interface DemoStore {
+  courses: Course[];
+  blocks: ContentBlock[];
+  students: StudentSummary[];
+  session: PracticeSession;
+}
+
+const store: DemoStore = {
+  courses: structuredClone(DEMO_COURSES),
+  blocks: structuredClone(DEMO_BLOCKS),
+  students: structuredClone(DEMO_STUDENTS),
+  session: { levelId: 'n3', step: 6, totalSteps: 10, xp: 1240, coins: 340, streak: 12, hearts: { total: 3, remaining: 1 } },
+};
+
+/** Latencia simulada: hace visibles los estados de carga en desarrollo. */
+const latency = <T>(value: T, ms = 120): Promise<T> =>
+  new Promise((resolve) => setTimeout(() => resolve(value), ms));
+
+const newId = () => `tmp-${Math.random().toString(36).slice(2, 10)}`;
+
+const NEW_BLOCK_DEFAULTS: Record<BlockType, { title: string; meta: string }> = {
+  Video: { title: 'Nuevo video sin título', meta: 'Pendiente de subir' },
+  PDF: { title: 'Documento sin título', meta: 'Pendiente de subir' },
+  Ejercicio: { title: 'Ejercicio sin título', meta: '0 preguntas' },
+  Audio: { title: 'Audio sin título', meta: 'Pendiente de subir' },
+  Evaluación: { title: 'Evaluación sin título', meta: '0 preguntas' },
+};
+
+export const demoBackend: Backend = {
+  courses: {
+    list: () => latency(structuredClone(store.courses)),
+
+    create: ({ name, level }) => {
+      const course: Course = {
+        id: newId(),
+        name,
+        level,
+        students: 0,
+        progress: 0,
+        modules: 0,
+        published: false,
+        position: store.courses.length,
+      };
+      store.courses = [...store.courses, course];
+      return latency(course);
+    },
+
+    setPublished: (id, published) => {
+      store.courses = store.courses.map((c) => (c.id === id ? { ...c, published } : c));
+      const updated = store.courses.find((c) => c.id === id);
+      if (!updated) throw new Error(`Curso ${id} no encontrado`);
+      return latency(updated);
+    },
+
+    remove: (id) => {
+      store.courses = store.courses.filter((c) => c.id !== id);
+      return latency(undefined);
+    },
+  },
+
+  content: {
+    getModule: () => latency(DEMO_MODULE),
+
+    listBlocks: (moduleId) =>
+      latency(
+        store.blocks
+          .filter((b) => b.moduleId === moduleId)
+          .map((b, index) => ({ ...b, position: index })),
+      ),
+
+    addBlock: (moduleId, type) => {
+      const defaults = NEW_BLOCK_DEFAULTS[type];
+      const block: ContentBlock = {
+        id: newId(),
+        moduleId,
+        type,
+        title: defaults.title,
+        meta: defaults.meta,
+        position: store.blocks.length,
+        mediaKey: null,
+        uploadedBy: null,
+        createdAt: new Date().toISOString(),
+      };
+      store.blocks = [...store.blocks, block];
+      return latency(block);
+    },
+
+    moveBlock: (moduleId, blockId, direction) => {
+      const list = [...store.blocks];
+      const from = list.findIndex((b) => b.id === blockId);
+      const to = from + direction;
+      if (from >= 0 && to >= 0 && to < list.length) {
+        [list[from], list[to]] = [list[to]!, list[from]!];
+        store.blocks = list;
+      }
+      return latency(
+        store.blocks
+          .filter((b) => b.moduleId === moduleId)
+          .map((b, index) => ({ ...b, position: index })),
+      );
+    },
+
+    removeBlock: (blockId) => {
+      store.blocks = store.blocks.filter((b) => b.id !== blockId);
+      return latency(undefined);
+    },
+
+    attachUpload: (input: AttachUploadInput) => {
+      const block: ContentBlock = {
+        id: newId(),
+        moduleId: input.moduleId,
+        type: inferBlockType(input.contentType),
+        title: input.fileName,
+        meta: input.sizeLabel,
+        position: store.blocks.length,
+        mediaKey: input.mediaKey,
+        uploadedBy: DEMO_TEACHER.id,
+        createdAt: new Date().toISOString(),
+      };
+      store.blocks = [...store.blocks, block];
+      return latency(block);
+    },
+
+    // En modo demo el archivo vive de verdad en /public/demo-uploads (ver
+    // upload.ts): no hay Storage real que firmar, así que se devuelve la
+    // ruta servida por Next tal cual.
+    getFileUrl: (mediaKey: string) => latency(`/demo-uploads/${mediaKey}`),
+  },
+
+  students: {
+    list: ({ query = '', level = 'Todos' }) => {
+      const needle = query.trim().toLowerCase();
+      const result = store.students.filter((student) => {
+        const matchesQuery =
+          !needle ||
+          student.name.toLowerCase().includes(needle) ||
+          student.enrollmentCode.toLowerCase().includes(needle);
+        const matchesLevel = level === 'Todos' || student.level === level;
+        return matchesQuery && matchesLevel;
+      });
+      return latency(structuredClone(result));
+    },
+
+    resetProgress: (id) => {
+      store.students = store.students.map((s) =>
+        s.id === id ? { ...s, progress: 0, lessons: 0, hours: 0 } : s,
+      );
+      const updated = store.students.find((s) => s.id === id);
+      if (!updated) throw new Error(`Estudiante ${id} no encontrado`);
+      return latency(updated);
+    },
+
+    invite: () => latency({ enrollmentCode: `ING-${String(Math.floor(Math.random() * 999999)).padStart(6, '0')}` }),
+
+    sendMessage: () => latency(undefined),
+  },
+
+  analytics: {
+    getMetrics: () => latency(DEMO_METRICS),
+    getActivity: () => latency(DEMO_ACTIVITY),
+    getLeaderboard: () => latency(DEMO_LEADERBOARD),
+    getReport: (range: ReportRange) =>
+      latency({
+        range,
+        bars: DEMO_REPORT_BARS[range],
+        retention: { value: '91 %', delta: '+2,4 pts vs. periodo anterior' },
+        dropOff: { lesson: '4.8 Evaluación del módulo', rate: '32 % la deja sin terminar' },
+        recommendation:
+          'Divide la evaluación 4.8 en dos partes: el abandono se concentra después del minuto 12.',
+      }),
+  },
+
+  learning: {
+    getCurrentModule: () => latency(DEMO_MODULE),
+    listLessons: (): Promise<Lesson[]> => latency(DEMO_LESSONS),
+    listResources: (): Promise<CourseResource[]> => latency(DEMO_RESOURCES),
+    listBadges: (): Promise<Badge[]> => latency(DEMO_BADGES),
+    saveWatchedPercent: () => latency(undefined, 0),
+  },
+
+  practice: {
+    getSession: () => latency(structuredClone(store.session)),
+    listLevels: () => latency(DEMO_PRACTICE_LEVELS),
+    // Se entrega sin `correctOptionId`, igual que haría la API real.
+    getQuestion: () => latency({ ...DEMO_QUESTION, correctOptionId: undefined }),
+
+    submitAnswer: (_questionId, optionId) => {
+      const correct = optionId === DEMO_QUESTION.correctOptionId;
+      if (correct) store.session = { ...store.session, xp: store.session.xp + DEMO_QUESTION.xpReward };
+      return latency({
+        correct,
+        xpGained: correct ? DEMO_QUESTION.xpReward : 0,
+        explanation: correct ? DEMO_QUESTION.explanationCorrect : DEMO_QUESTION.explanationWrong,
+        correctOptionId: DEMO_QUESTION.correctOptionId!,
+      });
+    },
+
+    advance: () => {
+      store.session = {
+        ...store.session,
+        step: Math.min(store.session.totalSteps, store.session.step + 1),
+      };
+      return latency(structuredClone(store.session));
+    },
+  },
+};

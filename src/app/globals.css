@@ -1,0 +1,136 @@
+@import 'tailwindcss';
+@import '../styles/tokens.css';
+
+/* ============================================================================
+ * BASE
+ * ========================================================================== */
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    background: var(--color-canvas);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Foco visible y consistente en todo el producto (WCAG 2.4.7). */
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* El anillo del navegador se sustituye por el nuestro, nunca se elimina. */
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  ::selection {
+    background: var(--color-brand-soft);
+    color: var(--color-brand);
+  }
+
+  [hidden] {
+    display: none !important;
+  }
+}
+
+/* ============================================================================
+ * UTILIDADES DE PRODUCTO
+ * ========================================================================== */
+
+/* Barra de scroll discreta para raíles y listas internas. */
+@utility scrollbar-slim {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line-dashed) transparent;
+
+  &::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: var(--color-line-dashed);
+    border-radius: var(--radius-pill);
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+/* Carrusel horizontal de chips en móvil, sin barra visible. */
+@utility scrollbar-none {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Aparición sutil de paneles. Duración corta: cambiar de pestaña es una
+ * acción frecuente y el movimiento la haría sentir lenta. */
+@utility animate-fade-in {
+  animation: fade-in 160ms var(--ease-out-strong) both;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Solo visible para lectores de pantalla. */
+@utility sr-only-focusable {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+
+  &:focus {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+  }
+}
+
+/* Feedback de pulsación. Sólo en punteros finos: en táctil el :active
+ * se dispara con el scroll y produce falsos positivos. */
+@utility press {
+  transition: transform var(--duration-press) var(--ease-out-strong);
+
+  @media (hover: hover) and (pointer: fine) {
+    &:active {
+      transform: scale(0.97);
+    }
+  }
+}
+
+/* ============================================================================
+ * MOVIMIENTO REDUCIDO
+ * Menos movimiento, no cero: se conservan opacidad y color porque ayudan a
+ * comprender el cambio de estado.
+ * ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

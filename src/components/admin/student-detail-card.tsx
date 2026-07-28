@@ -1,0 +1,72 @@
+'use client';
+
+import { Avatar } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
+import type { StudentSummary } from '@/types';
+
+export interface StudentDetailCardProps {
+  student: StudentSummary | null;
+  onMessage: (student: StudentSummary) => void;
+  onReset: (student: StudentSummary) => void;
+}
+
+export function StudentDetailCard({ student, onMessage, onReset }: StudentDetailCardProps) {
+  if (!student) {
+    return (
+      <Card padding="lg" className="hidden lg:block">
+        <p className="text-body-sm font-semibold text-fg-faint">
+          Selecciona un estudiante para ver su ficha.
+        </p>
+      </Card>
+    );
+  }
+
+  const { name, enrollmentCode, level, progress, hours, lessons, avatarColor } = student;
+
+  return (
+    <Card padding="lg" aria-label={`Ficha de ${name}`}>
+      <div className="flex items-center gap-3">
+        <Avatar name={name} color={avatarColor} size={44} />
+        <div className="min-w-0">
+          <h2 className="truncate text-title-xs font-bold tracking-tight-2 text-fg">{name}</h2>
+          <p className="text-tiny font-semibold text-fg-ghost">
+            {enrollmentCode} · Nivel {level}
+          </p>
+        </div>
+      </div>
+
+      <p className="mt-[18px] text-meta font-bold text-fg-dim">Progreso del curso</p>
+      <p className="mt-1 text-display-sm font-extrabold tracking-display-lg text-fg">
+        {progress} %
+      </p>
+      <Progress
+        value={progress}
+        height={6}
+        className="mt-2"
+        label={`Progreso de ${name}`}
+      />
+
+      <dl className="mt-[18px] grid grid-cols-2 gap-3">
+        <div className="rounded-2xl bg-surface-muted p-[13px]">
+          <dd className="text-title font-extrabold text-fg">{hours} h</dd>
+          <dt className="text-caption font-bold text-fg-ghost">estudiadas</dt>
+        </div>
+        <div className="rounded-2xl bg-surface-muted p-[13px]">
+          <dd className="text-title font-extrabold text-fg">{lessons}</dd>
+          <dt className="text-caption font-bold text-fg-ghost">lecciones</dt>
+        </div>
+      </dl>
+
+      <div className="mt-[18px] flex flex-col gap-2 sm:flex-row lg:flex-col">
+        <Button variant="ghost" size="sm" onClick={() => onMessage(student)}>
+          Enviar mensaje
+        </Button>
+        <Button variant="danger" size="sm" onClick={() => onReset(student)}>
+          Reiniciar progreso
+        </Button>
+      </div>
+    </Card>
+  );
+}
