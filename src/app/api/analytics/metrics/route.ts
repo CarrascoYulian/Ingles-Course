@@ -114,6 +114,7 @@ export async function GET() {
       drafts: drafts.count ?? 0,
     },
     weeklyLessons,
+    totalStudents: total,
   };
 
   return NextResponse.json(metrics, { headers: { 'Cache-Control': 'private, max-age=240' } });

@@ -21,7 +21,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (!isStaff(profile.role)) redirect(ROUTES.student.curso);
 
   return (
-    <AdminShell teacherName={profile.fullName} storage={{ usedGb: 128, totalGb: 200 }}>
+    <AdminShell teacherName={profile.fullName}>
       {children}
     </AdminShell>
   );

@@ -1,11 +1,11 @@
 import { z } from 'zod';
 
+export const CEFR_ENROLLMENT_LEVELS = ['A1', 'A2', 'B1', 'B2'] as const;
+
 export const inviteStudentSchema = z.object({
-  email: z
-    .string()
-    .trim()
-    .min(1, 'Escribe un correo')
-    .email('Ese correo no parece válido'),
+  fullName: z.string().trim().min(1, 'Escribe el nombre completo'),
+  level: z.enum(CEFR_ENROLLMENT_LEVELS, { errorMap: () => ({ message: 'Elige un nivel' }) }),
+  password: z.string().min(6, 'La contraseña tiene al menos 6 caracteres'),
 });
 
 export type InviteStudentValues = z.infer<typeof inviteStudentSchema>;

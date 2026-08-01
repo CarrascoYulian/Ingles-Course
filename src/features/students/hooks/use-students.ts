@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 
 import { QUERY_KEYS } from '@/constants';
 import { backend } from '@/services';
-import type { StudentFilters } from '@/services';
+import type { CreateStudentInput, StudentFilters } from '@/services';
 
 export function useStudents(filters: StudentFilters) {
   return useQuery({
@@ -45,12 +45,12 @@ export function useInviteStudent() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (email: string) => backend.students.invite(email),
+    mutationFn: (input: CreateStudentInput) => backend.students.invite(input),
     onSuccess: ({ enrollmentCode }) => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
-      toast(`Invitación enviada · matrícula ${enrollmentCode}`);
+      toast(`Estudiante creado · matrícula ${enrollmentCode}`);
     },
     onError: (error) =>
-      toast.error(error instanceof Error ? error.message : 'No se pudo enviar la invitación.'),
+      toast.error(error instanceof Error ? error.message : 'No se pudo crear el estudiante.'),
   });
 }

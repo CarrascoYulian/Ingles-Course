@@ -23,6 +23,7 @@ import type {
   PracticeSession,
   ReportRange,
   ReportSnapshot,
+  StudentProgress,
   StudentSummary,
 } from '@/types';
 
@@ -75,10 +76,17 @@ export interface ContentPort {
   getFileUrl(mediaKey: string): Promise<string | null>;
 }
 
+export interface CreateStudentInput {
+  fullName: string;
+  level: CefrLevel;
+  /** Clave asignada por el maestro: el alumno entra con su matrícula + esta clave. */
+  password: string;
+}
+
 export interface StudentsPort {
   list(filters: StudentFilters): Promise<StudentSummary[]>;
   resetProgress(id: string): Promise<StudentSummary>;
-  invite(email: string): Promise<{ enrollmentCode: string }>;
+  invite(input: CreateStudentInput): Promise<{ enrollmentCode: string }>;
   sendMessage(id: string, body: string): Promise<void>;
 }
 
@@ -89,13 +97,23 @@ export interface AnalyticsPort {
   getReport(range: ReportRange): Promise<ReportSnapshot>;
 }
 
+export interface CreateModuleInput {
+  courseId: string;
+  title: string;
+}
+
 export interface LearningPort {
-  getCurrentModule(): Promise<Module>;
+  /** `null` cuando aún no existe ningún módulo real — no cae a un módulo de ejemplo. */
+  getCurrentModule(): Promise<Module | null>;
   listLessons(moduleId: string): Promise<Lesson[]>;
   listResources(): Promise<CourseResource[]>;
   listBadges(): Promise<Badge[]>;
   /** Persiste el avance de reproducción de una lección (0-100). */
   saveWatchedPercent(lessonId: string, percent: number): Promise<void>;
+  /** Progreso agregado del alumno autenticado: nunca el de otro usuario. */
+  getMyProgress(): Promise<StudentProgress>;
+  /** Crea el primer/siguiente módulo de un curso desde el panel — sin SQL manual. */
+  createModule(input: CreateModuleInput): Promise<Module>;
 }
 
 export interface PracticePort {

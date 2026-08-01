@@ -44,11 +44,10 @@ export function useAdminHeader(subtitle: string, onAction?: () => void) {
 
 export interface AdminShellProps {
   teacherName: string;
-  storage: { usedGb: number; totalGb: number };
   children: ReactNode;
 }
 
-export function AdminShell({ teacherName, storage, children }: AdminShellProps) {
+export function AdminShell({ teacherName, children }: AdminShellProps) {
   const pathname = usePathname();
   const [header, setHeader] = useState<AdminHeaderState>({ subtitle: '', onAction: null });
   const contextValue = useMemo(() => ({ set: setHeader }), []);
@@ -58,7 +57,7 @@ export function AdminShell({ teacherName, storage, children }: AdminShellProps) 
   return (
     <AdminHeaderContext.Provider value={contextValue}>
       <div className="flex min-h-dvh bg-surface-muted">
-        <AdminSidebar teacherName={teacherName} storage={storage} />
+        <AdminSidebar teacherName={teacherName} />
 
         <div className="flex min-w-0 flex-1 flex-col">
           {/* AdminTopbar lee el buscador desde la URL (useSearchParams), lo

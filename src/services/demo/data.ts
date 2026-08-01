@@ -223,15 +223,15 @@ export const DEMO_STUDENTS: StudentSummary[] = [
 ];
 
 export const DEMO_LESSONS: Lesson[] = [
-  { id: 'l1', moduleId: 'mod-4', order: 1, title: 'Repaso: Past Simple', duration: '9 min', state: 'done' },
-  { id: 'l2', moduleId: 'mod-4', order: 2, title: 'Present Perfect: forma', duration: '12 min', state: 'done' },
-  { id: 'l3', moduleId: 'mod-4', order: 3, title: 'Participios irregulares', duration: '11 min', state: 'done' },
-  { id: 'l4', moduleId: 'mod-4', order: 4, title: 'Ever, never, just, yet', duration: '10 min', state: 'done' },
-  { id: 'l5', moduleId: 'mod-4', order: 5, title: 'Present Perfect vs. Past Simple', duration: '14 min', state: 'current' },
-  { id: 'l6', moduleId: 'mod-4', order: 6, title: 'Práctica guiada de diálogo', duration: '13 min', state: 'locked' },
-  { id: 'l7', moduleId: 'mod-4', order: 7, title: 'Listening: at the market', duration: '8 min', state: 'locked' },
-  { id: 'l8', moduleId: 'mod-4', order: 8, title: 'Evaluación del módulo', duration: '20 min', state: 'locked' },
-  { id: 'l9', moduleId: 'mod-4', order: 9, title: 'Cierre y recursos extra', duration: '6 min', state: 'locked' },
+  { id: 'l1', moduleId: 'mod-4', order: 1, title: 'Repaso: Past Simple', duration: '9 min', state: 'done', watchedPercent: 100 },
+  { id: 'l2', moduleId: 'mod-4', order: 2, title: 'Present Perfect: forma', duration: '12 min', state: 'done', watchedPercent: 100 },
+  { id: 'l3', moduleId: 'mod-4', order: 3, title: 'Participios irregulares', duration: '11 min', state: 'done', watchedPercent: 100 },
+  { id: 'l4', moduleId: 'mod-4', order: 4, title: 'Ever, never, just, yet', duration: '10 min', state: 'done', watchedPercent: 100 },
+  { id: 'l5', moduleId: 'mod-4', order: 5, title: 'Present Perfect vs. Past Simple', duration: '14 min', state: 'current', watchedPercent: 38 },
+  { id: 'l6', moduleId: 'mod-4', order: 6, title: 'Práctica guiada de diálogo', duration: '13 min', state: 'locked', watchedPercent: 0 },
+  { id: 'l7', moduleId: 'mod-4', order: 7, title: 'Listening: at the market', duration: '8 min', state: 'locked', watchedPercent: 0 },
+  { id: 'l8', moduleId: 'mod-4', order: 8, title: 'Evaluación del módulo', duration: '20 min', state: 'locked', watchedPercent: 0 },
+  { id: 'l9', moduleId: 'mod-4', order: 9, title: 'Cierre y recursos extra', duration: '6 min', state: 'locked', watchedPercent: 0 },
 ];
 
 export const DEMO_RESOURCES: CourseResource[] = [
@@ -323,6 +323,7 @@ export const DEMO_METRICS: DashboardMetrics = {
     { label: 'Sem 7', previous: 57, current: 79 },
     { label: 'Sem 8', previous: 66, current: 100 },
   ],
+  totalStudents: 342,
 };
 
 export const DEMO_REPORT_BARS: Record<ReportRange, number[]> = {

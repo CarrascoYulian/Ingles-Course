@@ -7,20 +7,17 @@ import { LogoMark } from '@/components/shared/logo';
 import { LogoutButton } from '@/components/shared/logout-button';
 import { ADMIN_NAV } from '@/constants/navigation';
 import { cn } from '@/lib/utils';
-import { formatPercent } from '@/lib/format';
 
 export interface AdminSidebarProps {
   teacherName: string;
-  storage: { usedGb: number; totalGb: number };
 }
 
 /**
  * Barra lateral del panel docente (sólo ≥ lg). En móvil su lugar lo ocupa
  * `MobileTabBar`, con los mismos destinos.
  */
-export function AdminSidebar({ teacherName, storage }: AdminSidebarProps) {
+export function AdminSidebar({ teacherName }: AdminSidebarProps) {
   const pathname = usePathname();
-  const usedRatio = Math.round((storage.usedGb / storage.totalGb) * 100);
 
   return (
     <aside className="hidden w-sidebar shrink-0 flex-col gap-[26px] bg-ink px-4 py-6 lg:flex">
@@ -62,24 +59,7 @@ export function AdminSidebar({ teacherName, storage }: AdminSidebarProps) {
         })}
       </nav>
 
-      <div className="mt-auto rounded-4xl bg-ink-raised p-3.5">
-        <p className="mb-1.5 text-meta font-semibold text-ink-fg">Almacenamiento de video</p>
-        <div
-          role="progressbar"
-          aria-label="Almacenamiento de video usado"
-          aria-valuenow={usedRatio}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          className="h-1.5 overflow-hidden rounded-pill bg-ink-line"
-        >
-          <div className="h-full rounded-pill bg-accent" style={{ width: `${usedRatio}%` }} />
-        </div>
-        <p className="mt-2 text-caption text-ink-fg-dim">
-          {storage.usedGb} GB de {storage.totalGb} GB usados ({formatPercent(usedRatio)})
-        </p>
-      </div>
-
-      <LogoutButton onInk className="justify-center" />
+      <LogoutButton onInk className="mt-auto justify-center" />
     </aside>
   );
 }

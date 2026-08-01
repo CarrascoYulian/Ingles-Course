@@ -1,9 +1,11 @@
 'use client';
 
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 import { QUERY_KEYS } from '@/constants';
 import { backend } from '@/services';
+import type { CreateModuleInput } from '@/services';
 
 /**
  * Módulo "actual" del alumno. En demo es siempre el módulo de referencia;
@@ -43,10 +45,42 @@ export function useBadges() {
 }
 
 /**
+ * Progreso real del alumno autenticado (porcentaje del curso, nivel, horas,
+ * lecciones e insignias). Antes de existir esto, "Mi curso" mostraba estos
+ * cinco números escritos a mano en el componente — el mismo valor para
+ * cualquier estudiante, sin importar su avance real.
+ */
+export function useMyProgress() {
+  return useQuery({
+    queryKey: ['my-progress'],
+    queryFn: () => backend.learning.getMyProgress(),
+  });
+}
+
+/**
  * Guarda el avance de reproducción. Sin toast ni reintento: es un efecto de
  * fondo que el alumno nunca debería notar. Si falla, el progreso local se
  * mantiene y el siguiente latido lo vuelve a intentar.
  */
+/**
+ * Crea el módulo desde el panel de admin — antes la única vía era escribir
+ * el INSERT a mano en el SQL Editor de Supabase, algo que un docente sin
+ * conocimientos técnicos no puede hacer.
+ */
+export function useCreateModule() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: CreateModuleInput) => backend.learning.createModule(input),
+    onSuccess: (module) => {
+      queryClient.invalidateQueries({ queryKey: ['current-module'] });
+      toast(`“${module.title}” creado`);
+    },
+    onError: (error) =>
+      toast.error(error instanceof Error ? error.message : 'No se pudo crear el módulo.'),
+  });
+}
+
 export function useSaveWatchedPercent() {
   return useMutation({
     mutationFn: ({ lessonId, percent }: { lessonId: string; percent: number }) =>

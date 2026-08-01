@@ -113,7 +113,7 @@ export function StudentsView() {
         open={inviteOpen}
         onOpenChange={setInviteOpen}
         pending={invite.isPending}
-        onSubmit={({ email }) => invite.mutateAsync(email).then(() => undefined)}
+        onSubmit={(values) => invite.mutateAsync(values).then(() => undefined)}
       />
 
       <MessageStudentDialog

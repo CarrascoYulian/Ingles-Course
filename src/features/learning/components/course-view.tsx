@@ -10,28 +10,61 @@ import { LessonTabs } from '@/components/student/lesson-tabs';
 import { ProgressCard } from '@/components/student/progress-card';
 import { VideoPlayer } from '@/components/student/video-player';
 import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
 import { LoadingRegion, Skeleton } from '@/components/ui/skeleton';
 import { ROUTES } from '@/constants/routes';
-import { useCurrentModule, useModuleLessons } from '../hooks/use-learning';
+import { useCurrentModule, useModuleLessons, useMyProgress } from '../hooks/use-learning';
 import { useVideoProgress } from '../hooks/use-video-progress';
-
-const CURRENT_LESSON_ID = 'l5';
 
 export function CourseView() {
   const router = useRouter();
-  const { data: module } = useCurrentModule();
+  const { data: module, isPending: isModulePending } = useCurrentModule();
   const { data: lessons, isPending } = useModuleLessons(module?.id ?? '');
-  const video = useVideoProgress(CURRENT_LESSON_ID);
+  const { data: progress, isPending: isProgressPending } = useMyProgress();
+
+  // La "lección actual" ya no está fija: es la primera que el propio
+  // `state` de cada lección (calculado en el backend a partir de
+  // `lesson_progress`) marca como `current`. Antes esto era un id de
+  // prototipo (`'l5'`) que sólo existía en el módulo de demostración.
+  const currentLesson = lessons?.find((lesson) => lesson.state === 'current');
+  const video = useVideoProgress(currentLesson?.id ?? '', currentLesson?.watchedPercent ?? 0);
 
   const completed = lessons?.filter((lesson) => lesson.state === 'done').length ?? 0;
   const total = lessons?.length ?? 0;
+
+  if (isModulePending) {
+    return (
+      <div className="flex flex-col gap-4 px-5 py-4 lg:px-[30px] lg:py-6">
+        <Skeleton className="aspect-video rounded-9xl" />
+        <Skeleton className="h-40 rounded-8xl" />
+      </div>
+    );
+  }
+
+  // Antes, sin módulos reales en la base de datos, esto caía a un módulo de
+  // ejemplo fijo — el alumno veía "Present Perfect vs. Past Simple" como si
+  // fuera contenido real de su curso. Ahora se muestra un vacío honesto.
+  if (!module) {
+    return (
+      <div className="px-5 py-8 lg:px-[30px] lg:py-12">
+        <EmptyState
+          title="Todavía no hay ningún módulo publicado"
+          description="Tu docente aún no ha creado contenido para este curso. Vuelve pronto."
+        />
+      </div>
+    );
+  }
+
+  const moduleLabel = module.title;
+  const lessonTitle = currentLesson?.title ?? moduleLabel;
+  const lessonPosition = currentLesson ? lessons!.indexOf(currentLesson) + 1 : 0;
 
   return (
     <div className="flex flex-col gap-4 lg:flex-row lg:gap-5 lg:px-[30px] lg:py-6">
       <div className="flex min-w-0 flex-1 flex-col gap-4">
         <VideoPlayer
-          contextLabel="Lección 5 de 9 · Módulo 4"
-          contextLabelShort="Lección 5 · Mód. 4"
+          contextLabel={`Lección ${lessonPosition} de ${total} · ${moduleLabel}`}
+          contextLabelShort={`Lección ${lessonPosition} · ${moduleLabel}`}
           watched={video.watched}
           playing={video.playing}
           timeLabel={video.timeLabel}
@@ -40,7 +73,7 @@ export function CourseView() {
           onNext={() =>
             toast(
               video.canAdvance
-                ? 'Lección 6 desbloqueada · progreso guardado'
+                ? 'Siguiente lección desbloqueada · progreso guardado'
                 : 'Debes terminar el video para continuar',
             )
           }
@@ -48,9 +81,9 @@ export function CourseView() {
 
         <div className="px-5 lg:px-0">
           <Card padding="none" radius="xl" className="max-lg:border-0 max-lg:bg-transparent lg:px-6 lg:py-[22px]">
-            <Eyebrow>MÓDULO 4 · TIEMPOS PERFECTOS</Eyebrow>
+            <Eyebrow>{moduleLabel.toUpperCase()}</Eyebrow>
             <h1 className="mt-[5px] text-heading-sm font-extrabold tracking-heading text-fg text-pretty lg:mt-1.5 lg:text-heading-lg">
-              Present Perfect vs. Past Simple
+              {lessonTitle}
             </h1>
             <div className="mt-3.5 lg:mt-[18px]">
               <LessonTabs />
@@ -60,7 +93,16 @@ export function CourseView() {
       </div>
 
       <aside className="flex flex-col gap-3.5 px-5 pb-5 lg:w-aside lg:shrink-0 lg:px-0 lg:pb-0">
-        <ProgressCard percent={54} level="B1" hours={18} lessons={41} badges={7} />
+        {isProgressPending && <Skeleton className="h-[220px] rounded-8xl" />}
+        {progress && (
+          <ProgressCard
+            percent={progress.percent}
+            level={progress.level}
+            hours={progress.hoursStudied}
+            lessons={progress.lessonsCompleted}
+            badges={progress.badgesEarned}
+          />
+        )}
 
         <Card padding="lg" radius="xl">
           <div className="mb-3 flex items-center justify-between lg:mb-3.5">
@@ -79,7 +121,7 @@ export function CourseView() {
             </div>
           )}
 
-          {lessons && (
+          {lessons && lessons.length > 0 && (
             <LessonList
               lessons={lessons}
               onSelect={(lesson) => {
@@ -89,10 +131,18 @@ export function CourseView() {
             />
           )}
 
+          {lessons && lessons.length === 0 && !isPending && (
+            <EmptyState
+              compact
+              title="Sin lecciones todavía"
+              description="Este módulo aún no tiene lecciones publicadas."
+            />
+          )}
+
           <p className="mt-3.5 flex items-start gap-[11px] rounded-2xl bg-surface-muted p-[13px]">
             <Lock aria-hidden size={16} strokeWidth={1.9} className="mt-px shrink-0 text-fg-faint" />
             <span className="text-meta font-semibold leading-normal text-fg-soft">
-              El Módulo 5 se abre al terminar el 100 % de este módulo. Tu avance se guarda solo.
+              El siguiente módulo se abre al terminar el 100 % de este. Tu avance se guarda solo.
             </span>
           </p>
         </Card>

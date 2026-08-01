@@ -186,7 +186,8 @@ export const demoBackend: Backend = {
       return latency(updated);
     },
 
-    invite: () => latency({ enrollmentCode: `ING-${String(Math.floor(Math.random() * 999999)).padStart(6, '0')}` }),
+    invite: (_input) =>
+      latency({ enrollmentCode: `ING-${String(Math.floor(Math.random() * 999999)).padStart(6, '0')}` }),
 
     sendMessage: () => latency(undefined),
   },
@@ -212,6 +213,17 @@ export const demoBackend: Backend = {
     listResources: (): Promise<CourseResource[]> => latency(DEMO_RESOURCES),
     listBadges: (): Promise<Badge[]> => latency(DEMO_BADGES),
     saveWatchedPercent: () => latency(undefined, 0),
+    getMyProgress: () =>
+      latency({
+        percent: 54,
+        level: 'B1' as const,
+        hoursStudied: 18,
+        lessonsCompleted: 41,
+        badgesEarned: DEMO_BADGES.filter((b) => b.earned).length,
+      }),
+    // En demo ya existe un único módulo de referencia; crear "otro" no tendría
+    // dónde vivir en el fixture en memoria, así que se devuelve el mismo.
+    createModule: ({ title }) => latency({ ...DEMO_MODULE, title }),
   },
 
   practice: {

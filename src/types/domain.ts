@@ -74,6 +74,17 @@ export interface Lesson {
   /** Duración legible: "14 min". */
   duration: string;
   state: LessonState;
+  /** 0-100. Avance real de reproducción guardado para el usuario actual. */
+  watchedPercent: number;
+}
+
+/** Progreso agregado del alumno que hace la petición — nunca de otro usuario. */
+export interface StudentProgress {
+  percent: number;
+  level: CefrLevel;
+  hoursStudied: number;
+  lessonsCompleted: number;
+  badgesEarned: number;
 }
 
 export interface StudentSummary {
@@ -130,6 +141,8 @@ export interface DashboardMetrics {
   watchedHours: { value: string; deltaLabel: string; sparkline: number[] };
   library: { courses: number; modules: number; videos: number; drafts: number };
   weeklyLessons: Array<{ label: string; current: number; previous: number }>;
+  /** Total real de estudiantes matriculados (activos + inactivos). */
+  totalStudents: number;
 }
 
 export type ReportRange = '7 días' | '30 días' | 'Trimestre' | 'Año';

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import { useInterval } from '@/hooks/use-interval';
@@ -26,11 +26,30 @@ export interface VideoProgress {
  * Encapsula el temporizador que en el prototipo vivía suelto en el
  * componente. Al montar un reproductor real, sólo cambia el origen del
  * porcentaje (`timeupdate` del `<video>`): la interfaz no se entera.
+ *
+ * `lessonId` llega vacío (`''`) mientras `useCurrentModule`/`useModuleLessons`
+ * todavía están cargando — antes esto arrancaba siempre en un 38 % fijo,
+ * ignorando el `watched_percent` real guardado en `lesson_progress`. Como
+ * `useState(initialWatched)` sólo lee su argumento en el primer render, hay
+ * que sincronizar explícitamente cuando el id real (y su progreso real)
+ * llegan después.
  */
-export function useVideoProgress(lessonId: string, initialWatched = 38): VideoProgress {
+export function useVideoProgress(lessonId: string, initialWatched = 0): VideoProgress {
   const [watched, setWatched] = useState(initialWatched);
   const [playing, setPlaying] = useState(false);
   const save = useSaveWatchedPercent();
+  const previousLessonId = useRef(lessonId);
+
+  useEffect(() => {
+    if (lessonId !== previousLessonId.current && lessonId !== '') {
+      previousLessonId.current = lessonId;
+      setWatched(initialWatched);
+    }
+    // `initialWatched` se omite a propósito: sólo debe reaplicarse cuando
+    // CAMBIA la lección, no en cada refetch del mismo `lessonId` (eso
+    // pisaría el progreso que el alumno está viendo en vivo).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lessonId]);
 
   useInterval(
     () => {

@@ -69,6 +69,7 @@ export function toLesson(
     title: row.title,
     duration: `${row.duration_minutes} min`,
     state,
+    watchedPercent: Math.round(progress?.watchedPercent ?? 0),
   };
 }
 

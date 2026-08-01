@@ -9,7 +9,6 @@ import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { IS_DEMO_MODE } from '@/lib/env';
-import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { loginSchema, type LoginValues } from '../schemas';
 
 /**
@@ -18,8 +17,8 @@ import { loginSchema, type LoginValues } from '../schemas';
  * y estas cuentas dejan de existir en la interfaz.
  */
 const DEMO_DEMO_ACCOUNTS = [
-  { label: 'Administrador', email: 'admin@inglesconmetodo.demo', password: 'Admin#2026' },
-  { label: 'Estudiante', email: 'estudiante@inglesconmetodo.demo', password: 'Estudiante#2026' },
+  { label: 'Administrador', identifier: 'admin@inglesconmetodo.demo', password: 'Admin#2026' },
+  { label: 'Estudiante', identifier: 'estudiante@inglesconmetodo.demo', password: 'Estudiante#2026' },
 ] as const;
 
 export function LoginForm() {
@@ -29,46 +28,31 @@ export function LoginForm() {
 
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: '', password: '' },
+    defaultValues: { identifier: '', password: '' },
   });
 
-  const submit = form.handleSubmit(async ({ email, password }) => {
+  const submit = form.handleSubmit(async ({ identifier, password }) => {
     setFormError(null);
 
-    if (IS_DEMO_MODE) {
-      const response = await fetch('/api/demo-auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
+    const endpoint = IS_DEMO_MODE ? '/api/demo-auth/login' : '/api/auth/login';
+    const body = IS_DEMO_MODE
+      ? { email: identifier, password }
+      : { identifier, password };
 
-      if (!response.ok) {
-        const body = (await response.json().catch(() => null)) as { error?: string } | null;
-        setFormError(body?.error ?? 'No se pudo iniciar sesión.');
-        return;
-      }
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
 
-      const { next } = (await response.json()) as { next: string };
-      router.push(searchParams.get('next') ?? next);
-      router.refresh();
+    if (!response.ok) {
+      const responseBody = (await response.json().catch(() => null)) as { error?: string } | null;
+      setFormError(responseBody?.error ?? 'No se pudo iniciar sesión.');
       return;
     }
 
-    const supabase = getSupabaseBrowserClient();
-    if (!supabase) {
-      setFormError('El servicio no está disponible ahora mismo.');
-      return;
-    }
-
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      // Mensaje genérico a propósito: distinguir «correo no existe» de
-      // «contraseña incorrecta» permite enumerar cuentas.
-      setFormError('Correo o contraseña incorrectos.');
-      return;
-    }
-
-    router.push(searchParams.get('next') ?? '/');
+    const { next } = (await response.json()) as { next: string };
+    router.push(searchParams.get('next') ?? next);
     router.refresh();
   });
 
@@ -83,14 +67,14 @@ export function LoginForm() {
         </p>
       )}
 
-      <Field label="Correo" error={form.formState.errors.email?.message}>
+      <Field label="Usuario" error={form.formState.errors.identifier?.message}>
         {(fieldProps) => (
           <Input
             {...fieldProps}
-            {...form.register('email')}
-            type="email"
-            autoComplete="email"
-            placeholder="tu@correo.do"
+            {...form.register('identifier')}
+            type="text"
+            autoComplete="username"
+            placeholder="Matrícula (alumno) o correo (personal)"
           />
         )}
       </Field>
@@ -118,9 +102,9 @@ export function LoginForm() {
           </p>
           <ul className="mt-2 flex flex-col gap-2">
             {DEMO_DEMO_ACCOUNTS.map((account) => (
-              <li key={account.email} className="flex items-center justify-between gap-2">
+              <li key={account.identifier} className="flex items-center justify-between gap-2">
                 <span>
-                  <strong className="text-fg">{account.label}:</strong> {account.email} /{' '}
+                  <strong className="text-fg">{account.label}:</strong> {account.identifier} /{' '}
                   {account.password}
                 </span>
                 <Button
@@ -128,7 +112,7 @@ export function LoginForm() {
                   variant="ghost"
                   size="xs"
                   onClick={() => {
-                    form.setValue('email', account.email);
+                    form.setValue('identifier', account.identifier);
                     form.setValue('password', account.password);
                   }}
                 >

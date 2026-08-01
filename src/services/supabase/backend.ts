@@ -1,6 +1,6 @@
 import { inferBlockType } from '@/features/content/infer-block-type';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
-import { DEMO_MODULE, DEMO_QUESTION } from '../demo/data';
+import { DEMO_QUESTION } from '../demo/data';
 import type { AttachUploadInput, Backend } from '../ports';
 import { toContentBlock, toCourse, toLesson, toModule, toStudentSummary } from './mappers';
 import type { Course, PracticeSession, ReportRange } from '@/types';
@@ -245,16 +245,16 @@ export const supabaseBackend: Backend = {
       return toStudentSummary(row, null);
     },
 
-    async invite(email) {
-      // La invitación real necesita service role: se delega a un Route Handler.
+    async invite(input) {
+      // La alta real necesita service role: se delega a un Route Handler.
       const response = await fetch('/api/students/invite', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify(input),
       });
       if (!response.ok) {
         const body = (await response.json().catch(() => null)) as { error?: string } | null;
-        throw new Error(body?.error ?? 'No se pudo enviar la invitación');
+        throw new Error(body?.error ?? 'No se pudo crear el estudiante');
       }
       return (await response.json()) as { enrollmentCode: string };
     },
@@ -294,10 +294,13 @@ export const supabaseBackend: Backend = {
 
   learning: {
     async getCurrentModule() {
+      // Antes caía a `DEMO_MODULE` si la tabla estaba vacía, mostrando
+      // contenido de ejemplo como si fuera real. Ahora, sin módulos reales,
+      // devuelve `null` y la interfaz muestra un estado vacío honesto.
       const rows = unwrap(
         await db().from('modules').select('*').order('position').limit(1),
       );
-      return rows[0] ? toModule(rows[0]) : DEMO_MODULE;
+      return rows[0] ? toModule(rows[0]) : null;
     },
 
     async listLessons(moduleId) {
@@ -350,6 +353,59 @@ export const supabaseBackend: Backend = {
           { onConflict: 'student_id,lesson_id' },
         );
       if (error) throw new Error(error.message);
+    },
+
+    async getMyProgress() {
+      const {
+        data: { user },
+      } = await db().auth.getUser();
+
+      const empty = { percent: 0, level: 'A1' as const, hoursStudied: 0, lessonsCompleted: 0, badgesEarned: 0 };
+      if (!user) return empty;
+
+      const [profileResult, enrollmentResult, badgesResult] = await Promise.all([
+        db().from('profiles').select('level').eq('id', user.id).single(),
+        db()
+          .from('enrollments')
+          .select('progress, watched_minutes, completed_lessons')
+          .eq('student_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+        db()
+          .from('student_badges')
+          .select('*', { count: 'exact', head: true })
+          .eq('student_id', user.id),
+      ]);
+
+      return {
+        percent: Math.round(enrollmentResult.data?.progress ?? 0),
+        level: profileResult.data?.level ?? 'A1',
+        hoursStudied: Math.round((enrollmentResult.data?.watched_minutes ?? 0) / 60),
+        lessonsCompleted: enrollmentResult.data?.completed_lessons ?? 0,
+        badgesEarned: badgesResult.count ?? 0,
+      };
+    },
+
+    async createModule({ courseId, title }) {
+      const { count } = await db()
+        .from('modules')
+        .select('*', { count: 'exact', head: true })
+        .eq('course_id', courseId);
+
+      const row = unwrap<Row<'modules'>>(
+        await db()
+          .from('modules')
+          .insert({
+            course_id: courseId,
+            title,
+            position: count ?? 0,
+            requires_module_id: null,
+          })
+          .select()
+          .single(),
+      );
+      return toModule(row);
     },
   },
 

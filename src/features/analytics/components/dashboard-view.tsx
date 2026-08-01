@@ -47,13 +47,22 @@ export function DashboardView() {
   const createCourse = useCreateCourse();
   const togglePublished = useTogglePublished();
 
-  useAdminHeader('Actualizado hace 4 minutos · 342 estudiantes matriculados', () =>
-    setDialogOpen(true),
+  // Antes decía siempre "342 estudiantes matriculados", sin importar
+  // cuántos hubiera realmente — y "hace 4 minutos" nunca cambiaba. Ahora
+  // usa el total real (`totalStudents`, de la misma consulta agregada que
+  // ya alimenta el resto del dashboard) y omite la marca de tiempo en vez
+  // de inventar una.
+  useAdminHeader(
+    metrics.data
+      ? `${metrics.data.totalStudents} estudiante${metrics.data.totalStudents === 1 ? '' : 's'} matriculado${metrics.data.totalStudents === 1 ? '' : 's'}`
+      : 'Cargando…',
+    () => setDialogOpen(true),
   );
 
   if (!metrics.data) return <DashboardSkeleton />;
 
-  const { activeStudents, averageProgress, watchedHours, library, weeklyLessons } = metrics.data;
+  const { activeStudents, averageProgress, watchedHours, library, weeklyLessons, totalStudents } =
+    metrics.data;
 
   return (
     <div className="flex flex-col gap-3.5 px-5 py-4 md:gap-5 lg:px-[30px] lg:py-6">
@@ -154,7 +163,7 @@ export function DashboardView() {
         </Card>
 
         {leaderboard.data && (
-          <Leaderboard entries={leaderboard.data} totalStudents={342} />
+          <Leaderboard entries={leaderboard.data} totalStudents={totalStudents} />
         )}
       </div>
 
