@@ -33,12 +33,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'La creación de estudiantes no está configurada' }, { status: 503 });
   }
 
-  const { count } = await admin
-    .from('profiles')
-    .select('*', { count: 'exact', head: true })
-    .eq('role', 'student');
-
-  const enrollmentCode = `ING-${String((count ?? 0) + 1).padStart(6, '0')}`;
+  // Antes se calculaba con `count(*) + 1`: dos invitaciones simultáneas
+  // podían generar el mismo código y la segunda fallaba con un error de
+  // restricción única confuso. La secuencia de Postgres es atómica.
+  const { data: enrollmentCode, error: codeError } = await admin.rpc('next_enrollment_code');
+  if (codeError || !enrollmentCode) {
+    return NextResponse.json({ error: 'No se pudo generar el código de matrícula' }, { status: 500 });
+  }
   const internalEmail = `${enrollmentCode.toLowerCase()}@alumnos.inglesconmetodo.internal`;
 
   const { error } = await admin.auth.admin.createUser({

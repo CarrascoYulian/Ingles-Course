@@ -9,20 +9,37 @@
 // Requiere en el entorno:
 //   NEXT_PUBLIC_SUPABASE_URL
 //   SUPABASE_SERVICE_ROLE_KEY
+//   DEMO_ADMIN_EMAIL / DEMO_ADMIN_PASSWORD
+//   DEMO_STUDENT_EMAIL / DEMO_STUDENT_PASSWORD
 //
 // El trigger `handle_new_user` (0001_schema.sql) crea automáticamente la
 // fila en `profiles` a partir de `raw_user_meta_data` — este script sólo
 // necesita llamar a la Admin API de Auth, no toca `profiles` directamente.
+//
+// Antes las credenciales de estas dos cuentas estaban escritas aquí como
+// texto literal — visibles para cualquiera con acceso al repositorio (p.
+// ej. en GitHub). Ahora sólo existen en `.env.local`, que no se versiona.
 // ============================================================================
 
 import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const DEMO_ADMIN_EMAIL = process.env.DEMO_ADMIN_EMAIL;
+const DEMO_ADMIN_PASSWORD = process.env.DEMO_ADMIN_PASSWORD;
+const DEMO_STUDENT_EMAIL = process.env.DEMO_STUDENT_EMAIL;
+const DEMO_STUDENT_PASSWORD = process.env.DEMO_STUDENT_PASSWORD;
 
-if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
+if (
+  !SUPABASE_URL ||
+  !SERVICE_ROLE_KEY ||
+  !DEMO_ADMIN_EMAIL ||
+  !DEMO_ADMIN_PASSWORD ||
+  !DEMO_STUDENT_EMAIL ||
+  !DEMO_STUDENT_PASSWORD
+) {
   console.error(
-    'Faltan NEXT_PUBLIC_SUPABASE_URL y/o SUPABASE_SERVICE_ROLE_KEY.\n' +
+    'Faltan variables de entorno (Supabase y/o credenciales demo).\n' +
       'Ejecuta con: node --env-file=.env.local scripts/seed-users.mjs',
   );
   process.exit(1);
@@ -34,15 +51,15 @@ const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
 
 const USERS = [
   {
-    email: 'admin@inglesconmetodo.demo',
-    password: 'Admin#2026',
+    email: DEMO_ADMIN_EMAIL,
+    password: DEMO_ADMIN_PASSWORD,
     role: 'admin',
     full_name: 'Daniel Reyes',
     enrollment_code: null,
   },
   {
-    email: 'estudiante@inglesconmetodo.demo',
-    password: 'Estudiante#2026',
+    email: DEMO_STUDENT_EMAIL,
+    password: DEMO_STUDENT_PASSWORD,
     role: 'student',
     full_name: 'Juan Carlos Peña',
     enrollment_code: 'ING-000072',

@@ -8,6 +8,14 @@ import { backend } from '@/services';
 import type { AttachUploadInput } from '@/services';
 import type { BlockType, ContentBlock } from '@/types';
 
+export function useModules(courseId: string) {
+  return useQuery({
+    queryKey: QUERY_KEYS.modules(courseId),
+    queryFn: () => backend.content.listModules(courseId),
+    enabled: courseId !== '',
+  });
+}
+
 export function useContentBlocks(moduleId: string) {
   return useQuery({
     queryKey: QUERY_KEYS.blocks(moduleId),

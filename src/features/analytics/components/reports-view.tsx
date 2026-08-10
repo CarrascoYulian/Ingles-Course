@@ -10,6 +10,7 @@ import { Card } from '@/components/ui/card';
 import { Chip, ChipRow } from '@/components/ui/chip';
 import { SectionTitle } from '@/components/shared/section-title';
 import { LoadingRegion, Skeleton } from '@/components/ui/skeleton';
+import { downloadCsv } from '@/lib/csv';
 import type { ReportRange } from '@/types';
 import { useReport } from '../hooks/use-analytics';
 
@@ -20,8 +21,21 @@ export function ReportsView() {
   const [range, setRange] = useState<ReportRange>('30 días');
   const { data: report, isPending } = useReport(range);
 
-  const exportCsv = () =>
-    toast(`Reporte exportado a reportes-${range.replace(' ', '')}.csv`);
+  const exportCsv = () => {
+    if (!report) return;
+    const rows: (string | number)[][] = [
+      ['Periodo', 'Horas vistas'],
+      ...report.bars.map((value, index) => [PERIOD_LABELS[index] ?? `P${index + 1}`, value]),
+      [],
+      ['Retención mensual', report.retention.value],
+      ['Variación de retención', report.retention.delta],
+      ['Lección con más abandono', report.dropOff.lesson],
+      ['Tasa de abandono', report.dropOff.rate],
+      ['Recomendación', report.recommendation],
+    ];
+    downloadCsv(`reporte-${range.replace(' ', '-').toLowerCase()}.csv`, rows);
+    toast(`Reporte descargado · reporte-${range.replace(' ', '-').toLowerCase()}.csv`);
+  };
 
   useAdminHeader(`Rango: ${range} · exportable a CSV`, exportCsv);
 

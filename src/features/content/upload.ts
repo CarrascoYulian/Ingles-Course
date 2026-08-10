@@ -3,6 +3,7 @@ import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 
 export interface UploadParams {
   file: File;
+  courseId: string;
   moduleId: string;
   onProgress: (percent: number) => void;
 }
@@ -24,13 +25,18 @@ export interface UploadResult {
  * byte (a diferencia de un XHR crudo contra S3): se reporta inicio y fin,
  * no un porcentaje granular inventado.
  */
-export async function uploadFile({ file, moduleId, onProgress }: UploadParams): Promise<UploadResult> {
+export async function uploadFile({
+  file,
+  courseId,
+  moduleId,
+  onProgress,
+}: UploadParams): Promise<UploadResult> {
   if (IS_DEMO_MODE) return uploadDemoFile(file, moduleId, onProgress);
 
   const ticketResponse = await fetch('/api/uploads', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ moduleId, fileName: file.name, contentType: file.type }),
+    body: JSON.stringify({ courseId, moduleId, fileName: file.name, contentType: file.type }),
   });
 
   if (!ticketResponse.ok) {

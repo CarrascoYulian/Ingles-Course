@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { useAdminHeader } from '@/components/admin/admin-shell';
 import { CourseCard } from '@/components/admin/course-card';
 import { CreateCourseDialog } from '@/components/admin/create-course-dialog';
+import { EditCourseDialog } from '@/components/admin/edit-course-dialog';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import { Chip, ChipRow } from '@/components/ui/chip';
@@ -13,8 +14,15 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton, LoadingRegion } from '@/components/ui/skeleton';
 import { ROUTES } from '@/constants/routes';
 import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
-import { CEFR_LEVELS, type CefrLevel } from '@/types';
-import { useCourses, useCreateCourse, useDeleteCourse, useTogglePublished } from '../hooks/use-courses';
+import { CEFR_LEVELS, type CefrLevel, type Course } from '@/types';
+import {
+  useCourses,
+  useCreateCourse,
+  useDeleteCourse,
+  useReorderCourse,
+  useTogglePublished,
+  useUpdateCourse,
+} from '../hooks/use-courses';
 
 const LEVEL_FILTERS: Array<CefrLevel | 'Todos'> = ['Todos', ...CEFR_LEVELS.filter((l) => l !== 'C1')];
 
@@ -22,11 +30,14 @@ export function CoursesView() {
   const router = useRouter();
   const [levelFilter, setLevelFilter] = useState<CefrLevel | 'Todos'>('Todos');
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingCourse, setEditingCourse] = useState<Course | null>(null);
 
   const { data: courses, isPending } = useCourses();
   const createCourse = useCreateCourse();
+  const updateCourse = useUpdateCourse();
   const togglePublished = useTogglePublished();
   const deleteCourse = useDeleteCourse();
+  const reorderCourse = useReorderCourse();
   const confirmDialog = useConfirmDialog();
 
   useAdminHeader(
@@ -55,7 +66,7 @@ export function CoursesView() {
           ))}
         </ChipRow>
         <p className="hidden shrink-0 text-meta font-bold text-fg-ghost xl:block">
-          Arrastra para reordenar · toca un curso para editar sus módulos
+          Usa las flechas para reordenar · toca un curso para editar sus módulos
         </p>
       </div>
 
@@ -80,7 +91,7 @@ export function CoursesView() {
         />
       )}
 
-      {visible?.map((course) => (
+      {visible?.map((course, index) => (
         <CourseCard
           key={course.id}
           course={course}
@@ -88,7 +99,14 @@ export function CoursesView() {
           onToggle={(target) =>
             togglePublished.mutate({ id: target.id, published: !target.published })
           }
-          onEdit={() => router.push(ROUTES.admin.contenido)}
+          onEdit={() => router.push(ROUTES.admin.contenidoDeCurso(course.id))}
+          onRename={setEditingCourse}
+          onReorder={(target, direction) => reorderCourse.mutate({ id: target.id, direction })}
+          // El orden real es global (`position`); con un filtro de nivel
+          // activo, el vecino visible no es necesariamente el vecino real
+          // — se deshabilita el reordenamiento para no confundir.
+          isFirst={levelFilter !== 'Todos' || index === 0}
+          isLast={levelFilter !== 'Todos' || index === visible.length - 1}
           onDelete={(target) =>
             confirmDialog.confirm({
               title: 'Eliminar definitivamente',
@@ -111,6 +129,15 @@ export function CoursesView() {
         onOpenChange={setDialogOpen}
         onSubmit={(values) => createCourse.mutateAsync(values).then(() => undefined)}
         pending={createCourse.isPending}
+      />
+
+      <EditCourseDialog
+        course={editingCourse}
+        onOpenChange={(open) => !open && setEditingCourse(null)}
+        pending={updateCourse.isPending}
+        onSubmit={(values) =>
+          updateCourse.mutateAsync({ id: editingCourse!.id, input: values }).then(() => undefined)
+        }
       />
 
       <ConfirmDialog

@@ -7,6 +7,7 @@ import { createUploadTicket } from '@/lib/storage';
 export const runtime = 'nodejs';
 
 const requestSchema = z.object({
+  courseId: z.string().min(1),
   moduleId: z.string().min(1),
   fileName: z.string().min(1).max(255),
   contentType: z.string().min(1).max(255),
@@ -33,14 +34,14 @@ export async function POST(request: Request) {
   const parsed = requestSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return badRequest('Petición de subida inválida');
 
-  const { moduleId, fileName, contentType } = parsed.data;
+  const { courseId, moduleId, fileName, contentType } = parsed.data;
 
   const allowed =
     ALLOWED_PREFIXES.some((prefix) => contentType.startsWith(prefix)) ||
     ALLOWED_EXACT.includes(contentType);
   if (!allowed) return badRequest(`Tipo de archivo no permitido: ${contentType}`);
 
-  const ticket = await createUploadTicket({ courseId: 'curso', moduleId, fileName });
+  const ticket = await createUploadTicket({ courseId, moduleId, fileName });
 
   if (!ticket) {
     return NextResponse.json(

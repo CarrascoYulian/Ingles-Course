@@ -11,6 +11,7 @@ export const QUERY_KEYS = {
   session: ['session'] as const,
   courses: ['courses'] as const,
   course: (id: string) => ['courses', id] as const,
+  modules: (courseId: string) => ['modules', courseId] as const,
   blocks: (moduleId: string) => ['blocks', moduleId] as const,
   students: (filters?: unknown) => ['students', filters ?? {}] as const,
   dashboard: ['dashboard'] as const,
