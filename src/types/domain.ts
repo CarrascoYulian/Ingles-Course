@@ -76,6 +76,8 @@ export interface Lesson {
   state: LessonState;
   /** 0-100. Avance real de reproducción guardado para el usuario actual. */
   watchedPercent: number;
+  /** Ruta del video real en Supabase Storage — `null` si aún no se adjuntó ninguno. */
+  mediaKey: string | null;
 }
 
 /** Progreso agregado del alumno que hace la petición — nunca de otro usuario. */
@@ -199,4 +201,16 @@ export interface PracticeSession {
   coins: number;
   streak: number;
   hearts: { total: number; remaining: number };
+  missions: PracticeMissions;
+}
+
+/**
+ * Meta diaria de XP, racha de los últimos 7 días y próxima insignia.
+ * Antes de existir esto, "Misión de hoy" mostraba 45/60 XP y "3 de 5 días"
+ * fijos en el JSX, iguales para cualquier alumno en cualquier momento.
+ */
+export interface PracticeMissions {
+  dailyXp: { earned: number; goal: number };
+  weeklyStreak: { done: number; total: number };
+  nextBadge: { name: string; requirement: string } | null;
 }

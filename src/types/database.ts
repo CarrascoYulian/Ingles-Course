@@ -148,10 +148,24 @@ export interface Database {
           streak_days: number;
           current_level: number;
           current_step: number;
+          hearts_remaining: number;
           updated_at: string;
         };
-        Insert: Database['public']['Tables']['practice_progress']['Row'];
-        Update: Partial<Database['public']['Tables']['practice_progress']['Row']>;
+        Insert: Omit<Database['public']['Tables']['practice_progress']['Row'], 'hearts_remaining'> & {
+          hearts_remaining?: number;
+        };
+        Update: Partial<Database['public']['Tables']['practice_progress']['Insert']>;
+        Relationships: [];
+      };
+      practice_daily_progress: {
+        Row: {
+          student_id: string;
+          date: string;
+          xp_earned: number;
+          goal_met: boolean;
+        };
+        Insert: Database['public']['Tables']['practice_daily_progress']['Row'];
+        Update: Partial<Database['public']['Tables']['practice_daily_progress']['Insert']>;
         Relationships: [];
       };
       course_resources: {
@@ -179,9 +193,30 @@ export interface Database {
           title: string;
           xp_reward: number;
           total_steps: number;
+          cefr_tier: CefrLevel;
         };
         Insert: Omit<Database['public']['Tables']['practice_levels']['Row'], 'id'> & { id?: string };
         Update: Partial<Database['public']['Tables']['practice_levels']['Insert']>;
+        Relationships: [];
+      };
+      practice_questions: {
+        Row: {
+          id: string;
+          cefr_tier: CefrLevel;
+          position: number;
+          category: string;
+          xp_reward: number;
+          prompt: string;
+          source_text: string;
+          options: Json;
+          correct_option_id: string;
+          explanation_correct: string;
+          explanation_wrong: string;
+        };
+        Insert: Omit<Database['public']['Tables']['practice_questions']['Row'], 'id'> & {
+          id?: string;
+        };
+        Update: Partial<Database['public']['Tables']['practice_questions']['Insert']>;
         Relationships: [];
       };
       activity_log: {
@@ -215,8 +250,26 @@ export interface Database {
         Relationships: [];
       };
     };
-    Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Views: {
+      course_aggregates: {
+        Row: { course_id: string; students: number; avg_progress: number };
+        Relationships: [];
+      };
+    };
+    Functions: {
+      swap_content_block_position: {
+        Args: { block_a_id: string; block_b_id: string };
+        Returns: void;
+      };
+      next_enrollment_code: {
+        Args: Record<string, never>;
+        Returns: string;
+      };
+      swap_course_position: {
+        Args: { course_a_id: string; course_b_id: string };
+        Returns: void;
+      };
+    };
     Enums: {
       user_role: UserRole;
       cefr_level: CefrLevel;
