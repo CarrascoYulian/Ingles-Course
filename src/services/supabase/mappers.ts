@@ -56,11 +56,11 @@ export function toLesson(
   previousCompleted: boolean,
 ): Lesson {
   const completed = progress?.completed ?? false;
-  const state: Lesson['state'] = completed
-    ? 'done'
-    : previousCompleted || row.position === 1
-      ? 'current'
-      : 'locked';
+  // El llamante arranca `previousCompleted` en `true`, así que la primera
+  // lección de la lista ya queda "current" por esa vía sola. El
+  // `|| row.position === 1` era redundante y podía marcar dos lecciones
+  // como "current" a la vez si alguna fila posterior coincidía en posición.
+  const state: Lesson['state'] = completed ? 'done' : previousCompleted ? 'current' : 'locked';
 
   return {
     id: row.id,
@@ -70,6 +70,7 @@ export function toLesson(
     duration: `${row.duration_minutes} min`,
     state,
     watchedPercent: Math.round(progress?.watchedPercent ?? 0),
+    mediaKey: row.media_key,
   };
 }
 
