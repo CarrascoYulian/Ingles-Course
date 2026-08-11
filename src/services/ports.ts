@@ -163,6 +163,8 @@ export interface LearningPort {
   /** Mensajes que el equipo docente le ha enviado al alumno autenticado. */
   getMyMessages(): Promise<StudentMessage[]>;
   markMessageRead(id: string): Promise<void>;
+  /** Responde al docente — antes la bandeja era de sólo lectura. */
+  sendMyMessage(body: string): Promise<void>;
 }
 
 export interface PracticePort {

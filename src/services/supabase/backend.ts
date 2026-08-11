@@ -758,6 +758,18 @@ export const supabaseBackend: Backend = {
         .is('read_at', null);
       if (error) throw new Error(error.message);
     },
+
+    async sendMyMessage(body) {
+      const {
+        data: { user },
+      } = await db().auth.getUser();
+      if (!user) throw new Error('No autenticado');
+
+      const { error } = await db()
+        .from('messages')
+        .insert({ sender_id: user.id, student_id: user.id, body, read_at: new Date().toISOString() });
+      if (error) throw new Error(error.message);
+    },
   },
 
   practice: {

@@ -1,24 +1,28 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 import { PageHeader } from '@/components/shared/page-header';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { LoadingRegion, Skeleton } from '@/components/ui/skeleton';
-import { useMarkMessageRead, useMyMessages } from '../hooks/use-learning';
+import { Textarea } from '@/components/ui/textarea';
+import { useMarkMessageRead, useMyMessages, useSendMyMessage } from '../hooks/use-learning';
 
 function formatWhen(iso: string): string {
   return new Date(iso).toLocaleString('es-DO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
 /**
- * Antes el docente sólo podía ENVIAR mensajes — no existía ningún lugar
- * donde el alumno pudiera leerlos.
+ * Antes el docente sólo podía ENVIAR mensajes y el alumno no tenía forma
+ * de leerlos ni de responder — ahora la bandeja es de ida y vuelta.
  */
 export function MessagesView() {
   const { data: messages, isPending } = useMyMessages();
   const markRead = useMarkMessageRead();
+  const sendMessage = useSendMyMessage();
+  const [draft, setDraft] = useState('');
 
   useEffect(() => {
     if (!messages) return;
@@ -26,9 +30,15 @@ export function MessagesView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages]);
 
+  const submit = () => {
+    if (!draft.trim()) return;
+    sendMessage.mutate(draft.trim());
+    setDraft('');
+  };
+
   return (
     <div className="mx-auto flex max-w-[820px] flex-col gap-3 px-5 py-5 lg:gap-3.5 lg:px-[30px] lg:py-[26px]">
-      <PageHeader title="Mensajes" description="Lo que tu docente te ha escrito." />
+      <PageHeader title="Mensajes" description="Escríbele a tu docente y lee lo que te ha escrito." />
 
       {isPending && (
         <>
@@ -65,6 +75,22 @@ export function MessagesView() {
           description="Aquí verás los mensajes que te escriba tu docente."
         />
       )}
+
+      <Card padding="lg" radius="xl">
+        <Textarea
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          placeholder="Escríbele a tu docente…"
+        />
+        <Button
+          size="sm"
+          onClick={submit}
+          disabled={!draft.trim() || sendMessage.isPending}
+          className="mt-3 rounded-lg px-[15px] py-[9px] text-label"
+        >
+          {sendMessage.isPending ? 'Enviando…' : 'Enviar'}
+        </Button>
+      </Card>
     </div>
   );
 }

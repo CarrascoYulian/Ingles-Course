@@ -186,3 +186,14 @@ export function useMarkMessageRead() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['my-messages'] }),
   });
 }
+
+/** Antes la bandeja del alumno era de sólo lectura — no había política RLS ni UI para responder. */
+export function useSendMyMessage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (body: string) => backend.learning.sendMyMessage(body),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['my-messages'] }),
+    onError: () => toast.error('No se pudo enviar el mensaje.'),
+  });
+}

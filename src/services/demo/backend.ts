@@ -304,6 +304,7 @@ export const demoBackend: Backend = {
     },
     getMyMessages: () => latency([]),
     markMessageRead: () => latency(undefined),
+    sendMyMessage: () => latency(undefined),
   },
 
   practice: {
