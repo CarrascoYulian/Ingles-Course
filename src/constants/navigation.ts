@@ -37,12 +37,6 @@ export const ADMIN_NAV: readonly NavItem[] = [
     icon: BookOpen,
   },
   {
-    href: ROUTES.admin.contenido,
-    label: 'Contenido',
-    shortLabel: 'Contenido',
-    icon: PlaySquare,
-  },
-  {
     href: ROUTES.admin.estudiantes,
     label: 'Estudiantes',
     shortLabel: 'Alumnos',

@@ -1,3 +1,7 @@
+'use client';
+
+import { useState } from 'react';
+
 import { Card } from '@/components/ui/card';
 import { SectionTitle } from '@/components/shared/section-title';
 import { cn } from '@/lib/utils';
@@ -10,11 +14,20 @@ const TONE_DOT: Record<ActivityEvent['tone'], string> = {
   danger: 'bg-danger',
 };
 
+/** Antes de la "Mostrar más" ya se veían todas las filas de golpe — con
+ * mucha actividad, la tarjeta crecía sin límite y empujaba el resto del
+ * dashboard fuera de la pantalla. */
+const COLLAPSED_COUNT = 5;
+
 /**
  * Actividad reciente. `aria-live="polite"` anuncia las entradas nuevas sin
  * interrumpir lo que el usuario esté leyendo.
  */
 export function ActivityFeed({ events }: { events: ActivityEvent[] }) {
+  const [expanded, setExpanded] = useState(false);
+  const visible = expanded ? events : events.slice(0, COLLAPSED_COUNT);
+  const hasMore = events.length > COLLAPSED_COUNT;
+
   return (
     <Card padding="lg" radius="xl">
       <SectionTitle
@@ -22,13 +35,16 @@ export function ActivityFeed({ events }: { events: ActivityEvent[] }) {
         aside={<span className="text-tiny font-bold text-accent">En vivo</span>}
       />
 
-      <ol aria-live="polite" className="mt-3 flex flex-col md:mt-3.5">
-        {events.map((event, index) => (
+      <ol
+        aria-live="polite"
+        className={cn('mt-3 flex flex-col md:mt-3.5', expanded && 'max-h-[360px] overflow-y-auto')}
+      >
+        {visible.map((event, index) => (
           <li
             key={event.id}
             className={cn(
               'flex gap-2.5 py-2.5 md:gap-3 md:py-[11px]',
-              index < events.length - 1 && 'border-b border-surface-sunken',
+              index < visible.length - 1 && 'border-b border-surface-sunken',
             )}
           >
             <span
@@ -54,6 +70,16 @@ export function ActivityFeed({ events }: { events: ActivityEvent[] }) {
           </li>
         ))}
       </ol>
+
+      {hasMore && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="mt-2 w-full rounded-xl py-2 text-center text-tiny font-bold text-fg-dim transition-colors hover:bg-surface-sunken hover:text-fg"
+        >
+          {expanded ? 'Mostrar menos' : `Mostrar ${events.length - COLLAPSED_COUNT} más`}
+        </button>
+      )}
     </Card>
   );
 }
