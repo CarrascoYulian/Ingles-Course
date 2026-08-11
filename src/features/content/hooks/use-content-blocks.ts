@@ -26,6 +26,34 @@ export function useContentBlocks(moduleId: string) {
   });
 }
 
+/**
+ * `content_blocks` (este panel) y `lessons` (lo que ve el alumno) no
+ * comparten llave foránea — se relacionan sólo porque comparten el mismo
+ * `media_key` al subirse. Se listan aquí para poder editar el título y la
+ * descripción reales de la lección desde el bloque de video correspondiente.
+ */
+export function useModuleLessons(moduleId: string) {
+  return useQuery({
+    queryKey: ['module-lessons-admin', moduleId],
+    queryFn: () => backend.learning.listLessons(moduleId),
+    enabled: moduleId !== '',
+  });
+}
+
+export function useUpdateLesson(moduleId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ lessonId, title, description }: { lessonId: string; title: string; description: string }) =>
+      backend.content.updateLesson(lessonId, { title, description }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['module-lessons-admin', moduleId] });
+      toast('Lección actualizada');
+    },
+    onError: () => toast.error('No se pudo actualizar la lección.'),
+  });
+}
+
 export function useAddBlock(moduleId: string) {
   const queryClient = useQueryClient();
 
