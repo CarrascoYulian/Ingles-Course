@@ -6,7 +6,27 @@ import { toast } from 'sonner';
 
 import { QUERY_KEYS } from '@/constants';
 import { backend } from '@/services';
-import type { CreateStudentInput, StudentFilters } from '@/services';
+import type { CreateStudentInput, StudentFilters, UpdateStudentInput } from '@/services';
+
+export interface StudentMessage {
+  id: string;
+  body: string;
+  createdAt: string;
+  fromStaff: boolean;
+}
+
+/** Antes no había forma de ver los mensajes ya enviados a un estudiante. */
+export function useStudentMessages(studentId: string | null) {
+  return useQuery({
+    queryKey: ['student-messages', studentId],
+    queryFn: async (): Promise<StudentMessage[]> => {
+      const response = await fetch(`/api/students/message?studentId=${studentId}`);
+      if (!response.ok) throw new Error('No se pudo cargar el historial');
+      return response.json();
+    },
+    enabled: studentId !== null,
+  });
+}
 
 export function useStudents(filters: StudentFilters) {
   return useQuery({
@@ -32,12 +52,61 @@ export function useResetStudentProgress() {
 }
 
 export function useSendStudentMessage() {
+  const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: ({ id, body }: { id: string; name: string; body: string }) =>
       backend.students.sendMessage(id, body),
-    onSuccess: (_data, { name }) => toast(`Mensaje enviado a ${name}`),
+    onSuccess: (_data, { id, name }) => {
+      queryClient.invalidateQueries({ queryKey: ['student-messages', id] });
+      toast(`Mensaje enviado a ${name}`);
+    },
     onError: (error) =>
       toast.error(error instanceof Error ? error.message : 'No se pudo enviar el mensaje.'),
+  });
+}
+
+export function useUpdateStudent() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: UpdateStudentInput }) =>
+      backend.students.update(id, input),
+    onSuccess: (student) => {
+      queryClient.invalidateQueries({ queryKey: ['students'] });
+      toast(`Datos de ${student.name} actualizados`);
+    },
+    onError: (error) =>
+      toast.error(error instanceof Error ? error.message : 'No se pudo actualizar el estudiante.'),
+  });
+}
+
+export function useDeleteStudent() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id }: { id: string; name: string }) => backend.students.remove(id),
+    onSuccess: (_data, { name }) => {
+      queryClient.invalidateQueries({ queryKey: ['students'] });
+      toast(`${name} eliminado`);
+    },
+    onError: (error) =>
+      toast.error(error instanceof Error ? error.message : 'No se pudo eliminar el estudiante.'),
+  });
+}
+
+export function useEnrollStudent() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, courseId }: { id: string; name: string; courseId: string }) =>
+      backend.students.enroll(id, courseId),
+    onSuccess: (_data, { name }) => {
+      queryClient.invalidateQueries({ queryKey: ['students'] });
+      toast(`${name} matriculado`);
+    },
+    onError: (error) =>
+      toast.error(error instanceof Error ? error.message : 'No se pudo matricular al estudiante.'),
   });
 }
 

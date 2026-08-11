@@ -82,6 +82,28 @@ async function nextBlockPosition(moduleId: string): Promise<number> {
   return (data?.position ?? -1) + 1;
 }
 
+async function nextLessonPosition(moduleId: string): Promise<number> {
+  const { data } = await db()
+    .from('lessons')
+    .select('position')
+    .eq('module_id', moduleId)
+    .order('position', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return (data?.position ?? -1) + 1;
+}
+
+async function nextResourcePosition(courseId: string): Promise<number> {
+  const { data } = await db()
+    .from('course_resources')
+    .select('position')
+    .eq('course_id', courseId)
+    .order('position', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return (data?.position ?? -1) + 1;
+}
+
 export const supabaseBackend: Backend = {
   courses: {
     async list() {
@@ -89,8 +111,11 @@ export const supabaseBackend: Backend = {
       // sólo para promediar `progress` aquí — con miles de alumnos, miles de
       // filas cruzaban la red para calcular un número. `course_aggregates`
       // es una vista que agrega en el propio Postgres.
+      // Sin límite superior: un catálogo con cientos de cursos traería todo
+      // de una vez. Mismo patrón defensivo que `listLessons` — 200 cursos ya
+      // es más de lo que un solo panel debería listar sin paginar de verdad.
       const [coursesResult, aggregatesResult] = await Promise.all([
-        db().from('courses').select('*, modules(count)').order('position', { ascending: true }),
+        db().from('courses').select('*, modules(count)').order('position', { ascending: true }).limit(200),
         db().from('course_aggregates').select('*'),
       ]);
       const rows = unwrap(coursesResult);
@@ -248,6 +273,7 @@ export const supabaseBackend: Backend = {
 
     async attachUpload(input: AttachUploadInput) {
       const position = await nextBlockPosition(input.moduleId);
+      const type = inferBlockType(input.contentType);
 
       const {
         data: { user },
@@ -258,7 +284,7 @@ export const supabaseBackend: Backend = {
           .from('content_blocks')
           .insert({
             module_id: input.moduleId,
-            type: inferBlockType(input.contentType),
+            type,
             title: input.fileName,
             meta: input.sizeLabel,
             position,
@@ -268,6 +294,41 @@ export const supabaseBackend: Backend = {
           .select()
           .single(),
       );
+
+      // `content_blocks` sólo alimenta este panel de administración — el
+      // reproductor del alumno lee `lessons` y "Recursos" lee
+      // `course_resources`, dos tablas completamente separadas. Sin este
+      // paso, un archivo subido aquí nunca llegaba a verse del lado del
+      // alumno aunque ya estuviera matriculado.
+      const title = input.fileName.replace(/\.[^.]+$/, '');
+      if (type === 'Video') {
+        const lessonPosition = await nextLessonPosition(input.moduleId);
+        await db()
+          .from('lessons')
+          .insert({
+            module_id: input.moduleId,
+            position: lessonPosition,
+            title,
+            media_key: input.mediaKey,
+            duration_minutes: 0,
+          });
+      } else {
+        const moduleRow = unwrap<Pick<Row<'modules'>, 'course_id'>>(
+          await db().from('modules').select('course_id').eq('id', input.moduleId).single(),
+        );
+        const resourcePosition = await nextResourcePosition(moduleRow.course_id);
+        await db()
+          .from('course_resources')
+          .insert({
+            course_id: moduleRow.course_id,
+            type: type === 'Audio' ? 'MP3' : 'PDF',
+            title,
+            meta: input.sizeLabel,
+            media_key: input.mediaKey,
+            position: resourcePosition,
+          });
+      }
+
       return toContentBlock(row);
     },
 
@@ -298,9 +359,15 @@ export const supabaseBackend: Backend = {
         .order('created_at', { foreignTable: 'enrollments', ascending: false });
 
       if (level !== 'Todos') request = request.eq('level', level);
-      if (query.trim()) {
-        const needle = `%${query.trim()}%`;
-        request = request.or(`full_name.ilike.${needle},enrollment_code.ilike.${needle}`);
+      const trimmedQuery = query.trim();
+      if (trimmedQuery) {
+        // `.or()` recibe una mini-sintaxis de filtros de PostgREST: una
+        // búsqueda con "," o "(" sin escapar podía inyectar condiciones
+        // extra en el filtro. Se escapan comillas y se elimina lo que
+        // rompería la sintaxis — sigue buscando el texto tal cual.
+        const safe = trimmedQuery.replace(/[,()]/g, '').replace(/"/g, '""');
+        const needle = `%${safe}%`;
+        request = request.or(`full_name.ilike."${needle}",enrollment_code.ilike."${needle}"`);
       }
 
       const response = await request.order('full_name').range(from, from + pageSize - 1);
@@ -343,6 +410,72 @@ export const supabaseBackend: Backend = {
         throw new Error(body?.error ?? 'No se pudo crear el estudiante');
       }
       return (await response.json()) as { enrollmentCode: string };
+    },
+
+    async update(id, input) {
+      const response = await fetch(`/api/students/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      });
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(body?.error ?? 'No se pudo actualizar el estudiante');
+      }
+
+      const row = unwrap<Row<'profiles'>>(await db().from('profiles').select('*').eq('id', id).single());
+      await logActivity('info', [
+        { text: 'Datos actualizados · ' },
+        { text: row.full_name, strong: true },
+      ]);
+      const enrollment = unwrap<
+        Pick<Row<'enrollments'>, 'progress' | 'watched_minutes' | 'completed_lessons'>[]
+      >(
+        await db()
+          .from('enrollments')
+          .select('progress, watched_minutes, completed_lessons')
+          .eq('student_id', id)
+          .order('created_at', { ascending: false })
+          .limit(1),
+      );
+      return toStudentSummary(row, enrollment[0] ?? null);
+    },
+
+    async remove(id) {
+      const row = unwrap<Row<'profiles'>>(await db().from('profiles').select('full_name').eq('id', id).single());
+
+      const response = await fetch(`/api/students/${id}`, { method: 'DELETE' });
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(body?.error ?? 'No se pudo eliminar el estudiante');
+      }
+
+      await logActivity('danger', [
+        { text: 'Estudiante eliminado · ' },
+        { text: row.full_name, strong: true },
+      ]);
+    },
+
+    async enroll(studentId, courseId) {
+      const { error } = await db()
+        .from('enrollments')
+        .upsert(
+          { student_id: studentId, course_id: courseId, progress: 0, watched_minutes: 0, completed_lessons: 0 },
+          { onConflict: 'student_id,course_id', ignoreDuplicates: true },
+        );
+      if (error) throw new Error(error.message);
+
+      const student = unwrap<Row<'profiles'>>(
+        await db().from('profiles').select('full_name').eq('id', studentId).single(),
+      );
+      const course = unwrap<Row<'courses'>>(
+        await db().from('courses').select('name').eq('id', courseId).single(),
+      );
+      await logActivity('success', [
+        { text: student.full_name, strong: true },
+        { text: ` matriculado en ` },
+        { text: course.name, strong: true },
+      ]);
     },
 
     async sendMessage(id, body) {

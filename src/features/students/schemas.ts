@@ -17,6 +17,18 @@ export const inviteStudentSchema = z.object({
 
 export type InviteStudentValues = z.infer<typeof inviteStudentSchema>;
 
+/**
+ * El PIN es opcional al editar: vacío significa "no lo cambies". Si el
+ * maestro escribe algo, debe ser un PIN válido de 4 dígitos.
+ */
+export const editStudentSchema = z.object({
+  fullName: z.string().trim().min(1, 'Escribe el nombre completo'),
+  level: z.enum(CEFR_ENROLLMENT_LEVELS, { errorMap: () => ({ message: 'Elige un nivel' }) }),
+  pin: z.union([z.string().regex(/^\d{4}$/, 'El PIN debe tener exactamente 4 dígitos'), z.literal('')]),
+});
+
+export type EditStudentValues = z.infer<typeof editStudentSchema>;
+
 export const messageStudentSchema = z.object({
   body: z
     .string()

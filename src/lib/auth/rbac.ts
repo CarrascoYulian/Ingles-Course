@@ -13,6 +13,8 @@ export const PERMISSIONS = {
   'content:edit': ['admin', 'instructor'],
   'student:read': ['admin', 'instructor'],
   'student:invite': ['admin'],
+  'student:update': ['admin'],
+  'student:delete': ['admin'],
   'student:reset-progress': ['admin'],
   'report:read': ['admin', 'instructor'],
   'report:export': ['admin'],
