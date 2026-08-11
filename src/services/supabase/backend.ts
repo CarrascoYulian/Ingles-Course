@@ -303,6 +303,11 @@ export const supabaseBackend: Backend = {
       const title = input.fileName.replace(/\.[^.]+$/, '');
       if (type === 'Video') {
         const lessonPosition = await nextLessonPosition(input.moduleId);
+        // Redondear a 0 con clips cortos deja `duration_minutes` en 0 —
+        // valor "falsy" que el reproductor interpreta como "sin duración
+        // real" y cae al valor de referencia (08:24). Mínimo 1 min si el
+        // navegador reportó una duración real, por corta que sea.
+        const durationMinutes = input.durationSeconds ? Math.max(1, Math.round(input.durationSeconds / 60)) : 0;
         await db()
           .from('lessons')
           .insert({
@@ -310,7 +315,8 @@ export const supabaseBackend: Backend = {
             position: lessonPosition,
             title,
             media_key: input.mediaKey,
-            duration_minutes: 0,
+            duration_minutes: durationMinutes,
+            description: null,
           });
       } else {
         const moduleRow = unwrap<Pick<Row<'modules'>, 'course_id'>>(
@@ -337,6 +343,14 @@ export const supabaseBackend: Backend = {
       if (!response.ok) return null;
       const { url } = (await response.json()) as { url: string };
       return url;
+    },
+
+    async updateLesson(lessonId, input) {
+      const { error } = await db()
+        .from('lessons')
+        .update({ title: input.title, description: input.description || null })
+        .eq('id', lessonId);
+      if (error) throw new Error(error.message);
     },
   },
 
@@ -662,6 +676,87 @@ export const supabaseBackend: Backend = {
           .single(),
       );
       return toModule(row);
+    },
+
+    async listNotes(lessonId) {
+      const {
+        data: { user },
+      } = await db().auth.getUser();
+      if (!user) return [];
+
+      const rows = unwrap(
+        await db()
+          .from('lesson_notes')
+          .select('*')
+          .eq('lesson_id', lessonId)
+          .eq('student_id', user.id)
+          .order('timestamp_seconds', { ascending: true }),
+      );
+      return rows.map((row) => ({
+        id: row.id,
+        lessonId: row.lesson_id,
+        body: row.body,
+        timestampSeconds: row.timestamp_seconds,
+        createdAt: row.created_at,
+      }));
+    },
+
+    async addNote(lessonId, body, timestampSeconds) {
+      const {
+        data: { user },
+      } = await db().auth.getUser();
+      if (!user) throw new Error('No autenticado');
+
+      const row = unwrap<Row<'lesson_notes'>>(
+        await db()
+          .from('lesson_notes')
+          .insert({
+            lesson_id: lessonId,
+            student_id: user.id,
+            body,
+            timestamp_seconds: Math.round(timestampSeconds),
+          })
+          .select()
+          .single(),
+      );
+      return {
+        id: row.id,
+        lessonId: row.lesson_id,
+        body: row.body,
+        timestampSeconds: row.timestamp_seconds,
+        createdAt: row.created_at,
+      };
+    },
+
+    async getMyMessages() {
+      const {
+        data: { user },
+      } = await db().auth.getUser();
+      if (!user) return [];
+
+      const rows = unwrap(
+        await db()
+          .from('messages')
+          .select('id, sender_id, body, created_at, read_at')
+          .eq('student_id', user.id)
+          .order('created_at', { ascending: false }),
+      );
+      return rows.map((row) => ({
+        id: row.id,
+        body: row.body,
+        createdAt: row.created_at,
+        fromStaff: row.sender_id !== user.id,
+        readAt: row.read_at,
+      }));
+    },
+
+    async markMessageRead(id) {
+      const { error } = await db()
+        .from('messages')
+        .update({ read_at: new Date().toISOString() })
+        .eq('id', id)
+        .is('read_at', null);
+      if (error) throw new Error(error.message);
     },
   },
 

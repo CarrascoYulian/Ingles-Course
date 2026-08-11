@@ -78,6 +78,17 @@ export interface Lesson {
   watchedPercent: number;
   /** Ruta del video real en Supabase Storage — `null` si aún no se adjuntó ninguno. */
   mediaKey: string | null;
+  /** Escrita por el docente — `null` si todavía no le puso ninguna. */
+  description: string | null;
+}
+
+export interface LessonNote {
+  id: string;
+  lessonId: string;
+  body: string;
+  /** Segundo del video en el que se tomó la nota. */
+  timestampSeconds: number;
+  createdAt: string;
 }
 
 /** Progreso agregado del alumno que hace la petición — nunca de otro usuario. */

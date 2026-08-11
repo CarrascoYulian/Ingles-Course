@@ -13,6 +13,7 @@ function makeRow(overrides: Partial<LessonRow> = {}): LessonRow {
     title: 'Lección de prueba',
     duration_minutes: 10,
     media_key: null,
+    description: null,
     ...overrides,
   };
 }

@@ -17,6 +17,7 @@ import type {
   DashboardMetrics,
   LeaderboardEntry,
   Lesson,
+  LessonNote,
   Module,
   PracticeLevel,
   PracticeQuestion,
@@ -71,6 +72,8 @@ export interface AttachUploadInput {
   contentType: string;
   /** Bytes, ya formateados a texto legible ("4,2 MB") por el llamante. */
   sizeLabel: string;
+  /** Sólo para video: duración real leída del archivo antes de subirlo. */
+  durationSeconds?: number;
 }
 
 export interface ContentPort {
@@ -88,6 +91,8 @@ export interface ContentPort {
   attachUpload(input: AttachUploadInput): Promise<ContentBlock>;
   /** URL firmada para confirmar que el archivo existe y abrirlo. */
   getFileUrl(mediaKey: string): Promise<string | null>;
+  /** Título/descripción reales de la lección creada por un video subido. */
+  updateLesson(lessonId: string, input: { title: string; description: string }): Promise<void>;
 }
 
 export interface CreateStudentInput {
@@ -128,6 +133,14 @@ export interface CreateModuleInput {
   title: string;
 }
 
+export interface StudentMessage {
+  id: string;
+  body: string;
+  createdAt: string;
+  fromStaff: boolean;
+  readAt: string | null;
+}
+
 export interface LearningPort {
   /** Cursos en los que está matriculado el alumno autenticado, más reciente primero. */
   getMyCourses(): Promise<Course[]>;
@@ -144,6 +157,12 @@ export interface LearningPort {
   getMyProgress(): Promise<StudentProgress>;
   /** Crea el primer/siguiente módulo de un curso desde el panel — sin SQL manual. */
   createModule(input: CreateModuleInput): Promise<Module>;
+  /** Notas reales del alumno autenticado sobre una lección, con marca de tiempo del video. */
+  listNotes(lessonId: string): Promise<LessonNote[]>;
+  addNote(lessonId: string, body: string, timestampSeconds: number): Promise<LessonNote>;
+  /** Mensajes que el equipo docente le ha enviado al alumno autenticado. */
+  getMyMessages(): Promise<StudentMessage[]>;
+  markMessageRead(id: string): Promise<void>;
 }
 
 export interface PracticePort {

@@ -23,10 +23,13 @@ import type {
   Course,
   CourseResource,
   Lesson,
+  LessonNote,
   PracticeSession,
   ReportRange,
   StudentSummary,
 } from '@/types';
+
+const demoNotes: LessonNote[] = [];
 
 /**
  * Adaptador en memoria. Reproduce toda la lógica del prototipo (crear curso,
@@ -198,6 +201,7 @@ export const demoBackend: Backend = {
     // upload.ts): no hay Storage real que firmar, así que se devuelve la
     // ruta servida por Next tal cual.
     getFileUrl: (mediaKey: string) => latency(`/demo-uploads/${mediaKey}`),
+    updateLesson: () => latency(undefined),
   },
 
   students: {
@@ -286,6 +290,20 @@ export const demoBackend: Backend = {
     // En demo ya existe un único módulo de referencia; crear "otro" no tendría
     // dónde vivir en el fixture en memoria, así que se devuelve el mismo.
     createModule: ({ title }) => latency({ ...DEMO_MODULE, title }),
+    listNotes: (lessonId: string) => latency(demoNotes.filter((n) => n.lessonId === lessonId)),
+    addNote: (lessonId: string, body: string, timestampSeconds: number) => {
+      const note = {
+        id: crypto.randomUUID(),
+        lessonId,
+        body,
+        timestampSeconds: Math.round(timestampSeconds),
+        createdAt: new Date().toISOString(),
+      };
+      demoNotes.push(note);
+      return latency(note);
+    },
+    getMyMessages: () => latency([]),
+    markMessageRead: () => latency(undefined),
   },
 
   practice: {
