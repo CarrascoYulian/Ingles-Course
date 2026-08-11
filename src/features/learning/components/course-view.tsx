@@ -68,7 +68,7 @@ export function CourseView({ lessonOrder }: CourseViewProps = {}) {
   const completed = lessons?.filter((lesson) => lesson.state === 'done').length ?? 0;
   const total = lessons?.length ?? 0;
 
-  if (isCoursesPending || isModulePending) {
+  if (isCoursesPending) {
     return (
       <div className="flex flex-col gap-4 px-5 py-4 lg:px-[30px] lg:py-6">
         <Skeleton className="aspect-video rounded-9xl" />
@@ -78,7 +78,11 @@ export function CourseView({ lessonOrder }: CourseViewProps = {}) {
   }
 
   // Sin matrícula no hay ningún curso que mostrar — antes esto no se
-  // distinguía de "el curso todavía no tiene módulos".
+  // distinguía de "el curso todavía no tiene módulos". Este chequeo debe ir
+  // ANTES de mirar `isModulePending`: con `selectedCourseId` vacío,
+  // `useCurrentModule('')` queda deshabilitado a propósito y su `isPending`
+  // nunca se resuelve solo — sin este orden, un alumno sin matrícula se
+  // quedaba viendo el esqueleto de carga para siempre.
   if (!course) {
     return (
       <div className="px-5 py-8 lg:px-[30px] lg:py-12">
@@ -86,6 +90,15 @@ export function CourseView({ lessonOrder }: CourseViewProps = {}) {
           title="Todavía no estás matriculado en ningún curso"
           description="Escribe a tu docente para que te matricule y puedas empezar."
         />
+      </div>
+    );
+  }
+
+  if (isModulePending) {
+    return (
+      <div className="flex flex-col gap-4 px-5 py-4 lg:px-[30px] lg:py-6">
+        <Skeleton className="aspect-video rounded-9xl" />
+        <Skeleton className="h-40 rounded-8xl" />
       </div>
     );
   }
