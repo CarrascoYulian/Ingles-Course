@@ -10,9 +10,19 @@ export interface StudentDetailCardProps {
   student: StudentSummary | null;
   onMessage: (student: StudentSummary) => void;
   onReset: (student: StudentSummary) => void;
+  onEdit: (student: StudentSummary) => void;
+  onDelete: (student: StudentSummary) => void;
+  onEnroll: (student: StudentSummary) => void;
 }
 
-export function StudentDetailCard({ student, onMessage, onReset }: StudentDetailCardProps) {
+export function StudentDetailCard({
+  student,
+  onMessage,
+  onReset,
+  onEdit,
+  onDelete,
+  onEnroll,
+}: StudentDetailCardProps) {
   if (!student) {
     return (
       <Card padding="lg" className="hidden lg:block">
@@ -63,8 +73,17 @@ export function StudentDetailCard({ student, onMessage, onReset }: StudentDetail
         <Button variant="ghost" size="sm" onClick={() => onMessage(student)}>
           Enviar mensaje
         </Button>
+        <Button variant="ghost" size="sm" onClick={() => onEdit(student)}>
+          Editar información
+        </Button>
+        <Button variant="ghost" size="sm" onClick={() => onEnroll(student)}>
+          Matricular en curso
+        </Button>
         <Button variant="danger" size="sm" onClick={() => onReset(student)}>
           Reiniciar progreso
+        </Button>
+        <Button variant="danger" size="sm" onClick={() => onDelete(student)}>
+          Eliminar estudiante
         </Button>
       </div>
     </Card>

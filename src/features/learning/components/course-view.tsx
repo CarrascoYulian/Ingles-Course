@@ -1,17 +1,17 @@
 'use client';
 
-import { Lock } from 'lucide-react';
+import { ArrowLeft, Lock } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import { Eyebrow } from '@/components/shared/section-title';
+import { CoursePickerCard } from '@/components/student/course-picker-card';
 import { LessonList } from '@/components/student/lesson-list';
 import { LessonTabs } from '@/components/student/lesson-tabs';
 import { ProgressCard } from '@/components/student/progress-card';
 import { VideoPlayer } from '@/components/student/video-player';
 import { Card } from '@/components/ui/card';
-import { Chip, ChipRow } from '@/components/ui/chip';
 import { EmptyState } from '@/components/ui/empty-state';
 import { LoadingRegion, Skeleton } from '@/components/ui/skeleton';
 import { ROUTES } from '@/constants/routes';
@@ -21,6 +21,8 @@ import {
   useMyCourses,
   useModuleLessons,
   useMyProgress,
+  useOpenResource,
+  useResources,
 } from '../hooks/use-learning';
 import { useVideoProgress } from '../hooks/use-video-progress';
 
@@ -38,17 +40,22 @@ export function CourseView({ lessonOrder }: CourseViewProps = {}) {
   // ajeno. Ahora se resuelve primero a qué curso(s) pertenece de verdad.
   const { data: courses, isPending: isCoursesPending } = useMyCourses();
   const [selectedCourseId, setSelectedCourseId] = useState('');
+  // Un enlace compartido a una lección concreta (`/curso/b1/mod/leccion-5`)
+  // debe entrar directo al contenido — el selector de curso sólo aparece
+  // cuando el alumno llega por la navegación normal ("Mi curso").
   const syncedCourses = useRef(false);
   useEffect(() => {
-    if (!courses || syncedCourses.current) return;
+    if (!courses || syncedCourses.current || lessonOrder === undefined) return;
     syncedCourses.current = true;
     setSelectedCourseId(courses[0]?.id ?? '');
-  }, [courses]);
+  }, [courses, lessonOrder]);
 
   const course = courses?.find((c) => c.id === selectedCourseId);
   const { data: module, isPending: isModulePending } = useCurrentModule(selectedCourseId);
   const { data: lessons, isPending } = useModuleLessons(module?.id ?? '');
   const { data: progress, isPending: isProgressPending } = useMyProgress();
+  const { data: resources } = useResources();
+  const openResource = useOpenResource();
 
   // Antes esta pantalla ignoraba por completo el parámetro `leccion-N` de su
   // propia URL y siempre mostraba "la lección actual" calculada por dentro
@@ -77,19 +84,36 @@ export function CourseView({ lessonOrder }: CourseViewProps = {}) {
     );
   }
 
-  // Sin matrícula no hay ningún curso que mostrar — antes esto no se
-  // distinguía de "el curso todavía no tiene módulos". Este chequeo debe ir
-  // ANTES de mirar `isModulePending`: con `selectedCourseId` vacío,
-  // `useCurrentModule('')` queda deshabilitado a propósito y su `isPending`
-  // nunca se resuelve solo — sin este orden, un alumno sin matrícula se
-  // quedaba viendo el esqueleto de carga para siempre.
-  if (!course) {
+  // Sin matrícula no hay ningún curso que mostrar.
+  if (!courses || courses.length === 0) {
     return (
       <div className="px-5 py-8 lg:px-[30px] lg:py-12">
         <EmptyState
           title="Todavía no estás matriculado en ningún curso"
           description="Escribe a tu docente para que te matricule y puedas empezar."
         />
+      </div>
+    );
+  }
+
+  // Antes se entraba directo al primer curso matriculado sin que el alumno
+  // eligiera — con "Mis cursos" mostrando siempre uno solo, no había forma
+  // de saber en qué curso estabas ni de volver a la lista. Ahora el punto de
+  // entrada es explícito: se elige el curso, luego se entra a su contenido.
+  if (!course) {
+    return (
+      <div className="px-5 py-8 lg:px-[30px] lg:py-12">
+        <h1 className="text-heading-sm font-extrabold tracking-heading text-fg lg:text-heading-lg">
+          Mis cursos
+        </h1>
+        <p className="mt-1 text-body-sm font-semibold text-fg-dim">
+          Elige un curso para continuar donde lo dejaste.
+        </p>
+        <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {courses.map((c) => (
+            <CoursePickerCard key={c.id} course={c} onSelect={(selected) => setSelectedCourseId(selected.id)} />
+          ))}
+        </div>
       </div>
     );
   }
@@ -103,18 +127,15 @@ export function CourseView({ lessonOrder }: CourseViewProps = {}) {
     );
   }
 
-  const courseSwitcher = courses && courses.length > 1 && (
-    <ChipRow label="Mis cursos" className="px-5 pt-4 lg:px-0 lg:pt-0">
-      {courses.map((c) => (
-        <Chip
-          key={c.id}
-          active={c.id === selectedCourseId}
-          onClick={() => setSelectedCourseId(c.id)}
-        >
-          {c.name}
-        </Chip>
-      ))}
-    </ChipRow>
+  const courseSwitcher = (
+    <button
+      type="button"
+      onClick={() => setSelectedCourseId('')}
+      className="mx-5 flex w-fit items-center gap-1.5 rounded-full px-3 py-1.5 text-tiny font-bold text-fg-dim transition-colors hover:bg-surface-sunken hover:text-fg lg:mx-0"
+    >
+      <ArrowLeft aria-hidden size={14} strokeWidth={2.4} />
+      Mis cursos
+    </button>
   );
 
   // Antes, sin módulos reales en la base de datos, esto caía a un módulo de
@@ -174,7 +195,10 @@ export function CourseView({ lessonOrder }: CourseViewProps = {}) {
                 {lessonTitle}
               </h1>
               <div className="mt-3.5 lg:mt-[18px]">
-                <LessonTabs />
+                <LessonTabs
+                  files={resources ?? []}
+                  onOpenFile={(mediaKey) => openResource.mutate(mediaKey)}
+                />
               </div>
             </Card>
           </div>

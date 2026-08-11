@@ -97,11 +97,23 @@ export interface CreateStudentInput {
   pin: string;
 }
 
+export interface UpdateStudentInput {
+  fullName: string;
+  level: CefrLevel;
+  /** Sólo se envía cuando el maestro quiere resetear el PIN; vacío = no tocar. */
+  pin?: string;
+}
+
 export interface StudentsPort {
   list(filters: StudentFilters): Promise<PaginatedResult<StudentSummary>>;
   resetProgress(id: string): Promise<StudentSummary>;
   invite(input: CreateStudentInput): Promise<{ enrollmentCode: string }>;
+  update(id: string, input: UpdateStudentInput): Promise<StudentSummary>;
+  /** Borra al alumno de Auth y, en cascada, todos sus datos reales en Supabase. */
+  remove(id: string): Promise<void>;
   sendMessage(id: string, body: string): Promise<void>;
+  /** Matricula al alumno en un curso — sin esto "Mi curso" se queda vacío para siempre. */
+  enroll(studentId: string, courseId: string): Promise<void>;
 }
 
 export interface AnalyticsPort {

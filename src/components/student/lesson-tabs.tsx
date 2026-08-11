@@ -6,12 +6,7 @@ import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { SquareBadge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-
-const FILES = [
-  { type: 'PDF', title: 'Guía de tiempos perfectos', size: '820 KB' },
-  { type: 'MP3', title: 'Listening · At the market', size: '4,2 MB' },
-  { type: 'DOC', title: 'Hoja de ejercicios 4.5', size: '210 KB' },
-] as const;
+import type { CourseResource } from '@/types';
 
 const COMMENTS = [
   {
@@ -30,8 +25,14 @@ const COMMENTS = [
 
 const OBJECTIVES = ['Objetivo: usar “have + participio”', 'Duración 14 min', 'Nivel B1'];
 
+export interface LessonTabsProps {
+  /** Recursos reales del curso (course_resources) — antes era una lista fija falsa. */
+  files: CourseResource[];
+  onOpenFile: (mediaKey: string) => void;
+}
+
 /** Paneles de la lección: descripción, archivos, notas y comentarios. */
-export function LessonTabs() {
+export function LessonTabs({ files, onOpenFile }: LessonTabsProps) {
   return (
     <Tabs defaultValue="desc">
       <TabsList>
@@ -63,10 +64,15 @@ export function LessonTabs() {
       </TabsContent>
 
       <TabsContent value="files">
+        {files.length === 0 && (
+          <p className="text-body-sm font-medium text-fg-faint">
+            Tu docente todavía no ha subido archivos para este curso.
+          </p>
+        )}
         <ul className="flex flex-col gap-[9px]">
-          {FILES.map((file) => (
+          {files.map((file) => (
             <li
-              key={file.title}
+              key={file.id}
               className="flex items-center gap-3 rounded-3xl border border-line px-3.5 py-[13px]"
             >
               <SquareBadge size={38} className="bg-surface-sunken text-fg-subtle">
@@ -76,12 +82,12 @@ export function LessonTabs() {
                 {file.title}
               </span>
               <span className="hidden text-tiny font-semibold text-fg-ghost sm:inline">
-                {file.size}
+                {file.meta}
               </span>
               <Button
                 variant="quiet"
                 size="xs"
-                onClick={() => toast(`Descargando ${file.title}…`)}
+                onClick={() => file.mediaKey && onOpenFile(file.mediaKey)}
                 className="text-brand hover:bg-brand-soft"
               >
                 Descargar

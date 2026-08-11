@@ -35,7 +35,7 @@ const DialogOverlay = forwardRef<
  */
 export const DialogContent = forwardRef<
   React.ComponentRef<typeof DialogPrimitive.Content>,
-  ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & { width?: 420 | 460 }
+  ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & { width?: 420 | 460 | 560 | 720 }
 >(function DialogContent({ className, children, width = 460, ...props }, ref) {
   return (
     <DialogPrimitive.Portal>

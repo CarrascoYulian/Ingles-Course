@@ -229,6 +229,22 @@ export const demoBackend: Backend = {
     invite: (_input) =>
       latency({ enrollmentCode: `ING-${String(Math.floor(Math.random() * 999999)).padStart(6, '0')}` }),
 
+    update: (id, input) => {
+      store.students = store.students.map((s) =>
+        s.id === id ? { ...s, name: input.fullName, level: input.level } : s,
+      );
+      const updated = store.students.find((s) => s.id === id);
+      if (!updated) throw new Error(`Estudiante ${id} no encontrado`);
+      return latency(structuredClone(updated));
+    },
+
+    remove: (id) => {
+      store.students = store.students.filter((s) => s.id !== id);
+      return latency(undefined);
+    },
+
+    enroll: () => latency(undefined),
+
     sendMessage: () => latency(undefined),
   },
 

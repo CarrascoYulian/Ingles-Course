@@ -16,11 +16,16 @@ import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 import { CEFR_LEVELS, type CefrLevel, type StudentSummary } from '@/types';
 import { useAdminSearch } from '../hooks/use-admin-search';
 import {
+  useDeleteStudent,
+  useEnrollStudent,
   useInviteStudent,
   useResetStudentProgress,
   useSendStudentMessage,
   useStudents,
+  useUpdateStudent,
 } from '../hooks/use-students';
+import { EditStudentDialog } from './edit-student-dialog';
+import { EnrollStudentDialog } from './enroll-student-dialog';
 import { InviteStudentDialog } from './invite-student-dialog';
 import { MessageStudentDialog } from './message-student-dialog';
 
@@ -33,12 +38,17 @@ export function StudentsView() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [messageTarget, setMessageTarget] = useState<StudentSummary | null>(null);
+  const [editTarget, setEditTarget] = useState<StudentSummary | null>(null);
+  const [enrollTarget, setEnrollTarget] = useState<StudentSummary | null>(null);
 
   const { data: result, isPending } = useStudents({ query: appliedQuery, level, page });
   const students = result?.items;
   const resetProgress = useResetStudentProgress();
   const sendMessage = useSendStudentMessage();
   const invite = useInviteStudent();
+  const updateStudent = useUpdateStudent();
+  const deleteStudent = useDeleteStudent();
+  const enrollStudent = useEnrollStudent();
   const confirmDialog = useConfirmDialog();
 
   useAdminHeader(
@@ -135,6 +145,8 @@ export function StudentsView() {
       <StudentDetailCard
         student={selected}
         onMessage={(student) => setMessageTarget(student)}
+        onEdit={(student) => setEditTarget(student)}
+        onEnroll={(student) => setEnrollTarget(student)}
         onReset={(student) =>
           confirmDialog.confirm({
             title: 'Reiniciar el progreso',
@@ -142,6 +154,18 @@ export function StudentsView() {
             confirmLabel: 'Sí, reiniciar',
             onConfirm: () =>
               resetProgress.mutateAsync({ id: student.id, name: student.name }).then(() => {
+                toast.dismiss();
+              }),
+          })
+        }
+        onDelete={(student) =>
+          confirmDialog.confirm({
+            title: 'Eliminar estudiante',
+            body: `Se borrará la cuenta de ${student.name} y todos sus datos (matrícula, progreso, mensajes) de forma permanente en Supabase. Esta acción no se puede deshacer.`,
+            confirmLabel: 'Sí, eliminar',
+            onConfirm: () =>
+              deleteStudent.mutateAsync({ id: student.id, name: student.name }).then(() => {
+                setSelectedId(null);
                 toast.dismiss();
               }),
           })
@@ -155,8 +179,36 @@ export function StudentsView() {
         onSubmit={(values) => invite.mutateAsync(values)}
       />
 
+      <EditStudentDialog
+        open={editTarget !== null}
+        student={editTarget}
+        onOpenChange={(open) => !open && setEditTarget(null)}
+        pending={updateStudent.isPending}
+        onSubmit={(values) => {
+          if (!editTarget) return Promise.resolve();
+          return updateStudent.mutateAsync({
+            id: editTarget.id,
+            input: { fullName: values.fullName, level: values.level, pin: values.pin || undefined },
+          });
+        }}
+      />
+
+      <EnrollStudentDialog
+        open={enrollTarget !== null}
+        student={enrollTarget}
+        onOpenChange={(open) => !open && setEnrollTarget(null)}
+        pending={enrollStudent.isPending}
+        onSubmit={(courseId) => {
+          if (!enrollTarget) return Promise.resolve();
+          return enrollStudent
+            .mutateAsync({ id: enrollTarget.id, name: enrollTarget.name, courseId })
+            .then(() => setEnrollTarget(null));
+        }}
+      />
+
       <MessageStudentDialog
         open={messageTarget !== null}
+        studentId={messageTarget?.id ?? null}
         studentName={messageTarget?.name ?? null}
         pending={sendMessage.isPending}
         onOpenChange={(open) => !open && setMessageTarget(null)}
