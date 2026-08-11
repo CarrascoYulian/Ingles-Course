@@ -23,6 +23,10 @@ export interface VideoPlayerProps {
   /** `timeupdate` real del `<video>`, ya convertido a 0-100. */
   onProgress?: (percent: number) => void;
   onEnded?: () => void;
+  /** Posiciones (0-100) de las notas del alumno — señaladas sobre la barra. */
+  markers?: number[];
+  /** Cambia (incluso al mismo valor, con `nonce`) para saltar el video a ese segundo. */
+  seekRequest?: { seconds: number; nonce: number } | null;
 }
 
 /**
@@ -52,6 +56,8 @@ export function VideoPlayer({
   poster,
   onProgress,
   onEnded,
+  markers = [],
+  seekRequest,
 }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hasVideo = Boolean(src);
@@ -62,6 +68,13 @@ export function VideoPlayer({
     if (playing) el.play().catch(() => undefined);
     else el.pause();
   }, [playing]);
+
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el || !seekRequest) return;
+    el.currentTime = seekRequest.seconds;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seekRequest?.nonce]);
 
   const playLabel = !hasVideo ? 'NO DISPONIBLE' : playing ? 'PAUSA' : watched >= 100 ? 'VISTO' : 'VER';
 
@@ -130,13 +143,23 @@ export function VideoPlayer({
       </div>
 
       <div className="px-4 pb-3.5 pt-2.5 md:px-5 md:pb-[18px] md:pt-3.5">
-        <Progress
-          value={watched}
-          tone="accent"
-          height={5}
-          onInk
-          label="Progreso de la lección"
-        />
+        <div className="relative">
+          <Progress
+            value={watched}
+            tone="accent"
+            height={5}
+            onInk
+            label="Progreso de la lección"
+          />
+          {markers.map((position, index) => (
+            <span
+              key={index}
+              aria-hidden
+              className="pointer-events-none absolute top-1/2 size-[7px] -translate-y-1/2 -translate-x-1/2 rounded-full bg-warning ring-1 ring-ink"
+              style={{ left: `${Math.min(100, Math.max(0, position))}%` }}
+            />
+          ))}
+        </div>
 
         <div className="mt-2.5 flex items-center justify-between gap-3 md:mt-3">
           <div className="flex items-center gap-4 text-tiny font-bold text-ink-fg md:text-meta">

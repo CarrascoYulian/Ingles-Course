@@ -3,6 +3,7 @@ import {
   BookOpen,
   FileText,
   LayoutGrid,
+  Mail,
   PlaySquare,
   Star,
   Trophy,
@@ -61,6 +62,7 @@ export const STUDENT_NAV: readonly NavItem[] = [
   { href: ROUTES.practice.root, label: 'Práctica', shortLabel: 'Práctica', icon: Star },
   { href: ROUTES.student.recursos, label: 'Recursos', shortLabel: 'Recursos', icon: FileText },
   { href: ROUTES.student.logros, label: 'Logros', shortLabel: 'Logros', icon: Trophy },
+  { href: ROUTES.student.mensajes, label: 'Mensajes', shortLabel: 'Mensajes', icon: Mail },
 ] as const;
 
 /** Copys de cabecera del panel docente, indexados por ruta. */

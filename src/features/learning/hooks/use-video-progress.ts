@@ -16,6 +16,9 @@ export interface VideoProgress {
   canAdvance: boolean;
   /** «03:12 / 08:24» */
   timeLabel: string;
+  /** Segundo actual de reproducción — para marcar notas en el momento real. */
+  elapsedSeconds: number;
+  durationSeconds: number;
   toggle: () => void;
   /** El `<video>` real llama esto en cada `timeupdate`. */
   onProgress: (percent: number) => void;
@@ -112,6 +115,8 @@ export function useVideoProgress(
     playing,
     canAdvance: !hasVideo || watched >= 100,
     timeLabel: `${minutes}:${seconds} / ${totalMinutes}:${totalSeconds}`,
+    elapsedSeconds: elapsed,
+    durationSeconds,
     toggle,
     onProgress,
     onEnded,

@@ -16,11 +16,13 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { LoadingRegion, Skeleton } from '@/components/ui/skeleton';
 import { ROUTES } from '@/constants/routes';
 import {
+  useAddNote,
   useCurrentModule,
   useLessonVideoUrl,
   useMyCourses,
   useModuleLessons,
   useMyProgress,
+  useNotes,
   useOpenResource,
   useResources,
 } from '../hooks/use-learning';
@@ -56,13 +58,19 @@ export function CourseView({ lessonOrder }: CourseViewProps = {}) {
   const { data: progress, isPending: isProgressPending } = useMyProgress();
   const { data: resources } = useResources();
   const openResource = useOpenResource();
+  const [seekRequest, setSeekRequest] = useState<{ seconds: number; nonce: number } | null>(null);
 
   // Antes esta pantalla ignoraba por completo el parámetro `leccion-N` de su
   // propia URL y siempre mostraba "la lección actual" calculada por dentro
   // — un enlace compartido a la lección 2 abría la lección 5 igual. Si la
   // URL trae un `order` válido se respeta; si no, se cae a la actual.
+  // Con TODAS las lecciones ya vistas, ninguna queda marcada "current" —
+  // antes eso dejaba `currentLesson` en `undefined` y el reproductor
+  // mostraba "Video no disponible" aunque el módulo estuviera completo.
+  // Cae a la última lección real en vez de a nada.
   const requestedLesson = lessons?.find((lesson) => lesson.order === lessonOrder);
-  const currentLesson = requestedLesson ?? lessons?.find((lesson) => lesson.state === 'current');
+  const currentLesson =
+    requestedLesson ?? lessons?.find((lesson) => lesson.state === 'current') ?? lessons?.at(-1);
   const durationMinutes = currentLesson ? parseInt(currentLesson.duration, 10) : undefined;
   const { data: videoUrl } = useLessonVideoUrl(currentLesson?.mediaKey ?? null);
   const video = useVideoProgress(
@@ -71,6 +79,9 @@ export function CourseView({ lessonOrder }: CourseViewProps = {}) {
     durationMinutes && Number.isFinite(durationMinutes) ? durationMinutes * 60 : undefined,
     currentLesson?.mediaKey != null,
   );
+  const { data: notes = [], isPending: notesPending } = useNotes(currentLesson?.id ?? '');
+  const addNote = useAddNote(currentLesson?.id ?? '');
+  const noteMarkers = notes.map((note) => (note.timestampSeconds / video.durationSeconds) * 100);
 
   const completed = lessons?.filter((lesson) => lesson.state === 'done').length ?? 0;
   const total = lessons?.length ?? 0;
@@ -175,6 +186,8 @@ export function CourseView({ lessonOrder }: CourseViewProps = {}) {
             src={videoUrl}
             onProgress={video.onProgress}
             onEnded={video.onEnded}
+            markers={noteMarkers}
+            seekRequest={seekRequest}
             onNext={() =>
               toast(
                 video.canAdvance
@@ -196,8 +209,17 @@ export function CourseView({ lessonOrder }: CourseViewProps = {}) {
               </h1>
               <div className="mt-3.5 lg:mt-[18px]">
                 <LessonTabs
+                  description={currentLesson?.description ?? null}
+                  duration={currentLesson?.duration ?? '—'}
+                  level={course.level}
                   files={resources ?? []}
                   onOpenFile={(mediaKey) => openResource.mutate(mediaKey)}
+                  notes={notes}
+                  notesPending={notesPending}
+                  currentTimeSeconds={video.elapsedSeconds}
+                  onAddNote={(body) => addNote.mutate({ body, timestampSeconds: video.elapsedSeconds })}
+                  addNotePending={addNote.isPending}
+                  onSeekToNote={(seconds) => setSeekRequest({ seconds, nonce: Date.now() })}
                 />
               </div>
             </Card>
