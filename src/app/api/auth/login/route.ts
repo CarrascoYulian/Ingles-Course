@@ -2,7 +2,9 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { LANDING_BY_ROLE } from '@/constants/routes';
+import { derivePinPassword } from '@/lib/auth/student-pin';
 import { IS_DEMO_MODE } from '@/lib/env';
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import { getSupabaseAdminClient, getSupabaseServerClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
@@ -11,6 +13,9 @@ const requestSchema = z.object({
   identifier: z.string().trim().min(1),
   password: z.string().min(1),
 });
+
+/** Un PIN de 4 dígitos tiene mucha menos entropía que una contraseña — límite más estricto. */
+const LOGIN_RATE_LIMIT = { limit: 8, windowMs: 60 * 1000 };
 
 /**
  * Login real (Supabase). Acepta correo (personal docente) o matrícula
@@ -23,16 +28,28 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Modo demo no disponible' }, { status: 404 });
   }
 
+  const rate = checkRateLimit(`login:${getClientIp(request)}`, LOGIN_RATE_LIMIT);
+  if (!rate.allowed) {
+    return NextResponse.json(
+      { error: 'Demasiados intentos. Espera un momento e inténtalo de nuevo.' },
+      { status: 429, headers: { 'Retry-After': String(rate.retryAfterSeconds) } },
+    );
+  }
+
   const parsed = requestSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json({ error: 'Usuario o contraseña inválidos' }, { status: 400 });
   }
 
-  const { identifier, password } = parsed.data;
+  const { identifier, password: submitted } = parsed.data;
   const genericError = () =>
     NextResponse.json({ error: 'Usuario o contraseña incorrectos' }, { status: 401 });
 
   let email = identifier;
+  // Alumno = matrícula + PIN de 4 dígitos, no correo + contraseña libre.
+  // Lo que llega en `password` es el PIN; la contraseña real de Auth se
+  // reconstruye igual que al crear la cuenta (ver `derivePinPassword`).
+  let password = submitted;
 
   if (!identifier.includes('@')) {
     const admin = getSupabaseAdminClient();
@@ -40,15 +57,16 @@ export async function POST(request: Request) {
 
     const { data: profile } = await admin
       .from('profiles')
-      .select('id')
+      .select('id, enrollment_code')
       .eq('enrollment_code', identifier)
       .eq('role', 'student')
       .maybeSingle();
-    if (!profile) return genericError();
+    if (!profile?.enrollment_code) return genericError();
 
     const { data: userResult } = await admin.auth.admin.getUserById(profile.id);
     if (!userResult?.user?.email) return genericError();
     email = userResult.user.email;
+    password = derivePinPassword(profile.enrollment_code, submitted);
   }
 
   const supabase = await getSupabaseServerClient();

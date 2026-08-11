@@ -5,7 +5,8 @@ import { cn } from '@/lib/utils';
 export interface MissionCardsProps {
   dailyXp: { earned: number; goal: number };
   weeklyStreak: { done: number; total: number };
-  nextBadge: { name: string; requirement: string };
+  /** `null` cuando ya se alcanzaron todas las insignias por XP. */
+  nextBadge: { name: string; requirement: string } | null;
 }
 
 /** Tres tarjetas de objetivos bajo el ejercicio. */
@@ -55,9 +56,11 @@ export function MissionCards({ dailyXp, weeklyStreak, nextBadge }: MissionCardsP
       <Card variant="ink">
         <p className="text-meta font-bold text-ink-fg-soft">Próxima insignia</p>
         <p className="mt-1.5 text-body-lg font-extrabold tracking-tight-2 text-white">
-          {nextBadge.name}
+          {nextBadge?.name ?? 'Todas conseguidas'}
         </p>
-        <p className="mt-2.5 text-caption font-bold text-ink-fg-dim">{nextBadge.requirement}</p>
+        <p className="mt-2.5 text-caption font-bold text-ink-fg-dim">
+          {nextBadge?.requirement ?? '¡Ya tienes todas las insignias por XP!'}
+        </p>
       </Card>
     </div>
   );

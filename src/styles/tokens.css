@@ -56,9 +56,9 @@
   --tracking-badge: 0.04em;
 
   /* ── Marca ──────────────────────────────────────────────────────────── */
-  --color-brand: #0f5257;
-  --color-brand-hover: #0b4247;
-  --color-brand-soft: #e6f0f0;
+  --color-brand: #1652d1;
+  --color-brand-hover: #123ea3;
+  --color-brand-soft: #e8eefc;
 
   /* ── Superficies oscuras (sidebar, reproductor, tarjetas "insight") ─── */
   --color-ink: #0b1620;
@@ -72,7 +72,7 @@
   --color-ink-fg-strong: #cdd8e2;
   --color-ink-nav: #8496a6;
   --color-ink-nav-label: #4e5f72;
-  --color-ink-accent: #7fe0b0;
+  --color-ink-accent: #5aa2ff;
 
   /* ── Texto sobre superficies claras ─────────────────────────────────── */
   --color-fg: #0f172a;

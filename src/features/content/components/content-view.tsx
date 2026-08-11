@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { toast } from 'sonner';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
 
 import { AddBlockPanel } from '@/components/admin/add-block-panel';
 import { useAdminHeader } from '@/components/admin/admin-shell';
@@ -10,15 +11,18 @@ import { CreateModuleDialog } from '@/components/admin/create-module-dialog';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Chip, ChipRow } from '@/components/ui/chip';
 import { EmptyState } from '@/components/ui/empty-state';
 import { LoadingRegion, Skeleton } from '@/components/ui/skeleton';
+import { ROUTES } from '@/constants/routes';
 import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
-import { useCreateModule, useCurrentModule } from '@/features/learning/hooks/use-learning';
+import { useCreateModule } from '@/features/learning/hooks/use-learning';
 import { useCourses } from '@/features/courses/hooks/use-courses';
 import {
   useAddBlock,
   useAttachUpload,
   useContentBlocks,
+  useModules,
   useMoveBlock,
   useOpenFile,
   useRemoveBlock,
@@ -26,21 +30,32 @@ import {
 import { UploadDropzone } from './upload-dropzone';
 
 export function ContentView() {
-  // Antes esto usaba `DEMO_MODULE.id` a secas — un id que sólo existe en el
-  // backend de memoria. Con Supabase conectado, el módulo real tiene un
-  // UUID distinto, así que hay que resolverlo primero.
-  const { data: module, isPending: isModulePending } = useCurrentModule();
-  const moduleId = module?.id ?? '';
+  const courseId = useSearchParams().get('courseId') ?? '';
 
-  // Antes esta línea era texto fijo ("Inglés conversacional · Nivel B1 ·
-  // requisito: módulo 3 completo") sin importar qué módulo se estuviera
-  // editando. El curso y su nivel sí son datos reales (`useCourses`); el
-  // requisito se resuelve por presencia/ausencia de `requiresModuleId` en
-  // vez de inventar un número de módulo.
+  // Antes esta pantalla resolvía "el" módulo global (`getCurrentModule`) sin
+  // importar desde qué curso se llegaba — con más de un curso, todos los
+  // docentes terminaban editando el mismo único módulo. Ahora el curso viene
+  // de la URL y los módulos se listan filtrados por ese curso.
   const { data: courses } = useCourses();
-  const course = courses?.find((c) => c.id === module?.courseId);
+  const course = courses?.find((c) => c.id === courseId);
+
+  const { data: modules, isPending: isModulesPending } = useModules(courseId);
+  const [selectedModuleId, setSelectedModuleId] = useState('');
+
+  // `useState('')` sólo lee su valor inicial una vez: cuando los módulos
+  // llegan de la red hay que sincronizar la selección a mano.
+  const syncedFor = useRef('');
+  useEffect(() => {
+    if (!modules || syncedFor.current === courseId) return;
+    syncedFor.current = courseId;
+    setSelectedModuleId(modules[0]?.id ?? '');
+  }, [modules, courseId]);
+
+  const activeModule = modules?.find((m) => m.id === selectedModuleId);
+  const moduleId = activeModule?.id ?? '';
+
   const contextLine = course
-    ? `${course.name} · Nivel ${course.level}${module?.requiresModuleId ? ' · requiere completar el módulo anterior' : ''}`
+    ? `${course.name} · Nivel ${course.level}${activeModule?.requiresModuleId ? ' · requiere completar el módulo anterior' : ''}`
     : 'Cargando curso…';
 
   const { data: blocks, isPending } = useContentBlocks(moduleId);
@@ -53,14 +68,35 @@ export function ContentView() {
   const createModule = useCreateModule();
   const [createModuleOpen, setCreateModuleOpen] = useState(false);
 
+  // Antes había un botón "Guardar módulo" que sólo mostraba un toast — cada
+  // cambio (añadir/mover/eliminar bloque, subir archivo) ya se persiste al
+  // instante, así que no existe ningún "borrador" que guardar. Un botón que
+  // finge guardar algo que ya está guardado es peor que no tener botón.
   useAdminHeader(
-    module ? `${module.title} · ${blocks?.length ?? 0} bloques` : 'Sin módulo',
-    module ? () => toast(`Módulo guardado · ${blocks?.length ?? 0} bloques publicados`) : undefined,
+    activeModule ? `${activeModule.title} · ${blocks?.length ?? 0} bloques` : 'Sin módulo',
   );
 
-  const loadingBlocks = isModulePending || isPending;
+  const loadingBlocks = isModulesPending || isPending;
 
-  if (isModulePending) {
+  // Sin curso en la URL no hay nada que editar — antes esta pantalla se
+  // alcanzaba también desde el menú "Contenido" sin pasar por un curso.
+  if (!courseId) {
+    return (
+      <div className="px-5 py-8 lg:px-[30px] lg:py-12">
+        <EmptyState
+          title="Elige un curso para editar su contenido"
+          description="Entra al constructor de contenido desde un curso concreto en “Cursos y módulos”."
+          action={
+            <Button asChild size="md" className="font-extrabold">
+              <Link href={ROUTES.admin.cursos}>Ir a Cursos y módulos</Link>
+            </Button>
+          }
+        />
+      </div>
+    );
+  }
+
+  if (isModulesPending) {
     return (
       <div className="flex flex-col gap-2.5 px-5 py-4 lg:px-[30px] lg:py-6">
         <Skeleton className="h-16 rounded-3xl" />
@@ -76,12 +112,12 @@ export function ContentView() {
   // foránea al primer clic — sin explicar por qué, y pedía crear el módulo
   // a mano en el SQL Editor de Supabase. Un docente sin conocimientos
   // técnicos no puede hacer eso, así que ahora hay un formulario real aquí.
-  if (!module) {
+  if (!activeModule) {
     return (
       <div className="px-5 py-8 lg:px-[30px] lg:py-12">
         <EmptyState
           title="Todavía no existe ningún módulo"
-          description="Crea el primer módulo del curso para poder empezar a añadir contenido."
+          description={`Crea el primer módulo de “${course?.name ?? 'este curso'}” para poder empezar a añadir contenido.`}
           action={
             <Button size="md" className="font-extrabold" onClick={() => setCreateModuleOpen(true)}>
               Crear módulo
@@ -91,8 +127,13 @@ export function ContentView() {
         <CreateModuleDialog
           open={createModuleOpen}
           onOpenChange={setCreateModuleOpen}
+          courseId={courseId}
           pending={createModule.isPending}
-          onSubmit={(values) => createModule.mutateAsync(values).then(() => undefined)}
+          onSubmit={(values) =>
+            createModule.mutateAsync(values).then((created) => {
+              setSelectedModuleId(created.id);
+            })
+          }
         />
       </div>
     );
@@ -101,17 +142,36 @@ export function ContentView() {
   return (
     <div className="grid items-start gap-4 px-5 py-4 lg:grid-cols-[1fr_300px] lg:gap-[18px] lg:px-[30px] lg:py-6">
       <div className="flex flex-col gap-2.5">
+        {modules && modules.length > 1 && (
+          <ChipRow label="Módulos del curso" className="pb-0.5">
+            {modules.map((m) => (
+              <Chip key={m.id} active={m.id === selectedModuleId} onClick={() => setSelectedModuleId(m.id)}>
+                {m.title}
+              </Chip>
+            ))}
+          </ChipRow>
+        )}
+
         <Card
           radius="md"
           className="hidden items-center justify-between px-[18px] py-3.5 lg:flex"
         >
           <div>
-            <h2 className="text-body-lg font-bold text-fg">{module.title}</h2>
+            <h2 className="text-body-lg font-bold text-fg">{activeModule.title}</h2>
             <p className="mt-0.5 text-meta font-semibold text-fg-ghost">{contextLine}</p>
           </div>
-          <Button variant="ghost" size="sm">
-            Vista previa del alumno
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setCreateModuleOpen(true)}>
+              + Nuevo módulo
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => window.open(ROUTES.student.curso, '_blank', 'noopener,noreferrer')}
+            >
+              Vista previa del alumno
+            </Button>
+          </div>
         </Card>
 
         {loadingBlocks && (
@@ -154,6 +214,7 @@ export function ContentView() {
         )}
 
         <UploadDropzone
+          courseId={courseId}
           moduleId={moduleId}
           onUploaded={(result) =>
             attachUpload.mutateAsync({ moduleId, ...result }).then(() => undefined)
@@ -167,6 +228,18 @@ export function ContentView() {
       </div>
 
       <AddBlockPanel onAdd={(type) => addBlock.mutate(type)} pending={addBlock.isPending} />
+
+      <CreateModuleDialog
+        open={createModuleOpen}
+        onOpenChange={setCreateModuleOpen}
+        courseId={courseId}
+        pending={createModule.isPending}
+        onSubmit={(values) =>
+          createModule.mutateAsync(values).then((created) => {
+            setSelectedModuleId(created.id);
+          })
+        }
+      />
 
       <ConfirmDialog
         request={confirmDialog.request}

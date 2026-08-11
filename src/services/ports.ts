@@ -35,6 +35,15 @@ export interface CreateCourseInput {
 export interface StudentFilters {
   query?: string;
   level?: CefrLevel | 'Todos';
+  /** 1-indexado. */
+  page?: number;
+}
+
+export interface PaginatedResult<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
 }
 
 export interface AnswerResult {
@@ -48,8 +57,11 @@ export interface AnswerResult {
 export interface CoursesPort {
   list(): Promise<Course[]>;
   create(input: CreateCourseInput): Promise<Course>;
+  update(id: string, input: CreateCourseInput): Promise<Course>;
   setPublished(id: string, published: boolean): Promise<Course>;
   remove(id: string): Promise<void>;
+  /** Intercambia la posición del curso con la del vecino inmediato. */
+  reorder(id: string, direction: -1 | 1): Promise<Course[]>;
 }
 
 export interface AttachUploadInput {
@@ -63,6 +75,8 @@ export interface AttachUploadInput {
 
 export interface ContentPort {
   getModule(moduleId: string): Promise<Module>;
+  /** Todos los módulos de un curso, en orden — permite navegar entre varios. */
+  listModules(courseId: string): Promise<Module[]>;
   listBlocks(moduleId: string): Promise<ContentBlock[]>;
   addBlock(moduleId: string, type: BlockType): Promise<ContentBlock>;
   moveBlock(moduleId: string, blockId: string, direction: -1 | 1): Promise<ContentBlock[]>;
@@ -79,12 +93,12 @@ export interface ContentPort {
 export interface CreateStudentInput {
   fullName: string;
   level: CefrLevel;
-  /** Clave asignada por el maestro: el alumno entra con su matrícula + esta clave. */
-  password: string;
+  /** PIN de 4 dígitos: el alumno entra con su matrícula + este PIN. */
+  pin: string;
 }
 
 export interface StudentsPort {
-  list(filters: StudentFilters): Promise<StudentSummary[]>;
+  list(filters: StudentFilters): Promise<PaginatedResult<StudentSummary>>;
   resetProgress(id: string): Promise<StudentSummary>;
   invite(input: CreateStudentInput): Promise<{ enrollmentCode: string }>;
   sendMessage(id: string, body: string): Promise<void>;
@@ -103,9 +117,13 @@ export interface CreateModuleInput {
 }
 
 export interface LearningPort {
-  /** `null` cuando aún no existe ningún módulo real — no cae a un módulo de ejemplo. */
-  getCurrentModule(): Promise<Module | null>;
+  /** Cursos en los que está matriculado el alumno autenticado, más reciente primero. */
+  getMyCourses(): Promise<Course[]>;
+  /** `null` cuando el curso aún no tiene ningún módulo real — no cae a un módulo de ejemplo. */
+  getCurrentModule(courseId: string): Promise<Module | null>;
   listLessons(moduleId: string): Promise<Lesson[]>;
+  /** URL firmada del video real de una lección — `null` si no tiene o no existe. */
+  getLessonVideoUrl(mediaKey: string): Promise<string | null>;
   listResources(): Promise<CourseResource[]>;
   listBadges(): Promise<Badge[]>;
   /** Persiste el avance de reproducción de una lección (0-100). */

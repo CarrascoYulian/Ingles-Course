@@ -36,6 +36,8 @@ function unwrap<T>(response: { data: T | null; error: { message: string } | null
   return response.data;
 }
 
+const STUDENTS_PAGE_SIZE = 20;
+
 type ActivityTone = 'success' | 'info' | 'warning' | 'danger';
 type ActivitySegment = { text: string; strong?: boolean };
 
@@ -56,26 +58,51 @@ async function logActivity(tone: ActivityTone, segments: ActivitySegment[]): Pro
   }
 }
 
+/**
+ * Antes `addBlock`/`attachUpload` calculaban la posición con `count(*)` de
+ * filas del módulo. Eso se rompe en cuanto se borra un bloque: si quedan 2
+ * filas pero una ocupa `position = 1` (por el hueco que dejó el borrado),
+ * `count()` sigue devolviendo 2, y el próximo insert también intenta
+ * `position = 2`... pero si el hueco dejó la fila sobreviviente exactamente
+ * en la posición que `count()` iba a reutilizar, el insert choca contra la
+ * restricción única `(module_id, position)` — el error real reportado en
+ * vivo («duplicate key value violates unique constraint
+ * "content_blocks_module_id_position_key"»). `MAX(position) + 1` no tiene
+ * ese problema: siempre apunta después del último bloque real, haya huecos
+ * o no.
+ */
+async function nextBlockPosition(moduleId: string): Promise<number> {
+  const { data } = await db()
+    .from('content_blocks')
+    .select('position')
+    .eq('module_id', moduleId)
+    .order('position', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return (data?.position ?? -1) + 1;
+}
+
 export const supabaseBackend: Backend = {
   courses: {
     async list() {
-      const rows = unwrap(
-        await db()
-          .from('courses')
-          .select('*, modules(count), enrollments(progress)')
-          .order('position', { ascending: true }),
-      );
+      // Antes se traían TODAS las filas de `enrollments` de cada curso a JS
+      // sólo para promediar `progress` aquí — con miles de alumnos, miles de
+      // filas cruzaban la red para calcular un número. `course_aggregates`
+      // es una vista que agrega en el propio Postgres.
+      const [coursesResult, aggregatesResult] = await Promise.all([
+        db().from('courses').select('*, modules(count)').order('position', { ascending: true }),
+        db().from('course_aggregates').select('*'),
+      ]);
+      const rows = unwrap(coursesResult);
+      const aggregates = unwrap(aggregatesResult);
+      const aggByCourse = new Map(aggregates.map((a) => [a.course_id, a]));
 
       return rows.map((row) => {
-        const enrollments = (row as unknown as { enrollments: { progress: number }[] }).enrollments;
         const modules = (row as unknown as { modules: { count: number }[] }).modules;
-        const average =
-          enrollments.length > 0
-            ? enrollments.reduce((sum, e) => sum + e.progress, 0) / enrollments.length
-            : 0;
+        const agg = aggByCourse.get(row.id);
         return toCourse(row, {
-          students: enrollments.length,
-          progress: average,
+          students: agg?.students ?? 0,
+          progress: agg?.avg_progress ?? 0,
           modules: modules[0]?.count ?? 0,
         });
       });
@@ -93,6 +120,25 @@ export const supabaseBackend: Backend = {
       return toCourse(row, { students: 0, progress: 0, modules: 0 });
     },
 
+    async update(id, { name, level }) {
+      const row = unwrap<Row<'courses'>>(
+        await db().from('courses').update({ name, level }).eq('id', id).select().single(),
+      );
+      const [{ count: students }, { data: enrollments }] = await Promise.all([
+        db().from('enrollments').select('*', { count: 'exact', head: true }).eq('course_id', id),
+        db().from('enrollments').select('progress').eq('course_id', id),
+      ]);
+      const average =
+        enrollments && enrollments.length > 0
+          ? enrollments.reduce((sum, e) => sum + e.progress, 0) / enrollments.length
+          : 0;
+      const { count: modules } = await db()
+        .from('modules')
+        .select('*', { count: 'exact', head: true })
+        .eq('course_id', id);
+      return toCourse(row, { students: students ?? 0, progress: average, modules: modules ?? 0 });
+    },
+
     async setPublished(id, published) {
       const row = unwrap<Row<'courses'>>(
         await db().from('courses').update({ published }).eq('id', id).select().single(),
@@ -108,11 +154,41 @@ export const supabaseBackend: Backend = {
       const { error } = await db().from('courses').delete().eq('id', id);
       if (error) throw new Error(error.message);
     },
+
+    async reorder(id, direction) {
+      const courses = await supabaseBackend.courses.list();
+      const from = courses.findIndex((c) => c.id === id);
+      const to = from + direction;
+      if (from < 0 || to < 0 || to >= courses.length) return courses;
+
+      const a = courses[from]!;
+      const b = courses[to]!;
+      // RPC atómico — mismo patrón que `swap_content_block_position`: dos
+      // updates independientes no son atómicos y podían dejar dos cursos
+      // con la misma posición si uno fallaba a mitad de camino.
+      const { error } = await db().rpc('swap_course_position', {
+        course_a_id: a.id,
+        course_b_id: b.id,
+      });
+      if (error) throw new Error(error.message);
+      return supabaseBackend.courses.list();
+    },
   },
 
   content: {
     async getModule(moduleId) {
       return toModule(unwrap(await db().from('modules').select('*').eq('id', moduleId).single()));
+    },
+
+    async listModules(courseId) {
+      const rows = unwrap(
+        await db()
+          .from('modules')
+          .select('*')
+          .eq('course_id', courseId)
+          .order('position', { ascending: true }),
+      );
+      return rows.map(toModule);
     },
 
     async listBlocks(moduleId) {
@@ -127,10 +203,7 @@ export const supabaseBackend: Backend = {
     },
 
     async addBlock(moduleId, type) {
-      const { count } = await db()
-        .from('content_blocks')
-        .select('*', { count: 'exact', head: true })
-        .eq('module_id', moduleId);
+      const position = await nextBlockPosition(moduleId);
 
       const row = unwrap<Row<'content_blocks'>>(
         await db()
@@ -140,7 +213,7 @@ export const supabaseBackend: Backend = {
             type,
             title: `${type} sin título`,
             meta: 'Pendiente de subir',
-            position: count ?? 0,
+            position,
             media_key: null,
             uploaded_by: null,
           })
@@ -158,10 +231,13 @@ export const supabaseBackend: Backend = {
 
       const a = blocks[from]!;
       const b = blocks[to]!;
-      await Promise.all([
-        db().from('content_blocks').update({ position: b.position }).eq('id', a.id),
-        db().from('content_blocks').update({ position: a.position }).eq('id', b.id),
-      ]);
+      // RPC atómico en vez de dos updates independientes: si uno fallara a
+      // mitad de camino, dos bloques podían terminar con la misma `position`.
+      const { error } = await db().rpc('swap_content_block_position', {
+        block_a_id: a.id,
+        block_b_id: b.id,
+      });
+      if (error) throw new Error(error.message);
       return supabaseBackend.content.listBlocks(moduleId);
     },
 
@@ -171,10 +247,7 @@ export const supabaseBackend: Backend = {
     },
 
     async attachUpload(input: AttachUploadInput) {
-      const { count } = await db()
-        .from('content_blocks')
-        .select('*', { count: 'exact', head: true })
-        .eq('module_id', input.moduleId);
+      const position = await nextBlockPosition(input.moduleId);
 
       const {
         data: { user },
@@ -188,7 +261,7 @@ export const supabaseBackend: Backend = {
             type: inferBlockType(input.contentType),
             title: input.fileName,
             meta: input.sizeLabel,
-            position: count ?? 0,
+            position,
             media_key: input.mediaKey,
             uploaded_by: user?.id ?? null,
           })
@@ -207,11 +280,22 @@ export const supabaseBackend: Backend = {
   },
 
   students: {
-    async list({ query = '', level = 'Todos' }) {
+    async list({ query = '', level = 'Todos', page = 1 }) {
+      const pageSize = STUDENTS_PAGE_SIZE;
+      const from = (page - 1) * pageSize;
+
+      // Antes se traía la lista entera sin límite — con cientos de alumnos,
+      // cada tecleo en el buscador bajaba todas las filas de la base.
       let request = db()
         .from('profiles')
-        .select('*, enrollments(progress, watched_minutes, completed_lessons)')
-        .eq('role', 'student');
+        .select('*, enrollments(progress, watched_minutes, completed_lessons, created_at)', {
+          count: 'exact',
+        })
+        .eq('role', 'student')
+        // Un alumno puede tener varias matrículas (varios cursos). Antes se
+        // tomaba `enrollments[0]` sin orden, es decir, una arbitraria — la
+        // más reciente es la que tiene sentido mostrar en la ficha.
+        .order('created_at', { foreignTable: 'enrollments', ascending: false });
 
       if (level !== 'Todos') request = request.eq('level', level);
       if (query.trim()) {
@@ -219,8 +303,9 @@ export const supabaseBackend: Backend = {
         request = request.or(`full_name.ilike.${needle},enrollment_code.ilike.${needle}`);
       }
 
-      const rows = unwrap(await request.order('full_name'));
-      return rows.map((row) => {
+      const response = await request.order('full_name').range(from, from + pageSize - 1);
+      const rows = unwrap(response);
+      const items = rows.map((row) => {
         const enrollments = (
           row as unknown as {
             enrollments: { progress: number; watched_minutes: number; completed_lessons: number }[];
@@ -228,6 +313,7 @@ export const supabaseBackend: Backend = {
         ).enrollments;
         return toStudentSummary(row, enrollments[0] ?? null);
       });
+      return { items, total: response.count ?? items.length, page, pageSize };
     },
 
     async resetProgress(id) {
@@ -293,19 +379,49 @@ export const supabaseBackend: Backend = {
   },
 
   learning: {
-    async getCurrentModule() {
-      // Antes caía a `DEMO_MODULE` si la tabla estaba vacía, mostrando
-      // contenido de ejemplo como si fuera real. Ahora, sin módulos reales,
-      // devuelve `null` y la interfaz muestra un estado vacío honesto.
+    async getMyCourses() {
+      const {
+        data: { user },
+      } = await db().auth.getUser();
+      if (!user) return [];
+
       const rows = unwrap(
-        await db().from('modules').select('*').order('position').limit(1),
+        await db()
+          .from('enrollments')
+          .select('progress, created_at, courses(*)')
+          .eq('student_id', user.id)
+          .order('created_at', { ascending: false }),
+      );
+      return rows
+        .map((row) => {
+          const course = (row as unknown as { courses: Row<'courses'> | null }).courses;
+          return course ? toCourse(course, { students: 0, progress: row.progress, modules: 0 }) : null;
+        })
+        .filter((course): course is Course => course !== null);
+    },
+
+    async getCurrentModule(courseId) {
+      // Antes ignoraba por completo de qué curso venía la petición y
+      // devolvía el primer módulo de TODA la base — con más de un curso, un
+      // alumno matriculado sólo en el curso B podía ver contenido del curso
+      // A. Ahora se filtra por el curso real del alumno.
+      const rows = unwrap(
+        await db().from('modules').select('*').eq('course_id', courseId).order('position').limit(1),
       );
       return rows[0] ? toModule(rows[0]) : null;
     },
 
     async listLessons(moduleId) {
+      // Un módulo real no debería tener cientos de lecciones — el límite es
+      // una salvaguarda defensiva, no una paginación (la UI las muestra
+      // todas de una vez en una sola lista).
       const rows = unwrap(
-        await db().from('lessons').select('*').eq('module_id', moduleId).order('position'),
+        await db()
+          .from('lessons')
+          .select('*')
+          .eq('module_id', moduleId)
+          .order('position')
+          .limit(200),
       );
       const progress = unwrap(
         await db()
@@ -326,6 +442,13 @@ export const supabaseBackend: Backend = {
         previousCompleted = lesson.state === 'done';
         return lesson;
       });
+    },
+
+    async getLessonVideoUrl(mediaKey) {
+      const response = await fetch(`/api/media?key=${encodeURIComponent(mediaKey)}`);
+      if (!response.ok) return null;
+      const { url } = (await response.json()) as { url: string };
+      return url;
     },
 
     async listResources() {

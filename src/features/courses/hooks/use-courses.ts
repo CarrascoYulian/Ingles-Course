@@ -28,6 +28,20 @@ export function useCreateCourse() {
   });
 }
 
+export function useUpdateCourse() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: CreateCourseInput }) =>
+      backend.courses.update(id, input),
+    onSuccess: (course) => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.courses });
+      toast(`“${course.name}” actualizado`);
+    },
+    onError: () => toast.error('No se pudo actualizar el curso. Inténtalo de nuevo.'),
+  });
+}
+
 /**
  * Publicar/ocultar es una acción de un clic sobre una lista visible: se
  * aplica de forma optimista para que la píldora cambie en el mismo
@@ -63,6 +77,17 @@ export function useTogglePublished() {
     },
 
     onSettled: () => queryClient.invalidateQueries({ queryKey: QUERY_KEYS.courses }),
+  });
+}
+
+export function useReorderCourse() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, direction }: { id: string; direction: -1 | 1 }) =>
+      backend.courses.reorder(id, direction),
+    onSuccess: (courses) => queryClient.setQueryData(QUERY_KEYS.courses, courses),
+    onError: () => toast.error('No se pudo reordenar el curso.'),
   });
 }
 

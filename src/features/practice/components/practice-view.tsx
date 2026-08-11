@@ -34,7 +34,7 @@ export function PracticeView() {
 
   return (
     <div className="flex min-h-dvh flex-col bg-surface-muted">
-      <PracticeHeader session={session.data} levelTitle={currentLevel?.title ?? 'Nivel 3'} />
+      <PracticeHeader session={session.data} levelTitle={currentLevel?.title ?? 'Nivel 1'} />
 
       <div className="flex flex-1 gap-[22px] p-[18px] md:px-[30px] md:py-[26px]">
         {levels.data && <LevelPath levels={levels.data} />}
@@ -72,12 +72,9 @@ export function PracticeView() {
 
           <div className="hidden lg:block">
             <MissionCards
-              dailyXp={{ earned: 45, goal: 60 }}
-              weeklyStreak={{ done: 3, total: 5 }}
-              nextBadge={{
-                name: 'Maestro del pasado',
-                requirement: '4 ejercicios más sin errores',
-              }}
+              dailyXp={session.data.missions.dailyXp}
+              weeklyStreak={session.data.missions.weeklyStreak}
+              nextBadge={session.data.missions.nextBadge}
             />
           </div>
         </div>

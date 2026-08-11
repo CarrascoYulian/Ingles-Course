@@ -1,5 +1,7 @@
 'use client';
 
+import { ArrowDown, ArrowUp } from 'lucide-react';
+
 import { Badge, SquareBadge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -11,7 +13,11 @@ export interface CourseCardProps {
   course: Course;
   onToggle: (course: Course) => void;
   onEdit: (course: Course) => void;
+  onRename: (course: Course) => void;
   onDelete: (course: Course) => void;
+  onReorder: (course: Course, direction: -1 | 1) => void;
+  isFirst?: boolean;
+  isLast?: boolean;
   pending?: boolean;
 }
 
@@ -22,7 +28,17 @@ export interface CourseCardProps {
  * dos bloques (cabecera + acciones a lo ancho), como en la vista móvil del
  * diseño. Es el mismo componente: no hay dos árboles que mantener.
  */
-export function CourseCard({ course, onToggle, onEdit, onDelete, pending }: CourseCardProps) {
+export function CourseCard({
+  course,
+  onToggle,
+  onEdit,
+  onRename,
+  onDelete,
+  onReorder,
+  isFirst,
+  isLast,
+  pending,
+}: CourseCardProps) {
   const { name, level, modules, students, progress, published } = course;
 
   return (
@@ -77,8 +93,31 @@ export function CourseCard({ course, onToggle, onEdit, onDelete, pending }: Cour
       />
 
       <div className="mt-3 flex gap-[7px] md:mt-0 md:shrink-0 md:gap-2">
+        <Button
+          variant="icon"
+          size="square"
+          onClick={() => onReorder(course, -1)}
+          disabled={isFirst}
+          aria-label={`Subir “${name}”`}
+          className="disabled:opacity-40"
+        >
+          <ArrowUp aria-hidden size={13} strokeWidth={2.4} />
+        </Button>
+        <Button
+          variant="icon"
+          size="square"
+          onClick={() => onReorder(course, 1)}
+          disabled={isLast}
+          aria-label={`Bajar “${name}”`}
+          className="disabled:opacity-40"
+        >
+          <ArrowDown aria-hidden size={13} strokeWidth={2.4} />
+        </Button>
         <Button variant="ghost" size="sm" onClick={() => onToggle(course)} disabled={pending}>
           {published ? 'Ocultar' : 'Publicar'}
+        </Button>
+        <Button variant="ghost" size="sm" onClick={() => onRename(course)}>
+          Editar curso
         </Button>
         <Button variant="ghost" size="sm" onClick={() => onEdit(course)}>
           <span className="md:hidden">Módulos</span>

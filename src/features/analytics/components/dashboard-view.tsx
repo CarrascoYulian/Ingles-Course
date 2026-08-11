@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 import { ActivityFeed } from '@/components/dashboard/activity-feed';
@@ -13,6 +14,7 @@ import { Card } from '@/components/ui/card';
 import { Chip, ChipRow } from '@/components/ui/chip';
 import { Progress } from '@/components/ui/progress';
 import { useAdminHeader } from '@/components/admin/admin-shell';
+import { ROUTES } from '@/constants/routes';
 import { useCourses, useCreateCourse, useTogglePublished } from '@/features/courses/hooks/use-courses';
 import {
   useDashboardMetrics,
@@ -35,6 +37,7 @@ const FILTERS = [
 ] as const;
 
 export function DashboardView() {
+  const router = useRouter();
   const [activeFilters, setActiveFilters] = useState<Record<string, boolean>>(
     Object.fromEntries(FILTERS.map((f) => [f.id, f.initial])),
   );
@@ -163,7 +166,11 @@ export function DashboardView() {
         </Card>
 
         {leaderboard.data && (
-          <Leaderboard entries={leaderboard.data} totalStudents={totalStudents} />
+          <Leaderboard
+            entries={leaderboard.data}
+            totalStudents={totalStudents}
+            onSeeAll={() => router.push(ROUTES.admin.estudiantes)}
+          />
         )}
       </div>
 

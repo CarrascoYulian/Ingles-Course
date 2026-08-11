@@ -45,7 +45,20 @@ const store: DemoStore = {
   courses: structuredClone(DEMO_COURSES),
   blocks: structuredClone(DEMO_BLOCKS),
   students: structuredClone(DEMO_STUDENTS),
-  session: { levelId: 'n3', step: 6, totalSteps: 10, xp: 1240, coins: 340, streak: 12, hearts: { total: 3, remaining: 1 } },
+  session: {
+    levelId: 'n3',
+    step: 6,
+    totalSteps: 10,
+    xp: 1240,
+    coins: 340,
+    streak: 12,
+    hearts: { total: 3, remaining: 1 },
+    missions: {
+      dailyXp: { earned: 45, goal: 60 },
+      weeklyStreak: { done: 3, total: 7 },
+      nextBadge: { name: 'Mil puntos', requirement: '260 XP más' },
+    },
+  },
 };
 
 /** Latencia simulada: hace visibles los estados de carga en desarrollo. */
@@ -53,6 +66,8 @@ const latency = <T>(value: T, ms = 120): Promise<T> =>
   new Promise((resolve) => setTimeout(() => resolve(value), ms));
 
 const newId = () => `tmp-${Math.random().toString(36).slice(2, 10)}`;
+
+const STUDENTS_PAGE_SIZE = 20;
 
 const NEW_BLOCK_DEFAULTS: Record<BlockType, { title: string; meta: string }> = {
   Video: { title: 'Nuevo video sin título', meta: 'Pendiente de subir' },
@@ -81,11 +96,29 @@ export const demoBackend: Backend = {
       return latency(course);
     },
 
+    update: (id, { name, level }) => {
+      store.courses = store.courses.map((c) => (c.id === id ? { ...c, name, level } : c));
+      const updated = store.courses.find((c) => c.id === id);
+      if (!updated) throw new Error(`Curso ${id} no encontrado`);
+      return latency(updated);
+    },
+
     setPublished: (id, published) => {
       store.courses = store.courses.map((c) => (c.id === id ? { ...c, published } : c));
       const updated = store.courses.find((c) => c.id === id);
       if (!updated) throw new Error(`Curso ${id} no encontrado`);
       return latency(updated);
+    },
+
+    reorder: (id, direction) => {
+      const from = store.courses.findIndex((c) => c.id === id);
+      const to = from + direction;
+      if (from < 0 || to < 0 || to >= store.courses.length) return latency(store.courses);
+
+      const next = [...store.courses];
+      [next[from], next[to]] = [next[to]!, next[from]!];
+      store.courses = next.map((course, index) => ({ ...course, position: index }));
+      return latency(structuredClone(store.courses));
     },
 
     remove: (id) => {
@@ -96,6 +129,10 @@ export const demoBackend: Backend = {
 
   content: {
     getModule: () => latency(DEMO_MODULE),
+
+    // El fixture en memoria sólo modela un módulo de referencia por curso.
+    listModules: (courseId) =>
+      latency(DEMO_MODULE.courseId === courseId ? [DEMO_MODULE] : []),
 
     listBlocks: (moduleId) =>
       latency(
@@ -164,9 +201,9 @@ export const demoBackend: Backend = {
   },
 
   students: {
-    list: ({ query = '', level = 'Todos' }) => {
+    list: ({ query = '', level = 'Todos', page = 1 }) => {
       const needle = query.trim().toLowerCase();
-      const result = store.students.filter((student) => {
+      const filtered = store.students.filter((student) => {
         const matchesQuery =
           !needle ||
           student.name.toLowerCase().includes(needle) ||
@@ -174,7 +211,10 @@ export const demoBackend: Backend = {
         const matchesLevel = level === 'Todos' || student.level === level;
         return matchesQuery && matchesLevel;
       });
-      return latency(structuredClone(result));
+      const pageSize = STUDENTS_PAGE_SIZE;
+      const from = (page - 1) * pageSize;
+      const items = filtered.slice(from, from + pageSize);
+      return latency({ items: structuredClone(items), total: filtered.length, page, pageSize });
     },
 
     resetProgress: (id) => {
@@ -208,8 +248,14 @@ export const demoBackend: Backend = {
   },
 
   learning: {
-    getCurrentModule: () => latency(DEMO_MODULE),
+    getMyCourses: () => latency(store.courses.filter((c) => c.id === DEMO_MODULE.courseId)),
+    getCurrentModule: (courseId) =>
+      latency(courseId === DEMO_MODULE.courseId ? DEMO_MODULE : null),
     listLessons: (): Promise<Lesson[]> => latency(DEMO_LESSONS),
+    // El modo demo no tiene Storage real: ninguna lección de referencia
+    // tiene `mediaKey`, así que esta ruta nunca llega a llamarse en la
+    // práctica — se deja implementada por completar el contrato.
+    getLessonVideoUrl: () => latency(null),
     listResources: (): Promise<CourseResource[]> => latency(DEMO_RESOURCES),
     listBadges: (): Promise<Badge[]> => latency(DEMO_BADGES),
     saveWatchedPercent: () => latency(undefined, 0),

@@ -8,14 +8,29 @@ import { backend } from '@/services';
 import type { CreateModuleInput } from '@/services';
 
 /**
- * Módulo "actual" del alumno. En demo es siempre el módulo de referencia;
- * con Supabase conectado resuelve el primer módulo real de la base de
- * datos — evita hardcodear un id de módulo que sólo existe en memoria.
+ * Cursos en los que está matriculado el alumno autenticado. Antes no existía
+ * este concepto: `useCurrentModule` ignoraba el curso por completo y
+ * resolvía el primer módulo de TODA la base de datos, sin importar en qué
+ * curso(s) estuviera matriculado el alumno.
  */
-export function useCurrentModule() {
+export function useMyCourses() {
   return useQuery({
-    queryKey: ['current-module'],
-    queryFn: () => backend.learning.getCurrentModule(),
+    queryKey: ['my-courses'],
+    queryFn: () => backend.learning.getMyCourses(),
+  });
+}
+
+/**
+ * Módulo "actual" del alumno dentro de un curso concreto. En demo es
+ * siempre el módulo de referencia; con Supabase conectado resuelve el
+ * primer módulo real de ESE curso — antes ignoraba el curso y devolvía el
+ * primer módulo de toda la base, sin importar la matrícula del alumno.
+ */
+export function useCurrentModule(courseId: string) {
+  return useQuery({
+    queryKey: ['current-module', courseId],
+    queryFn: () => backend.learning.getCurrentModule(courseId),
+    enabled: courseId !== '',
   });
 }
 
@@ -26,6 +41,21 @@ export function useModuleLessons(moduleId: string) {
     // Espera a que `useCurrentModule` resuelva un id real antes de
     // consultar — evita un viaje de red con un moduleId vacío.
     enabled: moduleId !== '',
+  });
+}
+
+/**
+ * URL firmada del video real de una lección. Antes el reproductor era
+ * puramente simulado (un `setInterval` subiendo un porcentaje inventado):
+ * nunca pedía ni reproducía un archivo real, aunque Storage ya soportaba
+ * URLs firmadas de reproducción (`/api/media`) para otros usos.
+ */
+export function useLessonVideoUrl(mediaKey: string | null) {
+  return useQuery({
+    queryKey: ['lesson-video', mediaKey],
+    queryFn: () => backend.learning.getLessonVideoUrl(mediaKey!),
+    enabled: mediaKey !== null,
+    staleTime: 30 * 60 * 1000,
   });
 }
 
@@ -58,11 +88,6 @@ export function useMyProgress() {
 }
 
 /**
- * Guarda el avance de reproducción. Sin toast ni reintento: es un efecto de
- * fondo que el alumno nunca debería notar. Si falla, el progreso local se
- * mantiene y el siguiente latido lo vuelve a intentar.
- */
-/**
  * Crea el módulo desde el panel de admin — antes la única vía era escribir
  * el INSERT a mano en el SQL Editor de Supabase, algo que un docente sin
  * conocimientos técnicos no puede hacer.
@@ -74,6 +99,7 @@ export function useCreateModule() {
     mutationFn: (input: CreateModuleInput) => backend.learning.createModule(input),
     onSuccess: (module) => {
       queryClient.invalidateQueries({ queryKey: ['current-module'] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.modules(module.courseId) });
       toast(`“${module.title}” creado`);
     },
     onError: (error) =>
@@ -81,10 +107,18 @@ export function useCreateModule() {
   });
 }
 
+/**
+ * Guarda el avance de reproducción. Sin toast: es un efecto de fondo que el
+ * alumno nunca debería notar. Antes tampoco reintentaba — un fallo de red
+ * puntual perdía ese punto de guardado en silencio hasta el siguiente tick;
+ * con `retry` React Query reintenta con backoff antes de rendirse.
+ */
 export function useSaveWatchedPercent() {
   return useMutation({
     mutationFn: ({ lessonId, percent }: { lessonId: string; percent: number }) =>
       backend.learning.saveWatchedPercent(lessonId, percent),
+    retry: 3,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
     onError: () => undefined,
   });
 }

@@ -25,21 +25,31 @@ export async function GET() {
   const supabase = await getSupabaseServerClient();
   if (!supabase) return NextResponse.json({ error: 'Supabase no disponible' }, { status: 503 });
 
-  const [{ data: levels, error: levelsError }, { data: progress, error: progressError }] =
-    await Promise.all([
-      supabase.from('practice_levels').select('*').order('position'),
-      supabase
-        .from('practice_progress')
-        .select('current_level, current_step')
-        .eq('student_id', result.profile.id)
-        .maybeSingle(),
-    ]);
+  const { data: progress, error: progressError } = await supabase
+    .from('practice_progress')
+    .select('current_level, current_step')
+    .eq('student_id', result.profile.id)
+    .maybeSingle();
 
-  if (levelsError) return NextResponse.json({ error: levelsError.message }, { status: 500 });
   if (progressError) return NextResponse.json({ error: progressError.message }, { status: 500 });
 
   const currentLevel = progress?.current_level ?? 1;
   const currentStep = progress?.current_step ?? 1;
+
+  // Con 500 niveles posibles, devolverlos todos convertiría la ruta de
+  // niveles en una lista de 500 filas (y la mandaría entera al navegador).
+  // Se acota a una ventana alrededor del nivel actual — igual que sólo se
+  // ve un tramo del camino en Duolingo, no el árbol completo.
+  const WINDOW_BEFORE = 5;
+  const WINDOW_AFTER = 20;
+  const { data: levels, error: levelsError } = await supabase
+    .from('practice_levels')
+    .select('*')
+    .gte('position', Math.max(1, currentLevel - WINDOW_BEFORE))
+    .lte('position', currentLevel + WINDOW_AFTER)
+    .order('position');
+
+  if (levelsError) return NextResponse.json({ error: levelsError.message }, { status: 500 });
 
   const response: PracticeLevel[] = (levels ?? []).map((level) => {
     const state: PracticeLevel['state'] =

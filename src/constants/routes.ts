@@ -9,6 +9,8 @@ export const ROUTES = {
     dashboard: '/admin/dashboard',
     cursos: '/admin/cursos',
     contenido: '/admin/contenido',
+    /** Constructor de contenido de un curso concreto. */
+    contenidoDeCurso: (courseId: string) => `/admin/contenido?courseId=${courseId}`,
     estudiantes: '/admin/estudiantes',
     reportes: '/admin/reportes',
   },

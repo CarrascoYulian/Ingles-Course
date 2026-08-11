@@ -46,9 +46,10 @@ export function useInviteStudent() {
 
   return useMutation({
     mutationFn: (input: CreateStudentInput) => backend.students.invite(input),
-    onSuccess: ({ enrollmentCode }) => {
+    onSuccess: () => {
+      // El diálogo ya muestra la matrícula en un recuadro copiable; el toast
+      // sólo confirmaba lo mismo un instante y desaparecía.
       queryClient.invalidateQueries({ queryKey: ['students'] });
-      toast(`Estudiante creado · matrícula ${enrollmentCode}`);
     },
     onError: (error) =>
       toast.error(error instanceof Error ? error.message : 'No se pudo crear el estudiante.'),

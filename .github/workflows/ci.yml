@@ -1,13 +1,13 @@
 name: CI
 
 on:
-  push:
-    branches: [main]
   pull_request:
+    branches: [main]
+  push:
     branches: [main]
 
 jobs:
-  quality:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -18,11 +18,15 @@ jobs:
           cache: npm
 
       - run: npm ci
+
       - run: npm run lint
+
       - run: npm run typecheck
+
+      - run: npm run test
+
       - run: npm run build
         env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-          NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
-          DEMO_AUTH_SECRET: ${{ secrets.DEMO_AUTH_SECRET }}
+          # El build no necesita un proyecto Supabase real: sin estas
+          # variables la app compila en modo demo (ver src/lib/env.ts).
+          NEXT_PUBLIC_SITE_URL: http://localhost:3000

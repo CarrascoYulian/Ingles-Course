@@ -19,10 +19,29 @@ const serverSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
   /**
    * Firma la cookie de sesión del modo demo. Sólo importa en desarrollo sin
-   * Supabase: con Supabase configurado, la autenticación real de Supabase
-   * la sustituye por completo y este secreto deja de usarse.
+   * Supabase: con Supabase configurado, la autenticación real de Supabase la
+   * sustituye por completo y este secreto deja de usarse.
+   *
+   * El valor por defecto sólo se aplica fuera de producción: si el entorno
+   * de producción quedara mal configurado (sin Supabase) y cayera a modo
+   * demo, cualquiera podría firmar su propia cookie de admin con un secreto
+   * público conocido. En producción, sin este valor explícito, el arranque
+   * falla — falla cerrado en vez de exponer una puerta trasera silenciosa.
    */
-  DEMO_AUTH_SECRET: z.string().min(1).default('demo-secret-solo-para-desarrollo-local'),
+  DEMO_AUTH_SECRET:
+    process.env.NODE_ENV === 'production'
+      ? z.string().min(1)
+      : z.string().min(1).default('demo-secret-solo-para-desarrollo-local'),
+  /**
+   * Credenciales de las dos cuentas de prueba del modo demo. Antes vivían
+   * como cadenas literales en `demo-session.ts` y en la pantalla de login —
+   * visibles para cualquiera con acceso al código fuente (p. ej. en
+   * GitHub). Ahora sólo existen en `.env.local` (gitignored).
+   */
+  DEMO_ADMIN_EMAIL: z.string().email().optional(),
+  DEMO_ADMIN_PASSWORD: z.string().min(1).optional(),
+  DEMO_STUDENT_EMAIL: z.string().email().optional(),
+  DEMO_STUDENT_PASSWORD: z.string().min(1).optional(),
 });
 
 // Next inline-a `process.env.NEXT_PUBLIC_*` en el bundle del cliente sólo si

@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
+
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
@@ -15,13 +17,22 @@ export interface VideoPlayerProps {
   onToggle: () => void;
   onPrevious?: () => void;
   onNext: () => void;
-  /** URL firmada de Supabase Storage. Si falta, se muestra el póster degradado del diseño. */
+  /** URL firmada de Supabase Storage. Si falta, no hay nada que reproducir. */
   src?: string | null;
   poster?: string | null;
+  /** `timeupdate` real del `<video>`, ya convertido a 0-100. */
+  onProgress?: (percent: number) => void;
+  onEnded?: () => void;
 }
 
 /**
  * Reproductor de la lección.
+ *
+ * Antes renderizaba un `<video>` decorativo — se pintaba en pantalla pero
+ * nada lo conectaba con play/pausa ni con el progreso, que en realidad
+ * venía de un temporizador simulado (`useVideoProgress`). Ahora el `<video>`
+ * es real: `playing` controla `.play()/.pause()` vía `ref`, y su propio
+ * `timeupdate`/`ended` es la única fuente de `watched`.
  *
  * El botón central no anima su cambio de estado: play/pausa se pulsa
  * decenas de veces por sesión y cualquier transición ahí se percibe como
@@ -39,8 +50,20 @@ export function VideoPlayer({
   onNext,
   src,
   poster,
+  onProgress,
+  onEnded,
 }: VideoPlayerProps) {
-  const playLabel = playing ? 'PAUSA' : watched >= 100 ? 'VISTO' : 'VER';
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const hasVideo = Boolean(src);
+
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el) return;
+    if (playing) el.play().catch(() => undefined);
+    else el.pause();
+  }, [playing]);
+
+  const playLabel = !hasVideo ? 'NO DISPONIBLE' : playing ? 'PAUSA' : watched >= 100 ? 'VISTO' : 'VER';
 
   return (
     <section
@@ -54,27 +77,41 @@ export function VideoPlayer({
           'bg-[radial-gradient(circle_at_50%_42%,#16303C_0%,#0B1620_72%)]',
         )}
       >
-        {src && (
+        {hasVideo && (
           <video
+            ref={videoRef}
             className="absolute inset-0 size-full object-cover"
-            src={src}
+            src={src!}
             poster={poster ?? undefined}
             preload="metadata"
             playsInline
+            onTimeUpdate={(event) => {
+              const el = event.currentTarget;
+              if (el.duration > 0) onProgress?.(Math.round((el.currentTime / el.duration) * 100));
+            }}
+            onEnded={() => onEnded?.()}
           />
+        )}
+
+        {!hasVideo && (
+          <p className="absolute inset-x-4 top-1/2 -translate-y-1/2 text-center text-tiny font-bold text-ink-fg-faint md:text-meta">
+            Video no disponible todavía
+          </p>
         )}
 
         <button
           type="button"
           onClick={onToggle}
+          disabled={!hasVideo}
           aria-pressed={playing}
           aria-label={playing ? 'Pausar la lección' : 'Reproducir la lección'}
           className={cn(
             'relative grid size-[60px] place-items-center rounded-full md:size-[74px]',
             'border border-white/30 bg-white/15 backdrop-blur-[6px]',
-            'cursor-pointer transition-[background-color,transform] duration-[160ms] ease-[cubic-bezier(0.23,1,0.32,1)]',
-            'hover:bg-white/25',
-            '[@media(hover:hover)_and_(pointer:fine)]:active:scale-[0.96]',
+            'transition-[background-color,transform] duration-[160ms] ease-[cubic-bezier(0.23,1,0.32,1)]',
+            hasVideo
+              ? 'cursor-pointer hover:bg-white/25 [@media(hover:hover)_and_(pointer:fine)]:active:scale-[0.96]'
+              : 'cursor-not-allowed opacity-60',
           )}
         >
           <span className="text-meta font-extrabold tracking-badge text-white md:text-body">

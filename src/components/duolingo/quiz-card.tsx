@@ -1,6 +1,7 @@
 'use client';
 
 import { Volume2 } from 'lucide-react';
+import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import { Badge } from '@/components/ui/badge';
@@ -49,6 +50,38 @@ export function QuizCard({
   const correctKey =
     question.options.find((option) => option.id === result?.correctOptionId)?.key ?? 'A';
 
+  // Antes este botón sólo mostraba un toast fingiendo reproducir algo — no
+  // existía ningún archivo de audio detrás. Ahora, si la pregunta tiene un
+  // `audioKey` real, pide su URL firmada y reproduce audio de verdad; si no
+  // lo tiene (el caso de las 80 preguntas actuales del banco), el botón ni
+  // siquiera se muestra, en vez de fingir.
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [audioState, setAudioState] = useState<'idle' | 'loading' | 'playing'>('idle');
+
+  const playAudio = async () => {
+    if (!question.audioKey || audioState === 'loading') return;
+    if (audioState === 'playing') {
+      audioRef.current?.pause();
+      setAudioState('idle');
+      return;
+    }
+    setAudioState('loading');
+    try {
+      const response = await fetch(`/api/media?key=${encodeURIComponent(question.audioKey)}`);
+      if (!response.ok) throw new Error('No disponible');
+      const { url } = (await response.json()) as { url: string };
+      const audio = audioRef.current ?? new Audio();
+      audioRef.current = audio;
+      audio.src = url;
+      audio.onended = () => setAudioState('idle');
+      await audio.play();
+      setAudioState('playing');
+    } catch {
+      toast.error('No se pudo reproducir el audio.');
+      setAudioState('idle');
+    }
+  };
+
   return (
     <Card
       radius="2xl"
@@ -60,7 +93,7 @@ export function QuizCard({
           {question.category}
         </Badge>
         <span className="text-tiny font-bold text-fg-ghost md:text-meta">
-          <span className="md:hidden">Nivel 3 · </span>+{question.xpReward} XP
+          +{question.xpReward} XP
         </span>
       </div>
 
@@ -72,16 +105,27 @@ export function QuizCard({
         <p className="text-title font-bold text-fg-strong text-pretty md:text-heading-sm">
           {question.sourceText}
         </p>
-        <Button
-          variant="ghost"
-          size="xs"
-          onClick={() => toast('Reproduciendo audio del ejercicio…')}
-          className="mt-3 rounded-lg"
-        >
-          <Volume2 aria-hidden size={14} strokeWidth={2} />
-          <span className="md:hidden">Escuchar</span>
-          <span className="hidden md:inline">Escuchar audio</span>
-        </Button>
+        {question.audioKey && (
+          <Button
+            variant="ghost"
+            size="xs"
+            onClick={playAudio}
+            disabled={audioState === 'loading'}
+            className="mt-3 rounded-lg"
+          >
+            <Volume2 aria-hidden size={14} strokeWidth={2} />
+            <span className="md:hidden">
+              {audioState === 'loading' ? 'Cargando…' : audioState === 'playing' ? 'Pausar' : 'Escuchar'}
+            </span>
+            <span className="hidden md:inline">
+              {audioState === 'loading'
+                ? 'Cargando audio…'
+                : audioState === 'playing'
+                  ? 'Pausar audio'
+                  : 'Escuchar audio'}
+            </span>
+          </Button>
+        )}
       </div>
 
       <div

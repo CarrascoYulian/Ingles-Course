@@ -12,6 +12,7 @@ const ACCEPTED = '.mp4,.mp3,.pdf,.docx,.png,.jpg,.jpeg,.webp';
 const MAX_BYTES = 2 * 1024 * 1024 * 1024; // 2 GB
 
 export interface UploadDropzoneProps {
+  courseId: string;
   moduleId: string;
   /** Se llama cuando el archivo terminó de subirse, para registrarlo en la BD. */
   onUploaded: (result: UploadResult & { fileName: string; sizeLabel: string }) => Promise<void> | void;
@@ -29,7 +30,7 @@ export interface UploadDropzoneProps {
  * Es a la vez zona de arrastre y botón: el drag-and-drop no es accesible por
  * teclado, así que el elemento es un `<button>` que abre el selector nativo.
  */
-export function UploadDropzone({ moduleId, onUploaded, className }: UploadDropzoneProps) {
+export function UploadDropzone({ courseId, moduleId, onUploaded, className }: UploadDropzoneProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [progress, setProgress] = useState<number | null>(null);
@@ -46,7 +47,7 @@ export function UploadDropzone({ moduleId, onUploaded, className }: UploadDropzo
 
       setProgress(0);
       try {
-        const result = await uploadFile({ file, moduleId, onProgress: setProgress });
+        const result = await uploadFile({ file, courseId, moduleId, onProgress: setProgress });
         await onUploaded({ ...result, fileName: file.name, sizeLabel: formatBytes(file.size) });
         toast(`“${file.name}” subido al módulo`);
       } catch (error) {
@@ -60,7 +61,7 @@ export function UploadDropzone({ moduleId, onUploaded, className }: UploadDropzo
         if (inputRef.current) inputRef.current.value = '';
       }
     },
-    [moduleId, onUploaded],
+    [courseId, moduleId, onUploaded],
   );
 
   return (
