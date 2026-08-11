@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { toast } from 'sonner';
 
 import { useSaveWatchedPercent } from './use-learning';
 
@@ -90,15 +89,17 @@ export function useVideoProgress(
     save.mutate({ lessonId, percent: 100 });
   }, [lessonId, save]);
 
+  // Antes, con `watched >= 100`, esto sólo mostraba un toast y nunca ponía
+  // `playing` en `true` — una lección ya vista quedaba imposible de
+  // reproducir de nuevo, con el botón mostrando "VISTO" sin reaccionar a
+  // los clics. Ver una lección terminada de nuevo es un caso de uso real
+  // (repasar antes de un examen); `VideoPlayer` reinicia el `<video>` al
+  // segundo 0 cuando detecta que ya había terminado.
   const toggle = useCallback(() => {
     if (!hasVideo) return;
     if (playing) {
       setPlaying(false);
       save.mutate({ lessonId, percent: watched });
-      return;
-    }
-    if (watched >= 100) {
-      toast('Lección vista al 100 %. Continúa a la siguiente.');
       return;
     }
     setPlaying(true);

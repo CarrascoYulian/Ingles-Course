@@ -65,8 +65,15 @@ export function VideoPlayer({
   useEffect(() => {
     const el = videoRef.current;
     if (!el) return;
-    if (playing) el.play().catch(() => undefined);
-    else el.pause();
+    if (playing) {
+      // Al terminar, `currentTime` se queda en el final — sin esto, pedir
+      // play de nuevo en un video ya visto no hacía nada visible (ya
+      // estaba en el último frame).
+      if (el.ended) el.currentTime = 0;
+      el.play().catch(() => undefined);
+    } else {
+      el.pause();
+    }
   }, [playing]);
 
   useEffect(() => {

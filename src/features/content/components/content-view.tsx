@@ -76,14 +76,12 @@ export function ContentView() {
   const confirmDialog = useConfirmDialog();
   const createModule = useCreateModule();
   const [createModuleOpen, setCreateModuleOpen] = useState(false);
-  const [previewBlock, setPreviewBlock] = useState<{ title: string; type: 'Video' | 'PDF' | 'Audio' } | null>(
-    null,
-  );
+  const [previewBlock, setPreviewBlock] = useState<{ title: string } | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [editingLessonId, setEditingLessonId] = useState<string | null>(null);
 
-  const openPreview = (block: { title: string; type: 'Video' | 'PDF' | 'Audio'; mediaKey: string }) => {
-    setPreviewBlock({ title: block.title, type: block.type });
+  const openPreview = (block: { title: string; mediaKey: string }) => {
+    setPreviewBlock({ title: block.title });
     setPreviewUrl(null);
     previewFileUrl.mutate(block.mediaKey, { onSuccess: (url) => setPreviewUrl(url) });
   };
@@ -205,8 +203,6 @@ export function ContentView() {
 
         <ol className="flex flex-col gap-2.5">
           {blocks?.map((block, index) => {
-            const previewableType =
-              block.type === 'Video' || block.type === 'PDF' || block.type === 'Audio' ? block.type : null;
             return (
             <ContentBlockRow
               key={block.id}
@@ -225,8 +221,8 @@ export function ContentView() {
               onOpenFile={block.mediaKey ? () => openFile.mutate(block.mediaKey!) : undefined}
               openFilePending={openFile.isPending}
               onPreview={
-                block.mediaKey && previewableType
-                  ? () => openPreview({ title: block.title, type: previewableType, mediaKey: block.mediaKey! })
+                block.mediaKey
+                  ? () => openPreview({ title: block.title, mediaKey: block.mediaKey! })
                   : undefined
               }
               onEditLesson={
@@ -291,7 +287,7 @@ export function ContentView() {
         open={previewBlock !== null}
         onOpenChange={(open) => !open && setPreviewBlock(null)}
         title={previewBlock?.title ?? ''}
-        type={previewBlock?.type ?? 'PDF'}
+        fileName={previewBlock?.title ?? ''}
         url={previewUrl}
         loading={previewFileUrl.isPending}
       />
