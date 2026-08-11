@@ -47,7 +47,13 @@ export function useUpdateLesson(moduleId: string) {
     mutationFn: ({ lessonId, title, description }: { lessonId: string; title: string; description: string }) =>
       backend.content.updateLesson(lessonId, { title, description }),
     onSuccess: () => {
+      // El título editado aquí también reescribe `content_blocks.title` (ver
+      // `updateLesson`) — hay que refrescar la lista de bloques del
+      // constructor y la de lecciones que ve el alumno, no sólo la caché
+      // interna del admin, o cada una se queda mostrando el valor viejo.
       queryClient.invalidateQueries({ queryKey: ['module-lessons-admin', moduleId] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.blocks(moduleId) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.lessons(moduleId) });
       toast('Lección actualizada');
     },
     onError: () => toast.error('No se pudo actualizar la lección.'),

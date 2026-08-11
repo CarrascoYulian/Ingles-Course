@@ -346,11 +346,21 @@ export const supabaseBackend: Backend = {
     },
 
     async updateLesson(lessonId, input) {
-      const { error } = await db()
+      const { data: lesson, error } = await db()
         .from('lessons')
         .update({ title: input.title, description: input.description || null })
-        .eq('id', lessonId);
+        .eq('id', lessonId)
+        .select('media_key')
+        .single();
       if (error) throw new Error(error.message);
+
+      // `content_blocks` (la fila del constructor) y `lessons` (lo que ve el
+      // alumno) son tablas separadas sin llave foránea — sin este segundo
+      // update, el título quedaba "actualizado" para el alumno pero seguía
+      // mostrando el nombre del archivo original en el panel del docente.
+      if (lesson.media_key) {
+        await db().from('content_blocks').update({ title: input.title }).eq('media_key', lesson.media_key);
+      }
     },
   },
 

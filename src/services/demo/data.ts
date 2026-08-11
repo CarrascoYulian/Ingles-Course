@@ -27,7 +27,7 @@ import type {
 export const DEMO_TEACHER: Profile = {
   id: 'demo-teacher',
   role: 'admin',
-  fullName: 'Daniel Reyes',
+  fullName: 'Robertho',
   enrollmentCode: null,
   level: null,
   avatarColor: '#0F5257',

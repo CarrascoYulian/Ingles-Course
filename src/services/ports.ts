@@ -17,6 +17,7 @@ import type {
   DashboardMetrics,
   LeaderboardEntry,
   Lesson,
+  LessonComment,
   LessonNote,
   Module,
   PracticeLevel,
@@ -165,6 +166,10 @@ export interface LearningPort {
   markMessageRead(id: string): Promise<void>;
   /** Responde al docente — antes la bandeja era de sólo lectura. */
   sendMyMessage(body: string): Promise<void>;
+  /** Comentarios reales de una lección — visibles para el alumno y el docente por igual. */
+  listComments(lessonId: string): Promise<LessonComment[]>;
+  /** El autor (alumno o docente) se resuelve del usuario autenticado, nunca se recibe como parámetro. */
+  addComment(lessonId: string, body: string): Promise<LessonComment>;
 }
 
 export interface PracticePort {

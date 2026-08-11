@@ -93,6 +93,17 @@ export interface LessonNote {
   createdAt: string;
 }
 
+/** Comentario real de un alumno o del docente sobre una lección — visible para ambos. */
+export interface LessonComment {
+  id: string;
+  lessonId: string;
+  authorId: string;
+  authorName: string;
+  fromStaff: boolean;
+  body: string;
+  createdAt: string;
+}
+
 /** Progreso agregado del alumno que hace la petición — nunca de otro usuario. */
 export interface StudentProgress {
   percent: number;
