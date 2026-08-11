@@ -14,28 +14,38 @@ import {
 } from '@/components/ui/dialog';
 import { Field } from '@/components/ui/field';
 import { Textarea } from '@/components/ui/textarea';
+import { useStudentMessages } from '../hooks/use-students';
 import { messageStudentSchema, type MessageStudentValues } from '../schemas';
 
 export interface MessageStudentDialogProps {
   open: boolean;
+  studentId: string | null;
   studentName: string | null;
   onOpenChange: (open: boolean) => void;
   onSubmit: (values: MessageStudentValues) => Promise<void> | void;
   pending?: boolean;
 }
 
+function formatWhen(iso: string): string {
+  return new Date(iso).toLocaleString('es-DO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+}
+
 /**
- * Antes, "Enviar mensaje" mandaba siempre el mismo texto fijo
- * ("Mensaje desde el panel docente") sin que el docente escribiera nada.
- * Este diálogo pide el mensaje real.
+ * Antes "Enviar mensaje" mandaba siempre el mismo texto fijo y el diálogo
+ * se cerraba de inmediato al enviar — no había ningún lugar donde ver los
+ * mensajes ya mandados. Ahora se pide el texto real, se queda abierto tras
+ * enviar y muestra el historial real (`messages`).
  */
 export function MessageStudentDialog({
   open,
+  studentId,
   studentName,
   onOpenChange,
   onSubmit,
   pending,
 }: MessageStudentDialogProps) {
+  const { data: messages, isPending: messagesPending } = useStudentMessages(studentId);
+
   const form = useForm<MessageStudentValues>({
     resolver: zodResolver(messageStudentSchema),
     defaultValues: { body: '' },
@@ -49,22 +59,43 @@ export function MessageStudentDialog({
   const submit = form.handleSubmit(async (values) => {
     try {
       await onSubmit(values);
-      onOpenChange(false);
+      form.reset({ body: '' });
     } catch {
       // El error ya se muestra vía toast (onError de useSendStudentMessage).
-      // El diálogo se queda abierto para reintentar, en vez de dejar que el
-      // rechazo suba sin capturar y tumbe la página.
     }
   });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent width={460}>
-        <DialogTitle>Enviar mensaje</DialogTitle>
-        {studentName && <DialogDescription>Para {studentName}</DialogDescription>}
+        <DialogTitle>Mensajes</DialogTitle>
+        {studentName && <DialogDescription>Con {studentName}</DialogDescription>}
+
+        <div className="mt-4 max-h-[280px] overflow-y-auto rounded-2xl border border-line bg-surface-sunken p-3">
+          {messagesPending && (
+            <p className="text-body-sm font-semibold text-fg-faint">Cargando historial…</p>
+          )}
+          {!messagesPending && messages?.length === 0 && (
+            <p className="text-body-sm font-semibold text-fg-faint">
+              Todavía no le has escrito a {studentName ?? 'este estudiante'}.
+            </p>
+          )}
+          {messages && messages.length > 0 && (
+            <ul className="flex flex-col gap-2.5">
+              {[...messages].reverse().map((message) => (
+                <li key={message.id} className="rounded-xl bg-surface px-3 py-2">
+                  <p className="text-body-sm font-medium text-fg">{message.body}</p>
+                  <p className="mt-0.5 text-tiny font-semibold text-fg-ghost">
+                    {message.fromStaff ? 'Tú' : studentName} · {formatWhen(message.createdAt)}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
 
         <form onSubmit={submit} noValidate>
-          <Field label="Mensaje" error={form.formState.errors.body?.message} className="mt-5">
+          <Field label="Nuevo mensaje" error={form.formState.errors.body?.message} className="mt-4">
             {(fieldProps) => (
               <Textarea
                 {...fieldProps}
@@ -77,7 +108,7 @@ export function MessageStudentDialog({
 
           <DialogFooter>
             <Button variant="ghost" size="md" onClick={() => onOpenChange(false)}>
-              Cancelar
+              Cerrar
             </Button>
             <Button type="submit" size="md" className="font-extrabold" disabled={pending}>
               {pending ? 'Enviando…' : 'Enviar'}

@@ -64,10 +64,10 @@ export const STUDENT_NAV: readonly NavItem[] = [
 ] as const;
 
 /** Copys de cabecera del panel docente, indexados por ruta. */
-export const ADMIN_PAGE_META: Record<string, { title: string; action: string }> = {
+export const ADMIN_PAGE_META: Record<string, { title: string; action?: string }> = {
   [ROUTES.admin.dashboard]: { title: 'Resumen general', action: 'Nuevo curso' },
   [ROUTES.admin.cursos]: { title: 'Cursos y módulos', action: 'Nuevo curso' },
-  [ROUTES.admin.contenido]: { title: 'Constructor de contenido', action: 'Guardar módulo' },
+  [ROUTES.admin.contenido]: { title: 'Constructor de contenido' },
   [ROUTES.admin.estudiantes]: { title: 'Estudiantes', action: 'Nuevo estudiante' },
   [ROUTES.admin.reportes]: { title: 'Reportes', action: 'Exportar CSV' },
 };

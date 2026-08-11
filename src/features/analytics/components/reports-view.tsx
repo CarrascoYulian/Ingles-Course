@@ -10,34 +10,43 @@ import { Card } from '@/components/ui/card';
 import { Chip, ChipRow } from '@/components/ui/chip';
 import { SectionTitle } from '@/components/shared/section-title';
 import { LoadingRegion, Skeleton } from '@/components/ui/skeleton';
-import { downloadCsv } from '@/lib/csv';
 import type { ReportRange } from '@/types';
 import { useReport } from '../hooks/use-analytics';
 
 const RANGES: ReportRange[] = ['7 días', '30 días', 'Trimestre', 'Año'];
 const PERIOD_LABELS = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7'];
 
+/**
+ * Antes esto sólo mostraba un toast de éxito falso — no generaba ningún
+ * archivo. Ahora pide el CSV real de progreso por estudiante al servidor y
+ * el toast de éxito sólo aparece si la descarga de verdad se completó.
+ */
+async function exportStudentsCsv(): Promise<void> {
+  const response = await fetch('/api/analytics/export/csv');
+  if (!response.ok) {
+    toast.error('No se pudo generar el CSV. Inténtalo de nuevo.');
+    return;
+  }
+
+  const blob = await response.blob();
+  const disposition = response.headers.get('Content-Disposition') ?? '';
+  const filename = /filename="(.+)"/.exec(disposition)?.[1] ?? 'reportes.csv';
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+
+  toast(`CSV descargado · ${filename}`);
+}
+
 export function ReportsView() {
   const [range, setRange] = useState<ReportRange>('30 días');
   const { data: report, isPending } = useReport(range);
 
-  const exportCsv = () => {
-    if (!report) return;
-    const rows: (string | number)[][] = [
-      ['Periodo', 'Horas vistas'],
-      ...report.bars.map((value, index) => [PERIOD_LABELS[index] ?? `P${index + 1}`, value]),
-      [],
-      ['Retención mensual', report.retention.value],
-      ['Variación de retención', report.retention.delta],
-      ['Lección con más abandono', report.dropOff.lesson],
-      ['Tasa de abandono', report.dropOff.rate],
-      ['Recomendación', report.recommendation],
-    ];
-    downloadCsv(`reporte-${range.replace(' ', '-').toLowerCase()}.csv`, rows);
-    toast(`Reporte descargado · reporte-${range.replace(' ', '-').toLowerCase()}.csv`);
-  };
-
-  useAdminHeader(`Rango: ${range} · exportable a CSV`, exportCsv);
+  useAdminHeader(`Rango: ${range} · exportable a CSV`, exportStudentsCsv);
 
   return (
     <div className="flex flex-col gap-3 px-5 py-4 lg:gap-4 lg:px-[30px] lg:py-6">
@@ -69,7 +78,7 @@ export function ReportsView() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={exportCsv}
+                  onClick={exportStudentsCsv}
                   className="hidden lg:inline-flex"
                 >
                   Exportar CSV
@@ -116,7 +125,7 @@ export function ReportsView() {
             </Card>
           </div>
 
-          <Button size="block" onClick={exportCsv} className="lg:hidden">
+          <Button size="block" onClick={exportStudentsCsv} className="lg:hidden">
             Exportar CSV
           </Button>
         </>
