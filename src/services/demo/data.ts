@@ -223,15 +223,15 @@ export const DEMO_STUDENTS: StudentSummary[] = [
 ];
 
 export const DEMO_LESSONS: Lesson[] = [
-  { id: 'l1', moduleId: 'mod-4', order: 1, title: 'Repaso: Past Simple', duration: '9 min', state: 'done', watchedPercent: 100, mediaKey: null, description: null },
-  { id: 'l2', moduleId: 'mod-4', order: 2, title: 'Present Perfect: forma', duration: '12 min', state: 'done', watchedPercent: 100, mediaKey: null, description: null },
-  { id: 'l3', moduleId: 'mod-4', order: 3, title: 'Participios irregulares', duration: '11 min', state: 'done', watchedPercent: 100, mediaKey: null, description: null },
-  { id: 'l4', moduleId: 'mod-4', order: 4, title: 'Ever, never, just, yet', duration: '10 min', state: 'done', watchedPercent: 100, mediaKey: null, description: null },
-  { id: 'l5', moduleId: 'mod-4', order: 5, title: 'Present Perfect vs. Past Simple', duration: '14 min', state: 'current', watchedPercent: 38, mediaKey: null, description: null },
-  { id: 'l6', moduleId: 'mod-4', order: 6, title: 'Práctica guiada de diálogo', duration: '13 min', state: 'locked', watchedPercent: 0, mediaKey: null, description: null },
-  { id: 'l7', moduleId: 'mod-4', order: 7, title: 'Listening: at the market', duration: '8 min', state: 'locked', watchedPercent: 0, mediaKey: null, description: null },
-  { id: 'l8', moduleId: 'mod-4', order: 8, title: 'Evaluación del módulo', duration: '20 min', state: 'locked', watchedPercent: 0, mediaKey: null, description: null },
-  { id: 'l9', moduleId: 'mod-4', order: 9, title: 'Cierre y recursos extra', duration: '6 min', state: 'locked', watchedPercent: 0, mediaKey: null, description: null },
+  { id: 'l1', moduleId: 'mod-4', order: 1, title: 'Repaso: Past Simple', duration: '9 min', durationSeconds: 540, state: 'done', watchedPercent: 100, mediaKey: null, description: null },
+  { id: 'l2', moduleId: 'mod-4', order: 2, title: 'Present Perfect: forma', duration: '12 min', durationSeconds: 720, state: 'done', watchedPercent: 100, mediaKey: null, description: null },
+  { id: 'l3', moduleId: 'mod-4', order: 3, title: 'Participios irregulares', duration: '11 min', durationSeconds: 660, state: 'done', watchedPercent: 100, mediaKey: null, description: null },
+  { id: 'l4', moduleId: 'mod-4', order: 4, title: 'Ever, never, just, yet', duration: '10 min', durationSeconds: 600, state: 'done', watchedPercent: 100, mediaKey: null, description: null },
+  { id: 'l5', moduleId: 'mod-4', order: 5, title: 'Present Perfect vs. Past Simple', duration: '14 min', durationSeconds: 840, state: 'current', watchedPercent: 38, mediaKey: null, description: null },
+  { id: 'l6', moduleId: 'mod-4', order: 6, title: 'Práctica guiada de diálogo', duration: '13 min', durationSeconds: 780, state: 'locked', watchedPercent: 0, mediaKey: null, description: null },
+  { id: 'l7', moduleId: 'mod-4', order: 7, title: 'Listening: at the market', duration: '8 min', durationSeconds: 480, state: 'locked', watchedPercent: 0, mediaKey: null, description: null },
+  { id: 'l8', moduleId: 'mod-4', order: 8, title: 'Evaluación del módulo', duration: '20 min', durationSeconds: 1200, state: 'locked', watchedPercent: 0, mediaKey: null, description: null },
+  { id: 'l9', moduleId: 'mod-4', order: 9, title: 'Cierre y recursos extra', duration: '6 min', durationSeconds: 360, state: 'locked', watchedPercent: 0, mediaKey: null, description: null },
 ];
 
 export const DEMO_RESOURCES: CourseResource[] = [

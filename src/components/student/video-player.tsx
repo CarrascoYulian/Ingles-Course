@@ -120,10 +120,13 @@ export function VideoPlayer({
           aria-label={playing ? 'Pausar la lección' : 'Reproducir la lección'}
           className={cn(
             'relative grid size-[60px] place-items-center rounded-full md:size-[74px]',
-            'border border-white/30 bg-white/15 backdrop-blur-[6px]',
+            // Fondo oscuro (no blanco translúcido) + sombra propia: un video
+            // real puede tener cualquier color de fondo — incluido blanco,
+            // contra el que un botón blanco translúcido se volvía invisible.
+            'border border-white/40 bg-black/45 shadow-[0_2px_16px_rgba(0,0,0,0.45)] backdrop-blur-[6px]',
             'transition-[background-color,transform] duration-[160ms] ease-[cubic-bezier(0.23,1,0.32,1)]',
             hasVideo
-              ? 'cursor-pointer hover:bg-white/25 [@media(hover:hover)_and_(pointer:fine)]:active:scale-[0.96]'
+              ? 'cursor-pointer hover:bg-black/60 [@media(hover:hover)_and_(pointer:fine)]:active:scale-[0.96]'
               : 'cursor-not-allowed opacity-60',
           )}
         >

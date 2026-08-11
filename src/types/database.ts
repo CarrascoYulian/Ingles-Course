@@ -93,6 +93,7 @@ export interface Database {
           position: number;
           title: string;
           duration_minutes: number;
+          duration_seconds: number | null;
           media_key: string | null;
           description: string | null;
         };

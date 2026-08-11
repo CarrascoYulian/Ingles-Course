@@ -303,11 +303,7 @@ export const supabaseBackend: Backend = {
       const title = input.fileName.replace(/\.[^.]+$/, '');
       if (type === 'Video') {
         const lessonPosition = await nextLessonPosition(input.moduleId);
-        // Redondear a 0 con clips cortos deja `duration_minutes` en 0 —
-        // valor "falsy" que el reproductor interpreta como "sin duración
-        // real" y cae al valor de referencia (08:24). Mínimo 1 min si el
-        // navegador reportó una duración real, por corta que sea.
-        const durationMinutes = input.durationSeconds ? Math.max(1, Math.round(input.durationSeconds / 60)) : 0;
+        const durationSeconds = input.durationSeconds ? Math.round(input.durationSeconds) : 0;
         await db()
           .from('lessons')
           .insert({
@@ -315,7 +311,11 @@ export const supabaseBackend: Backend = {
             position: lessonPosition,
             title,
             media_key: input.mediaKey,
-            duration_minutes: durationMinutes,
+            // `duration_minutes` sigue existiendo por compatibilidad; la
+            // fuente real de verdad ahora es `duration_seconds`, sin redondear
+            // hacia arriba a un mínimo inventado.
+            duration_minutes: Math.round(durationSeconds / 60),
+            duration_seconds: durationSeconds,
             description: null,
           });
       } else {

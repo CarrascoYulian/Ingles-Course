@@ -71,12 +71,11 @@ export function CourseView({ lessonOrder }: CourseViewProps = {}) {
   const requestedLesson = lessons?.find((lesson) => lesson.order === lessonOrder);
   const currentLesson =
     requestedLesson ?? lessons?.find((lesson) => lesson.state === 'current') ?? lessons?.at(-1);
-  const durationMinutes = currentLesson ? parseInt(currentLesson.duration, 10) : undefined;
   const { data: videoUrl } = useLessonVideoUrl(currentLesson?.mediaKey ?? null);
   const video = useVideoProgress(
     currentLesson?.id ?? '',
     currentLesson?.watchedPercent ?? 0,
-    durationMinutes && Number.isFinite(durationMinutes) ? durationMinutes * 60 : undefined,
+    currentLesson?.durationSeconds || undefined,
     currentLesson?.mediaKey != null,
   );
   const { data: notes = [], isPending: notesPending } = useNotes(currentLesson?.id ?? '');

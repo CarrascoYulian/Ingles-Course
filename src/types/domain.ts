@@ -71,8 +71,10 @@ export interface Lesson {
   moduleId: string;
   order: number;
   title: string;
-  /** Duración legible: "14 min". */
+  /** Duración legible: "14 min" o "0:06" si dura menos de un minuto. */
   duration: string;
+  /** Duración real en segundos — nunca redondeada hacia arriba. */
+  durationSeconds: number;
   state: LessonState;
   /** 0-100. Avance real de reproducción guardado para el usuario actual. */
   watchedPercent: number;
