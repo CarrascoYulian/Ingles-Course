@@ -93,8 +93,8 @@ export interface ContentPort {
 export interface CreateStudentInput {
   fullName: string;
   level: CefrLevel;
-  /** Clave asignada por el maestro: el alumno entra con su matrícula + esta clave. */
-  password: string;
+  /** PIN de 4 dígitos: el alumno entra con su matrícula + este PIN. */
+  pin: string;
 }
 
 export interface StudentsPort {

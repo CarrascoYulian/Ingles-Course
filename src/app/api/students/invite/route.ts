@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { badRequest, guard, isDenied } from '../../_lib/guard';
+import { derivePinPassword } from '@/lib/auth/student-pin';
 import { getSupabaseAdminClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
@@ -9,14 +10,15 @@ export const runtime = 'nodejs';
 const requestSchema = z.object({
   fullName: z.string().trim().min(1),
   level: z.enum(['A1', 'A2', 'B1', 'B2']),
-  password: z.string().min(6),
+  pin: z.string().regex(/^\d{4}$/),
 });
 
 /**
- * Crea un estudiante con matrícula y clave asignadas por el maestro — sin
- * correo real. Guarda la clave únicamente en `auth.users` (hasheada por
- * Supabase); el correo que ve Auth es un correo interno sintético que nunca
- * recibe mensajes, sólo satisface el requisito estructural del proveedor.
+ * Crea un estudiante con matrícula (generada) y PIN de 4 dígitos (elegido
+ * por el maestro) — sin correo real. El correo que ve Auth es un correo
+ * interno sintético que nunca recibe mensajes, sólo satisface el
+ * requisito estructural del proveedor; la contraseña real en Auth se
+ * deriva de matrícula+PIN (ver `derivePinPassword`), nunca es el PIN solo.
  *
  * Requiere service role (crear usuarios salta RLS), por eso vive en el
  * servidor y no en el adaptador de navegador.
@@ -44,7 +46,7 @@ export async function POST(request: Request) {
 
   const { error } = await admin.auth.admin.createUser({
     email: internalEmail,
-    password: parsed.data.password,
+    password: derivePinPassword(enrollmentCode, parsed.data.pin),
     email_confirm: true,
     user_metadata: {
       full_name: parsed.data.fullName,

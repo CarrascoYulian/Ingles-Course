@@ -1,7 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Check, Copy } from 'lucide-react';
+import { Check, Copy, Shuffle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
@@ -26,17 +26,21 @@ export interface InviteStudentDialogProps {
   pending?: boolean;
 }
 
-const DEFAULT_VALUES: InviteStudentValues = { fullName: '', level: 'A1', password: '' };
+const DEFAULT_VALUES: InviteStudentValues = { fullName: '', level: 'A1', pin: '' };
+
+function randomPin(): string {
+  return String(Math.floor(1000 + Math.random() * 9000));
+}
 
 /**
  * El estudiante entra con su matrícula (asignada automáticamente al crear)
- * y la clave que el maestro le pone aquí — no con correo. No se envía
- * ninguna invitación por email.
+ * y un PIN de 4 dígitos — no con correo ni contraseña de texto libre. No se
+ * envía ninguna invitación por email.
  *
  * Antes, al crear el estudiante, el diálogo se cerraba de inmediato y la
  * matrícula sólo aparecía un instante en un toast — si el maestro no lo leía
  * a tiempo, tenía que ir a buscarla en la lista. Ahora el diálogo se queda
- * abierto con la matrícula y la clave en un recuadro, listas para copiar.
+ * abierto con la matrícula y el PIN en un recuadro, listos para copiar.
  */
 export function InviteStudentDialog({
   open,
@@ -44,7 +48,7 @@ export function InviteStudentDialog({
   onSubmit,
   pending,
 }: InviteStudentDialogProps) {
-  const [created, setCreated] = useState<{ fullName: string; enrollmentCode: string; password: string } | null>(
+  const [created, setCreated] = useState<{ fullName: string; enrollmentCode: string; pin: string } | null>(
     null,
   );
   const [copied, setCopied] = useState(false);
@@ -66,7 +70,7 @@ export function InviteStudentDialog({
   const submit = form.handleSubmit(async (values) => {
     try {
       const { enrollmentCode } = await onSubmit(values);
-      setCreated({ fullName: values.fullName, enrollmentCode, password: values.password });
+      setCreated({ fullName: values.fullName, enrollmentCode, pin: values.pin });
     } catch {
       // El error ya se muestra vía toast (onError de useInviteStudent). El
       // diálogo se queda abierto para reintentar, en vez de dejar que el
@@ -76,7 +80,7 @@ export function InviteStudentDialog({
 
   const copyCredentials = async () => {
     if (!created) return;
-    const text = `Matrícula: ${created.enrollmentCode}\nContraseña: ${created.password}`;
+    const text = `Matrícula: ${created.enrollmentCode}\nPIN: ${created.pin}`;
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
@@ -92,7 +96,7 @@ export function InviteStudentDialog({
         <DialogContent width={420}>
           <DialogTitle>Estudiante creado</DialogTitle>
           <DialogDescription>
-            Comparte esta matrícula y contraseña con “{created.fullName}” para que pueda entrar.
+            Comparte esta matrícula y PIN con “{created.fullName}” para que pueda entrar.
           </DialogDescription>
 
           <div className="mt-5 rounded-2xl border border-line-strong bg-surface-sunken p-4">
@@ -104,9 +108,9 @@ export function InviteStudentDialog({
                 </p>
               </div>
               <div>
-                <p className="text-tiny font-bold text-fg-ghost">Contraseña</p>
+                <p className="text-tiny font-bold text-fg-ghost">PIN</p>
                 <p className="text-title-sm font-extrabold tracking-tight-2 text-fg">
-                  {created.password}
+                  {created.pin}
                 </p>
               </div>
             </div>
@@ -124,7 +128,7 @@ export function InviteStudentDialog({
                 </>
               ) : (
                 <>
-                  <Copy aria-hidden size={14} strokeWidth={2.4} /> Copiar matrícula y contraseña
+                  <Copy aria-hidden size={14} strokeWidth={2.4} /> Copiar matrícula y PIN
                 </>
               )}
             </Button>
@@ -145,8 +149,8 @@ export function InviteStudentDialog({
       <DialogContent width={420}>
         <DialogTitle>Nuevo estudiante</DialogTitle>
         <DialogDescription>
-          La matrícula se genera automáticamente. El alumno entra con esa matrícula y la
-          contraseña que le pongas aquí.
+          La matrícula se genera automáticamente. El alumno entra con esa matrícula y el PIN de
+          4 dígitos que le pongas aquí.
         </DialogDescription>
 
         <form onSubmit={submit} noValidate>
@@ -189,19 +193,29 @@ export function InviteStudentDialog({
             />
           </fieldset>
 
-          <Field
-            label="Contraseña"
-            error={form.formState.errors.password?.message}
-            className="mt-[18px]"
-          >
+          <Field label="PIN (4 dígitos)" error={form.formState.errors.pin?.message} className="mt-[18px]">
             {(fieldProps) => (
-              <Input
-                {...fieldProps}
-                {...form.register('password')}
-                type="text"
-                placeholder="Mínimo 6 caracteres"
-                autoComplete="off"
-              />
+              <div className="flex gap-2">
+                <Input
+                  {...fieldProps}
+                  {...form.register('pin')}
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={4}
+                  placeholder="0000"
+                  autoComplete="off"
+                  className="tracking-[0.3em]"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="md"
+                  onClick={() => form.setValue('pin', randomPin(), { shouldValidate: true })}
+                  aria-label="Generar PIN aleatorio"
+                >
+                  <Shuffle aria-hidden size={15} strokeWidth={2.2} />
+                </Button>
+              </div>
             )}
           </Field>
 
