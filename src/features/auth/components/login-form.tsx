@@ -50,6 +50,8 @@ export function LoginForm() {
     defaultValues: { identifier: '', password: '' },
   });
 
+  const expired = searchParams.get('expired') === '1';
+
   const submit = form.handleSubmit(async ({ identifier, password }) => {
     setFormError(null);
 
@@ -83,6 +85,15 @@ export function LoginForm() {
           className="rounded-2xl border border-danger-line bg-danger-soft px-3.5 py-3 text-body-sm font-bold text-danger-strong"
         >
           {formError}
+        </p>
+      )}
+
+      {!formError && expired && (
+        <p
+          role="status"
+          className="rounded-2xl border border-line-strong bg-surface-sunken px-3.5 py-3 text-body-sm font-bold text-fg-subtle"
+        >
+          Tu sesión expiró por inactividad. Entra de nuevo para continuar.
         </p>
       )}
 
