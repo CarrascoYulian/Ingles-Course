@@ -1,12 +1,13 @@
 'use client';
 
-import { toast } from 'sonner';
+import { useState } from 'react';
 
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { SquareBadge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import type { CourseResource } from '@/types';
+import { Textarea } from '@/components/ui/textarea';
+import type { CourseResource, LessonNote } from '@/types';
 
 const COMMENTS = [
   {
@@ -23,16 +24,52 @@ const COMMENTS = [
   },
 ] as const;
 
-const OBJECTIVES = ['Objetivo: usar “have + participio”', 'Duración 14 min', 'Nivel B1'];
+function formatTimestamp(seconds: number): string {
+  const m = String(Math.floor(seconds / 60)).padStart(2, '0');
+  const s = String(Math.floor(seconds % 60)).padStart(2, '0');
+  return `${m}:${s}`;
+}
 
 export interface LessonTabsProps {
+  description: string | null;
+  duration: string;
+  level: string;
   /** Recursos reales del curso (course_resources) — antes era una lista fija falsa. */
   files: CourseResource[];
   onOpenFile: (mediaKey: string) => void;
+  notes: LessonNote[];
+  notesPending?: boolean;
+  /** Segundo actual del video — la nota se guarda ahí, no en un valor inventado. */
+  currentTimeSeconds: number;
+  onAddNote: (body: string) => void;
+  addNotePending?: boolean;
+  onSeekToNote?: (seconds: number) => void;
 }
 
 /** Paneles de la lección: descripción, archivos, notas y comentarios. */
-export function LessonTabs({ files, onOpenFile }: LessonTabsProps) {
+export function LessonTabs({
+  description,
+  duration,
+  level,
+  files,
+  onOpenFile,
+  notes,
+  notesPending,
+  currentTimeSeconds,
+  onAddNote,
+  addNotePending,
+  onSeekToNote,
+}: LessonTabsProps) {
+  const [draft, setDraft] = useState('');
+  const [composing, setComposing] = useState(false);
+
+  const submitNote = () => {
+    if (!draft.trim()) return;
+    onAddNote(draft.trim());
+    setDraft('');
+    setComposing(false);
+  };
+
   return (
     <Tabs defaultValue="desc">
       <TabsList>
@@ -47,19 +84,15 @@ export function LessonTabs({ files, onOpenFile }: LessonTabsProps) {
 
       <TabsContent value="desc" className="flex flex-col gap-3.5">
         <p className="text-body-lg font-medium leading-[1.65] text-fg-body">
-          En esta lección comparamos el Present Perfect con el Past Simple a partir de situaciones
-          reales: contar una anécdota, hablar de experiencias y describir lo que acabas de hacer. Al
-          final resolverás 6 ejercicios de refuerzo.
+          {description || 'Tu docente todavía no escribió una descripción para este video.'}
         </p>
         <ul className="flex flex-wrap gap-2.5">
-          {OBJECTIVES.map((item) => (
-            <li
-              key={item}
-              className="rounded-md bg-surface-sunken px-3 py-[7px] text-meta font-bold text-fg-subtle"
-            >
-              {item}
-            </li>
-          ))}
+          <li className="rounded-md bg-surface-sunken px-3 py-[7px] text-meta font-bold text-fg-subtle">
+            Duración {duration}
+          </li>
+          <li className="rounded-md bg-surface-sunken px-3 py-[7px] text-meta font-bold text-fg-subtle">
+            Nivel {level}
+          </li>
         </ul>
       </TabsContent>
 
@@ -98,19 +131,71 @@ export function LessonTabs({ files, onOpenFile }: LessonTabsProps) {
       </TabsContent>
 
       <TabsContent value="notes">
-        <div className="rounded-4xl border-[1.5px] border-dashed border-line-dashed bg-surface-subtle px-[18px] py-4">
-          <p className="text-body font-bold text-fg">Aún no tienes notas en esta lección</p>
-          <p className="mt-1 text-body-sm font-medium text-fg-faint">
-            Presiona N mientras ves el video para guardar una nota con la marca de tiempo exacta.
-          </p>
+        {!notesPending && notes.length === 0 && !composing && (
+          <div className="rounded-4xl border-[1.5px] border-dashed border-line-dashed bg-surface-subtle px-[18px] py-4">
+            <p className="text-body font-bold text-fg">Aún no tienes notas en esta lección</p>
+            <p className="mt-1 text-body-sm font-medium text-fg-faint">
+              Escribe una nota y se guarda en el minuto exacto del video en el que vas.
+            </p>
+          </div>
+        )}
+
+        {notes.length > 0 && (
+          <ul className="flex flex-col gap-2.5">
+            {notes.map((note) => (
+              <li key={note.id} className="rounded-3xl border border-line px-3.5 py-[13px]">
+                <button
+                  type="button"
+                  onClick={() => onSeekToNote?.(note.timestampSeconds)}
+                  className="text-tiny font-extrabold text-brand hover:underline"
+                >
+                  {formatTimestamp(note.timestampSeconds)}
+                </button>
+                <p className="mt-1 text-body-sm font-medium text-fg-body">{note.body}</p>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {composing ? (
+          <div className="mt-3">
+            <Textarea
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              placeholder={`Nota en el minuto ${formatTimestamp(currentTimeSeconds)}…`}
+              autoFocus
+            />
+            <div className="mt-2 flex gap-2">
+              <Button
+                size="sm"
+                onClick={submitNote}
+                disabled={!draft.trim() || addNotePending}
+                className="rounded-lg px-[15px] py-[9px] text-label"
+              >
+                {addNotePending ? 'Guardando…' : `Guardar en ${formatTimestamp(currentTimeSeconds)}`}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setComposing(false);
+                  setDraft('');
+                }}
+                className="rounded-lg px-[15px] py-[9px] text-label"
+              >
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        ) : (
           <Button
             size="sm"
-            onClick={() => toast('Nota creada en 03:12')}
+            onClick={() => setComposing(true)}
             className="mt-3 rounded-lg px-[15px] py-[9px] text-label"
           >
             Añadir nota
           </Button>
-        </div>
+        )}
       </TabsContent>
 
       <TabsContent value="comments">

@@ -142,3 +142,58 @@ export function useSaveWatchedPercent() {
       toast.error('No se pudo guardar tu progreso. Revisa tu conexión.', { id: 'save-progress-error' }),
   });
 }
+
+/**
+ * Antes "Añadir nota" fingía guardar una nota en el minuto actual sin pedir
+ * texto y sin que existiera ninguna tabla detrás — nunca se veía nada
+ * después. Ahora son notas reales del alumno, ligadas a la lección y al
+ * segundo exacto del video.
+ */
+export function useNotes(lessonId: string) {
+  return useQuery({
+    queryKey: ['lesson-notes', lessonId],
+    queryFn: () => backend.learning.listNotes(lessonId),
+    enabled: lessonId !== '',
+  });
+}
+
+export function useAddNote(lessonId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ body, timestampSeconds }: { body: string; timestampSeconds: number }) =>
+      backend.learning.addNote(lessonId, body, timestampSeconds),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lesson-notes', lessonId] });
+    },
+    onError: () => toast.error('No se pudo guardar la nota.'),
+  });
+}
+
+/** Mensajes reales del docente al alumno — antes no había ningún lugar para verlos. */
+export function useMyMessages() {
+  return useQuery({
+    queryKey: ['my-messages'],
+    queryFn: () => backend.learning.getMyMessages(),
+  });
+}
+
+export function useMarkMessageRead() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => backend.learning.markMessageRead(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['my-messages'] }),
+  });
+}
+
+/** Antes la bandeja del alumno era de sólo lectura — no había política RLS ni UI para responder. */
+export function useSendMyMessage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (body: string) => backend.learning.sendMyMessage(body),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['my-messages'] }),
+    onError: () => toast.error('No se pudo enviar el mensaje.'),
+  });
+}

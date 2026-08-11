@@ -93,10 +93,28 @@ export interface Database {
           position: number;
           title: string;
           duration_minutes: number;
+          duration_seconds: number | null;
           media_key: string | null;
+          description: string | null;
         };
         Insert: Omit<Database['public']['Tables']['lessons']['Row'], 'id'> & { id?: string };
         Update: Partial<Database['public']['Tables']['lessons']['Insert']>;
+        Relationships: [];
+      };
+      lesson_notes: {
+        Row: {
+          id: string;
+          lesson_id: string;
+          student_id: string;
+          body: string;
+          timestamp_seconds: number;
+          created_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['lesson_notes']['Row'], 'id' | 'created_at'> & {
+          id?: string;
+          created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['lesson_notes']['Insert']>;
         Relationships: [];
       };
       enrollments: {

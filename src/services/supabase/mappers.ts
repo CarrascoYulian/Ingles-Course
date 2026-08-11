@@ -62,15 +62,27 @@ export function toLesson(
   // como "current" a la vez si alguna fila posterior coincidía en posición.
   const state: Lesson['state'] = completed ? 'done' : previousCompleted ? 'current' : 'locked';
 
+  // `duration_seconds` es la fuente real; `duration_minutes` sólo queda como
+  // reliquia de antes de que existiera precisión de segundos. Bajo un
+  // minuto se muestra "0:SS" en vez de redondear a "1 min" — inventarse un
+  // minuto entero para un clip de 6 s es peor que decir la verdad.
+  const durationSeconds = row.duration_seconds ?? row.duration_minutes * 60;
+  const duration =
+    durationSeconds < 60
+      ? `0:${String(durationSeconds).padStart(2, '0')}`
+      : `${Math.round(durationSeconds / 60)} min`;
+
   return {
     id: row.id,
     moduleId: row.module_id,
     order: row.position,
     title: row.title,
-    duration: `${row.duration_minutes} min`,
+    duration,
+    durationSeconds,
     state,
     watchedPercent: Math.round(progress?.watchedPercent ?? 0),
     mediaKey: row.media_key,
+    description: row.description,
   };
 }
 

@@ -71,13 +71,26 @@ export interface Lesson {
   moduleId: string;
   order: number;
   title: string;
-  /** Duración legible: "14 min". */
+  /** Duración legible: "14 min" o "0:06" si dura menos de un minuto. */
   duration: string;
+  /** Duración real en segundos — nunca redondeada hacia arriba. */
+  durationSeconds: number;
   state: LessonState;
   /** 0-100. Avance real de reproducción guardado para el usuario actual. */
   watchedPercent: number;
   /** Ruta del video real en Supabase Storage — `null` si aún no se adjuntó ninguno. */
   mediaKey: string | null;
+  /** Escrita por el docente — `null` si todavía no le puso ninguna. */
+  description: string | null;
+}
+
+export interface LessonNote {
+  id: string;
+  lessonId: string;
+  body: string;
+  /** Segundo del video en el que se tomó la nota. */
+  timestampSeconds: number;
+  createdAt: string;
 }
 
 /** Progreso agregado del alumno que hace la petición — nunca de otro usuario. */

@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { Pause, Play, RotateCcw, RotateCw } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -20,10 +21,17 @@ export interface VideoPlayerProps {
   /** URL firmada de Supabase Storage. Si falta, no hay nada que reproducir. */
   src?: string | null;
   poster?: string | null;
-  /** `timeupdate` real del `<video>`, ya convertido a 0-100. */
+  /** `timeupdate` real del `<video>`, ya convertido a 0-100 (sin redondear: redondear aquí es lo que causaba los saltos en la barra). */
   onProgress?: (percent: number) => void;
   onEnded?: () => void;
+  /** Posiciones (0-100) de las notas del alumno — señaladas sobre la barra. */
+  markers?: number[];
+  /** Cambia (incluso al mismo valor, con `nonce`) para saltar el video a ese segundo. */
+  seekRequest?: { seconds: number; nonce: number } | null;
 }
+
+const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2] as const;
+const SKIP_SECONDS = 10;
 
 /**
  * Reproductor de la lección.
@@ -34,9 +42,10 @@ export interface VideoPlayerProps {
  * es real: `playing` controla `.play()/.pause()` vía `ref`, y su propio
  * `timeupdate`/`ended` es la única fuente de `watched`.
  *
- * El botón central no anima su cambio de estado: play/pausa se pulsa
- * decenas de veces por sesión y cualquier transición ahí se percibe como
- * retardo. La barra de progreso sí se anima (300 ms) porque comunica avance.
+ * Antes `onTimeUpdate` redondeaba a entero antes de subir el valor — con
+ * eso, la barra "saltaba" en escalones de 1 % en vez de moverse fluida
+ * como en YouTube. Ahora sube el porcentaje real sin redondear; sólo se
+ * redondea al mostrarlo como texto.
  */
 export function VideoPlayer({
   contextLabel,
@@ -52,16 +61,50 @@ export function VideoPlayer({
   poster,
   onProgress,
   onEnded,
+  markers = [],
+  seekRequest,
 }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hasVideo = Boolean(src);
+  const [speed, setSpeed] = useState(1);
 
   useEffect(() => {
     const el = videoRef.current;
     if (!el) return;
-    if (playing) el.play().catch(() => undefined);
-    else el.pause();
+    if (playing) {
+      // Al terminar, `currentTime` se queda en el final — sin esto, pedir
+      // play de nuevo en un video ya visto no hacía nada visible (ya
+      // estaba en el último frame).
+      if (el.ended) el.currentTime = 0;
+      el.play().catch(() => undefined);
+    } else {
+      el.pause();
+    }
   }, [playing]);
+
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el || !seekRequest) return;
+    el.currentTime = seekRequest.seconds;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seekRequest?.nonce]);
+
+  // La velocidad se resetea sola si el navegador reemplaza el elemento
+  // (cambio de lección) — se reaplica cuando cambia `src`.
+  useEffect(() => {
+    if (videoRef.current) videoRef.current.playbackRate = speed;
+  }, [src, speed]);
+
+  const skip = (deltaSeconds: number) => {
+    const el = videoRef.current;
+    if (!el || !el.duration) return;
+    el.currentTime = Math.min(el.duration, Math.max(0, el.currentTime + deltaSeconds));
+  };
+
+  const cycleSpeed = () => {
+    const next = SPEEDS[(SPEEDS.indexOf(speed as (typeof SPEEDS)[number]) + 1) % SPEEDS.length]!;
+    setSpeed(next);
+  };
 
   const playLabel = !hasVideo ? 'NO DISPONIBLE' : playing ? 'PAUSA' : watched >= 100 ? 'VISTO' : 'VER';
 
@@ -87,7 +130,7 @@ export function VideoPlayer({
             playsInline
             onTimeUpdate={(event) => {
               const el = event.currentTarget;
-              if (el.duration > 0) onProgress?.(Math.round((el.currentTime / el.duration) * 100));
+              if (el.duration > 0) onProgress?.((el.currentTime / el.duration) * 100);
             }}
             onEnded={() => onEnded?.()}
           />
@@ -99,25 +142,58 @@ export function VideoPlayer({
           </p>
         )}
 
-        <button
-          type="button"
-          onClick={onToggle}
-          disabled={!hasVideo}
-          aria-pressed={playing}
-          aria-label={playing ? 'Pausar la lección' : 'Reproducir la lección'}
-          className={cn(
-            'relative grid size-[60px] place-items-center rounded-full md:size-[74px]',
-            'border border-white/30 bg-white/15 backdrop-blur-[6px]',
-            'transition-[background-color,transform] duration-[160ms] ease-[cubic-bezier(0.23,1,0.32,1)]',
-            hasVideo
-              ? 'cursor-pointer hover:bg-white/25 [@media(hover:hover)_and_(pointer:fine)]:active:scale-[0.96]'
-              : 'cursor-not-allowed opacity-60',
-          )}
-        >
-          <span className="text-meta font-extrabold tracking-badge text-white md:text-body">
-            {playLabel}
-          </span>
-        </button>
+        <div className="flex items-center gap-5 md:gap-7">
+          <button
+            type="button"
+            onClick={() => skip(-SKIP_SECONDS)}
+            disabled={!hasVideo}
+            aria-label={`Retroceder ${SKIP_SECONDS} segundos`}
+            className={cn(
+              'grid size-10 place-items-center rounded-full border border-white/30 bg-black/35 text-white',
+              'transition-[background-color,transform] duration-[160ms] ease-[cubic-bezier(0.23,1,0.32,1)]',
+              hasVideo ? 'cursor-pointer hover:bg-black/55 active:scale-[0.94]' : 'cursor-not-allowed opacity-40',
+            )}
+          >
+            <RotateCcw aria-hidden size={18} strokeWidth={2.1} />
+          </button>
+
+          <button
+            type="button"
+            onClick={onToggle}
+            disabled={!hasVideo}
+            aria-pressed={playing}
+            aria-label={playing ? 'Pausar la lección' : 'Reproducir la lección'}
+            className={cn(
+              'relative grid size-[60px] place-items-center rounded-full md:size-[74px]',
+              // Fondo oscuro (no blanco translúcido) + sombra propia: un video
+              // real puede tener cualquier color de fondo — incluido blanco,
+              // contra el que un botón blanco translúcido se volvía invisible.
+              'border border-white/40 bg-black/45 shadow-[0_2px_16px_rgba(0,0,0,0.45)] backdrop-blur-[6px]',
+              'transition-[background-color,transform] duration-[160ms] ease-[cubic-bezier(0.23,1,0.32,1)]',
+              hasVideo
+                ? 'cursor-pointer hover:bg-black/60 [@media(hover:hover)_and_(pointer:fine)]:active:scale-[0.96]'
+                : 'cursor-not-allowed opacity-60',
+            )}
+          >
+            <span className="text-meta font-extrabold tracking-badge text-white md:text-body">
+              {playLabel}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => skip(SKIP_SECONDS)}
+            disabled={!hasVideo}
+            aria-label={`Adelantar ${SKIP_SECONDS} segundos`}
+            className={cn(
+              'grid size-10 place-items-center rounded-full border border-white/30 bg-black/35 text-white',
+              'transition-[background-color,transform] duration-[160ms] ease-[cubic-bezier(0.23,1,0.32,1)]',
+              hasVideo ? 'cursor-pointer hover:bg-black/55 active:scale-[0.94]' : 'cursor-not-allowed opacity-40',
+            )}
+          >
+            <RotateCw aria-hidden size={18} strokeWidth={2.1} />
+          </button>
+        </div>
 
         <p className="absolute left-3.5 top-3 rounded-sm bg-ink/60 px-2.5 py-[5px] text-caption font-bold text-ink-fg-strong md:left-5 md:top-[18px] md:px-[11px] md:py-1.5 md:text-tiny">
           <span className="md:hidden">{contextLabelShort}</span>
@@ -125,23 +201,54 @@ export function VideoPlayer({
         </p>
 
         <p className="absolute right-3.5 top-3 rounded-sm bg-ink/60 px-2.5 py-[5px] text-caption font-bold text-ink-accent md:right-5 md:top-[18px] md:px-[11px] md:py-1.5 md:text-tiny">
-          {watched} %<span className="hidden md:inline"> visto</span>
+          {Math.round(watched)} %<span className="hidden md:inline"> visto</span>
         </p>
       </div>
 
       <div className="px-4 pb-3.5 pt-2.5 md:px-5 md:pb-[18px] md:pt-3.5">
-        <Progress
-          value={watched}
-          tone="accent"
-          height={5}
-          onInk
-          label="Progreso de la lección"
-        />
+        <div className="relative">
+          <Progress value={watched} tone="accent" height={5} onInk label="Progreso de la lección" />
+          {markers.map((position, index) => (
+            <span
+              key={index}
+              aria-hidden
+              className="pointer-events-none absolute top-1/2 size-[7px] -translate-y-1/2 -translate-x-1/2 rounded-full bg-warning ring-1 ring-ink"
+              style={{ left: `${Math.min(100, Math.max(0, position))}%` }}
+            />
+          ))}
+        </div>
 
         <div className="mt-2.5 flex items-center justify-between gap-3 md:mt-3">
-          <div className="flex items-center gap-4 text-tiny font-bold text-ink-fg md:text-meta">
+          <div className="flex items-center gap-2.5 text-tiny font-bold text-ink-fg md:gap-4 md:text-meta">
+            <button
+              type="button"
+              onClick={onToggle}
+              disabled={!hasVideo}
+              aria-label={playing ? 'Pausar' : 'Reproducir'}
+              className={cn(
+                'grid size-7 shrink-0 place-items-center rounded-full text-ink-fg',
+                hasVideo ? 'cursor-pointer hover:bg-ink-raised hover:text-white' : 'cursor-not-allowed opacity-40',
+              )}
+            >
+              {playing ? (
+                <Pause aria-hidden size={14} strokeWidth={2.2} />
+              ) : (
+                <Play aria-hidden size={14} strokeWidth={2.2} />
+              )}
+            </button>
             <span>{timeLabel}</span>
-            <span className="hidden text-ink-fg-faint md:inline">Velocidad 1×</span>
+            <button
+              type="button"
+              onClick={cycleSpeed}
+              disabled={!hasVideo}
+              aria-label="Cambiar velocidad de reproducción"
+              className={cn(
+                'hidden rounded-md px-1.5 py-0.5 text-ink-fg-faint md:inline',
+                hasVideo && 'cursor-pointer hover:bg-ink-raised hover:text-white',
+              )}
+            >
+              Velocidad {speed}×
+            </button>
             <span className="hidden text-ink-fg-faint lg:inline">Subtítulos ES / EN</span>
           </div>
 

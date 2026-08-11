@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowDown, ArrowUp, Eye, ExternalLink, GripVertical, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, Eye, ExternalLink, GripVertical, Pencil, X } from 'lucide-react';
 
 import { SquareBadge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,8 @@ export interface ContentBlockRowProps {
   openFilePending?: boolean;
   /** Vista previa inline (PDF/video/audio) sin salir del constructor. */
   onPreview?: () => void;
+  /** Sólo para bloques de video: editar título/descripción de la lección real. */
+  onEditLesson?: () => void;
 }
 
 /**
@@ -37,6 +39,7 @@ export function ContentBlockRow({
   onOpenFile,
   openFilePending,
   onPreview,
+  onEditLesson,
 }: ContentBlockRowProps) {
   const isFirst = index === 0;
   const isLast = index === total - 1;
@@ -62,6 +65,18 @@ export function ContentBlockRow({
       </div>
 
       <div className="flex shrink-0 gap-[5px] md:gap-1.5">
+        {onEditLesson && (
+          <Button
+            variant="icon"
+            size="square"
+            onClick={onEditLesson}
+            aria-label={`Editar título y descripción de “${block.title}”`}
+            title="Editar título y descripción para el alumno"
+            className="hover:border-brand hover:text-brand"
+          >
+            <Pencil aria-hidden size={13} strokeWidth={2.4} />
+          </Button>
+        )}
         {onPreview && (
           <Button
             variant="icon"

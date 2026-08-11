@@ -1,7 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Field } from '@/components/ui/field';
 import { Textarea } from '@/components/ui/textarea';
+import { cn } from '@/lib/utils';
 import { useStudentMessages } from '../hooks/use-students';
 import { messageStudentSchema, type MessageStudentValues } from '../schemas';
 
@@ -45,6 +46,11 @@ export function MessageStudentDialog({
   pending,
 }: MessageStudentDialogProps) {
   const { data: messages, isPending: messagesPending } = useStudentMessages(studentId);
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (open) bottomRef.current?.scrollIntoView({ block: 'end' });
+  }, [open, messages]);
 
   const form = useForm<MessageStudentValues>({
     resolver: zodResolver(messageStudentSchema),
@@ -81,17 +87,34 @@ export function MessageStudentDialog({
             </p>
           )}
           {messages && messages.length > 0 && (
-            <ul className="flex flex-col gap-2.5">
+            <ul className="flex flex-col gap-2">
               {[...messages].reverse().map((message) => (
-                <li key={message.id} className="rounded-xl bg-surface px-3 py-2">
-                  <p className="text-body-sm font-medium text-fg">{message.body}</p>
-                  <p className="mt-0.5 text-tiny font-semibold text-fg-ghost">
-                    {message.fromStaff ? 'Tú' : studentName} · {formatWhen(message.createdAt)}
-                  </p>
+                <li key={message.id} className={cn('flex', message.fromStaff ? 'justify-end' : 'justify-start')}>
+                  <div
+                    className={cn(
+                      'max-w-[80%] rounded-2xl px-3 py-2',
+                      // Aquí "yo" soy el docente: verde a la derecha, azul
+                      // (el alumno) a la izquierda — invertido respecto a la
+                      // bandeja del alumno, donde el color va por persona,
+                      // no por rol.
+                      message.fromStaff ? 'rounded-br-sm bg-success-soft' : 'rounded-bl-sm bg-accent-soft',
+                    )}
+                  >
+                    <p className="text-body-sm font-medium text-fg">{message.body}</p>
+                    <p
+                      className={cn(
+                        'mt-0.5 text-micro font-bold',
+                        message.fromStaff ? 'text-success-strong' : 'text-accent',
+                      )}
+                    >
+                      {message.fromStaff ? 'Tú' : studentName} · {formatWhen(message.createdAt)}
+                    </p>
+                  </div>
                 </li>
               ))}
             </ul>
           )}
+          <div ref={bottomRef} />
         </div>
 
         <form onSubmit={submit} noValidate>

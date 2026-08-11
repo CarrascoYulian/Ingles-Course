@@ -11,6 +11,34 @@ export interface UploadParams {
 export interface UploadResult {
   mediaKey: string;
   contentType: string;
+  /** Sólo para video: duración real leída del archivo antes de subirlo. */
+  durationSeconds?: number;
+}
+
+/**
+ * Lee la duración real de un video desde el propio archivo, sin subirlo
+ * todavía. Antes las lecciones nunca guardaban duración real (quedaba en
+ * 0), así que el reproductor caía siempre al valor de referencia "08:24".
+ */
+function probeVideoDuration(file: File): Promise<number | undefined> {
+  if (!file.type.startsWith('video/')) return Promise.resolve(undefined);
+
+  return new Promise((resolve) => {
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    const url = URL.createObjectURL(file);
+    const cleanup = () => URL.revokeObjectURL(url);
+
+    video.onloadedmetadata = () => {
+      cleanup();
+      resolve(Number.isFinite(video.duration) ? video.duration : undefined);
+    };
+    video.onerror = () => {
+      cleanup();
+      resolve(undefined);
+    };
+    video.src = url;
+  });
 }
 
 /**
@@ -53,6 +81,8 @@ export async function uploadFile({
   const supabase = getSupabaseBrowserClient();
   if (!supabase) throw new Error('Supabase no está configurado en el navegador');
 
+  const durationSeconds = await probeVideoDuration(file);
+
   onProgress(50);
   const { error } = await supabase.storage
     .from(bucket)
@@ -61,7 +91,7 @@ export async function uploadFile({
   if (error) throw new Error(error.message);
   onProgress(100);
 
-  return { mediaKey, contentType: file.type };
+  return { mediaKey, contentType: file.type, durationSeconds };
 }
 
 /**
@@ -81,6 +111,8 @@ async function uploadDemoFile(
   formData.append('file', file);
   formData.append('mediaKey', mediaKey);
 
+  const durationSeconds = await probeVideoDuration(file);
+
   onProgress(30);
   const response = await fetch('/api/demo-uploads', { method: 'POST', body: formData });
   if (!response.ok) {
@@ -89,5 +121,5 @@ async function uploadDemoFile(
   }
   onProgress(100);
 
-  return { mediaKey, contentType: file.type };
+  return { mediaKey, contentType: file.type, durationSeconds };
 }

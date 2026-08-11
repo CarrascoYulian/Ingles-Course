@@ -12,7 +12,9 @@ function makeRow(overrides: Partial<LessonRow> = {}): LessonRow {
     position: 1,
     title: 'Lección de prueba',
     duration_minutes: 10,
+    duration_seconds: 600,
     media_key: null,
+    description: null,
     ...overrides,
   };
 }
@@ -39,9 +41,19 @@ describe('toLesson', () => {
   });
 
   it('expone mediaKey y duración legible desde la fila real', () => {
-    const lesson = toLesson(makeRow({ media_key: 'cursos/x/video.mp4', duration_minutes: 14 }), undefined, true);
+    const lesson = toLesson(
+      makeRow({ media_key: 'cursos/x/video.mp4', duration_seconds: 840 }),
+      undefined,
+      true,
+    );
     expect(lesson.mediaKey).toBe('cursos/x/video.mp4');
     expect(lesson.duration).toBe('14 min');
+  });
+
+  it('muestra segundos, no un minuto inventado, para clips de menos de un minuto', () => {
+    const lesson = toLesson(makeRow({ duration_seconds: 6 }), undefined, true);
+    expect(lesson.duration).toBe('0:06');
+    expect(lesson.durationSeconds).toBe(6);
   });
 
   it('redondea watchedPercent', () => {

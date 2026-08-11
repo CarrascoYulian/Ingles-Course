@@ -1,5 +1,7 @@
 'use client';
 
+import { useState } from 'react';
+
 import { SquareBadge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -13,14 +15,20 @@ export interface PublishedCoursesCardProps {
   onPublish: (course: Course) => void;
 }
 
+const COLLAPSED_COUNT = 5;
+
 /** Resumen de cursos en el dashboard: publicados con barra, borradores con CTA. */
 export function PublishedCoursesCard({ courses, onPublish }: PublishedCoursesCardProps) {
+  const [expanded, setExpanded] = useState(false);
+  const visible = expanded ? courses : courses.slice(0, COLLAPSED_COUNT);
+  const hasMore = courses.length > COLLAPSED_COUNT;
+
   return (
     <Card padding="lg" radius="xl">
       <h3 className="text-title-sm font-bold tracking-tight-2 text-fg">Cursos publicados</h3>
 
-      <ul className="mt-3.5 flex flex-col gap-[9px]">
-        {courses.map((course) => (
+      <ul className={cn('mt-3.5 flex flex-col gap-[9px]', expanded && 'max-h-[360px] overflow-y-auto')}>
+        {visible.map((course) => (
           <li
             key={course.id}
             className={cn(
@@ -65,6 +73,16 @@ export function PublishedCoursesCard({ courses, onPublish }: PublishedCoursesCar
           </li>
         ))}
       </ul>
+
+      {hasMore && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="mt-2 w-full rounded-xl py-2 text-center text-tiny font-bold text-fg-dim transition-colors hover:bg-surface-sunken hover:text-fg"
+        >
+          {expanded ? 'Mostrar menos' : `Mostrar ${courses.length - COLLAPSED_COUNT} más`}
+        </button>
+      )}
     </Card>
   );
 }

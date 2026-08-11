@@ -3,11 +3,13 @@
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
 import { AddBlockPanel } from '@/components/admin/add-block-panel';
 import { useAdminHeader } from '@/components/admin/admin-shell';
 import { ContentBlockRow } from '@/components/admin/content-block-row';
 import { CreateModuleDialog } from '@/components/admin/create-module-dialog';
+import { EditLessonDialog, type EditLessonValues } from '@/components/admin/edit-lesson-dialog';
 import { PreviewFileDialog } from '@/components/admin/preview-file-dialog';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { Button } from '@/components/ui/button';
@@ -23,11 +25,13 @@ import {
   useAddBlock,
   useAttachUpload,
   useContentBlocks,
+  useModuleLessons,
   useModules,
   useMoveBlock,
   useOpenFile,
   usePreviewFileUrl,
   useRemoveBlock,
+  useUpdateLesson,
 } from '../hooks/use-content-blocks';
 import { UploadDropzone } from './upload-dropzone';
 
@@ -61,22 +65,23 @@ export function ContentView() {
     : 'Cargando curso…';
 
   const { data: blocks, isPending } = useContentBlocks(moduleId);
+  const { data: moduleLessons } = useModuleLessons(moduleId);
   const addBlock = useAddBlock(moduleId);
   const moveBlock = useMoveBlock(moduleId);
   const removeBlock = useRemoveBlock(moduleId);
   const attachUpload = useAttachUpload(moduleId);
   const openFile = useOpenFile();
   const previewFileUrl = usePreviewFileUrl();
+  const updateLesson = useUpdateLesson(moduleId);
   const confirmDialog = useConfirmDialog();
   const createModule = useCreateModule();
   const [createModuleOpen, setCreateModuleOpen] = useState(false);
-  const [previewBlock, setPreviewBlock] = useState<{ title: string; type: 'Video' | 'PDF' | 'Audio' } | null>(
-    null,
-  );
+  const [previewBlock, setPreviewBlock] = useState<{ title: string } | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [editingLessonId, setEditingLessonId] = useState<string | null>(null);
 
-  const openPreview = (block: { title: string; type: 'Video' | 'PDF' | 'Audio'; mediaKey: string }) => {
-    setPreviewBlock({ title: block.title, type: block.type });
+  const openPreview = (block: { title: string; mediaKey: string }) => {
+    setPreviewBlock({ title: block.title });
     setPreviewUrl(null);
     previewFileUrl.mutate(block.mediaKey, { onSuccess: (url) => setPreviewUrl(url) });
   };
@@ -198,8 +203,6 @@ export function ContentView() {
 
         <ol className="flex flex-col gap-2.5">
           {blocks?.map((block, index) => {
-            const previewableType =
-              block.type === 'Video' || block.type === 'PDF' || block.type === 'Audio' ? block.type : null;
             return (
             <ContentBlockRow
               key={block.id}
@@ -218,8 +221,17 @@ export function ContentView() {
               onOpenFile={block.mediaKey ? () => openFile.mutate(block.mediaKey!) : undefined}
               openFilePending={openFile.isPending}
               onPreview={
-                block.mediaKey && previewableType
-                  ? () => openPreview({ title: block.title, type: previewableType, mediaKey: block.mediaKey! })
+                block.mediaKey
+                  ? () => openPreview({ title: block.title, mediaKey: block.mediaKey! })
+                  : undefined
+              }
+              onEditLesson={
+                block.type === 'Video' && block.mediaKey
+                  ? () => {
+                      const lesson = moduleLessons?.find((l) => l.mediaKey === block.mediaKey);
+                      if (lesson) setEditingLessonId(lesson.id);
+                      else toast.error('Todavía no se generó la lección de este video. Recarga la página.');
+                    }
                   : undefined
               }
             />
@@ -275,9 +287,27 @@ export function ContentView() {
         open={previewBlock !== null}
         onOpenChange={(open) => !open && setPreviewBlock(null)}
         title={previewBlock?.title ?? ''}
-        type={previewBlock?.type ?? 'PDF'}
+        fileName={previewBlock?.title ?? ''}
         url={previewUrl}
         loading={previewFileUrl.isPending}
+      />
+
+      <EditLessonDialog
+        open={editingLessonId !== null}
+        onOpenChange={(open) => !open && setEditingLessonId(null)}
+        pending={updateLesson.isPending}
+        initialValues={
+          editingLessonId
+            ? (() => {
+                const lesson = moduleLessons?.find((l) => l.id === editingLessonId);
+                return lesson ? { title: lesson.title, description: lesson.description ?? '' } : null;
+              })()
+            : null
+        }
+        onSubmit={(values: EditLessonValues) => {
+          if (!editingLessonId) return Promise.resolve();
+          return updateLesson.mutateAsync({ lessonId: editingLessonId, ...values });
+        }}
       />
     </div>
   );
