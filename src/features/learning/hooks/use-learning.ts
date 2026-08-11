@@ -67,6 +67,21 @@ export function useResources() {
   });
 }
 
+/** Abre el archivo real de un recurso — antes "Descargar" sólo mostraba un toast falso. */
+export function useOpenResource() {
+  return useMutation({
+    mutationFn: (mediaKey: string) => backend.content.getFileUrl(mediaKey),
+    onSuccess: (url) => {
+      if (!url) {
+        toast.error('El archivo no existe o ya no está disponible.');
+        return;
+      }
+      window.open(url, '_blank', 'noopener,noreferrer');
+    },
+    onError: () => toast.error('No se pudo abrir el archivo.'),
+  });
+}
+
 export function useBadges() {
   return useQuery({
     queryKey: QUERY_KEYS.badges,
@@ -119,6 +134,11 @@ export function useSaveWatchedPercent() {
       backend.learning.saveWatchedPercent(lessonId, percent),
     retry: 3,
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
-    onError: () => undefined,
+    // Antes: `() => undefined` — tras agotar los 3 reintentos, el progreso
+    // se perdía sin que el alumno se enterara nunca. Un solo toast (con id
+    // fijo, así sonner lo reemplaza en vez de apilarlo en cada intento
+    // fallido cada 5 s) avisa sin ser intrusivo.
+    onError: () =>
+      toast.error('No se pudo guardar tu progreso. Revisa tu conexión.', { id: 'save-progress-error' }),
   });
 }

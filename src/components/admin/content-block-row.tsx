@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowDown, ArrowUp, ExternalLink, GripVertical, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, Eye, ExternalLink, GripVertical, X } from 'lucide-react';
 
 import { SquareBadge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,8 @@ export interface ContentBlockRowProps {
   /** Sólo se ofrece cuando el bloque tiene un archivo real que abrir. */
   onOpenFile?: () => void;
   openFilePending?: boolean;
+  /** Vista previa inline (PDF/video/audio) sin salir del constructor. */
+  onPreview?: () => void;
 }
 
 /**
@@ -34,6 +36,7 @@ export function ContentBlockRow({
   onDelete,
   onOpenFile,
   openFilePending,
+  onPreview,
 }: ContentBlockRowProps) {
   const isFirst = index === 0;
   const isLast = index === total - 1;
@@ -59,6 +62,18 @@ export function ContentBlockRow({
       </div>
 
       <div className="flex shrink-0 gap-[5px] md:gap-1.5">
+        {onPreview && (
+          <Button
+            variant="icon"
+            size="square"
+            onClick={onPreview}
+            aria-label={`Vista previa de “${block.title}”`}
+            title="Ver el archivo tal cual lo ve el alumno"
+            className="hover:border-brand hover:text-brand"
+          >
+            <Eye aria-hidden size={13} strokeWidth={2.4} />
+          </Button>
+        )}
         {onOpenFile && (
           <Button
             variant="icon"

@@ -1,15 +1,14 @@
 'use client';
 
-import { toast } from 'sonner';
-
 import { PageHeader } from '@/components/shared/page-header';
 import { ResourceRow } from '@/components/student/resource-row';
 import { EmptyState } from '@/components/ui/empty-state';
 import { LoadingRegion, Skeleton } from '@/components/ui/skeleton';
-import { useResources } from '../hooks/use-learning';
+import { useOpenResource, useResources } from '../hooks/use-learning';
 
 export function ResourcesView() {
   const { data: resources, isPending } = useResources();
+  const openResource = useOpenResource();
 
   return (
     <div className="mx-auto flex max-w-[820px] flex-col gap-3 px-5 py-5 lg:gap-3.5 lg:px-[30px] lg:py-[26px]">
@@ -33,7 +32,7 @@ export function ResourcesView() {
             <ResourceRow
               key={resource.id}
               resource={resource}
-              onDownload={(target) => toast(`Descargando ${target.title}…`)}
+              onDownload={(target) => target.mediaKey && openResource.mutate(target.mediaKey)}
             />
           ))}
         </ul>

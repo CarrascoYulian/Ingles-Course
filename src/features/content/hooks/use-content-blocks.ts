@@ -108,6 +108,14 @@ export function useOpenFile() {
   });
 }
 
+/** Igual que `useOpenFile`, pero devuelve la URL en vez de abrir pestaña — la usa el preview inline. */
+export function usePreviewFileUrl() {
+  return useMutation({
+    mutationFn: (mediaKey: string) => backend.content.getFileUrl(mediaKey),
+    onError: () => toast.error('No se pudo cargar la vista previa.'),
+  });
+}
+
 export function useRemoveBlock(moduleId: string) {
   const queryClient = useQueryClient();
 

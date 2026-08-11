@@ -8,6 +8,7 @@ import { AddBlockPanel } from '@/components/admin/add-block-panel';
 import { useAdminHeader } from '@/components/admin/admin-shell';
 import { ContentBlockRow } from '@/components/admin/content-block-row';
 import { CreateModuleDialog } from '@/components/admin/create-module-dialog';
+import { PreviewFileDialog } from '@/components/admin/preview-file-dialog';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -25,6 +26,7 @@ import {
   useModules,
   useMoveBlock,
   useOpenFile,
+  usePreviewFileUrl,
   useRemoveBlock,
 } from '../hooks/use-content-blocks';
 import { UploadDropzone } from './upload-dropzone';
@@ -64,9 +66,20 @@ export function ContentView() {
   const removeBlock = useRemoveBlock(moduleId);
   const attachUpload = useAttachUpload(moduleId);
   const openFile = useOpenFile();
+  const previewFileUrl = usePreviewFileUrl();
   const confirmDialog = useConfirmDialog();
   const createModule = useCreateModule();
   const [createModuleOpen, setCreateModuleOpen] = useState(false);
+  const [previewBlock, setPreviewBlock] = useState<{ title: string; type: 'Video' | 'PDF' | 'Audio' } | null>(
+    null,
+  );
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  const openPreview = (block: { title: string; type: 'Video' | 'PDF' | 'Audio'; mediaKey: string }) => {
+    setPreviewBlock({ title: block.title, type: block.type });
+    setPreviewUrl(null);
+    previewFileUrl.mutate(block.mediaKey, { onSuccess: (url) => setPreviewUrl(url) });
+  };
 
   // Antes había un botón "Guardar módulo" que sólo mostraba un toast — cada
   // cambio (añadir/mover/eliminar bloque, subir archivo) ya se persiste al
@@ -184,7 +197,10 @@ export function ContentView() {
         )}
 
         <ol className="flex flex-col gap-2.5">
-          {blocks?.map((block, index) => (
+          {blocks?.map((block, index) => {
+            const previewableType =
+              block.type === 'Video' || block.type === 'PDF' || block.type === 'Audio' ? block.type : null;
+            return (
             <ContentBlockRow
               key={block.id}
               block={block}
@@ -201,8 +217,14 @@ export function ContentView() {
               }
               onOpenFile={block.mediaKey ? () => openFile.mutate(block.mediaKey!) : undefined}
               openFilePending={openFile.isPending}
+              onPreview={
+                block.mediaKey && previewableType
+                  ? () => openPreview({ title: block.title, type: previewableType, mediaKey: block.mediaKey! })
+                  : undefined
+              }
             />
-          ))}
+            );
+          })}
         </ol>
 
         {blocks && blocks.length === 0 && !isPending && (
@@ -247,6 +269,15 @@ export function ContentView() {
         pending={confirmDialog.pending}
         onCancel={confirmDialog.dismiss}
         onConfirm={confirmDialog.accept}
+      />
+
+      <PreviewFileDialog
+        open={previewBlock !== null}
+        onOpenChange={(open) => !open && setPreviewBlock(null)}
+        title={previewBlock?.title ?? ''}
+        type={previewBlock?.type ?? 'PDF'}
+        url={previewUrl}
+        loading={previewFileUrl.isPending}
       />
     </div>
   );
