@@ -1,6 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useQuery } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -11,20 +12,38 @@ import { Input } from '@/components/ui/input';
 import { IS_DEMO_MODE } from '@/lib/env';
 import { loginSchema, type LoginValues } from '../schemas';
 
+interface DemoAccountOption {
+  label: string;
+  email: string;
+  password: string;
+}
+
 /**
- * Cuentas de prueba del modo demo. Sólo se muestran cuando no hay Supabase
- * configurado — con Supabase real, esta pantalla pide credenciales reales
- * y estas cuentas dejan de existir en la interfaz.
+ * Antes las credenciales de las cuentas de prueba estaban escritas
+ * directamente aquí — visibles para cualquiera con acceso al código fuente
+ * (p. ej. en GitHub). Ahora sólo existen en `.env.local` (no versionado) y
+ * se piden a `/api/demo-auth/accounts`, que las lee del entorno del
+ * servidor.
  */
-const DEMO_DEMO_ACCOUNTS = [
-  { label: 'Administrador', identifier: 'admin@inglesconmetodo.demo', password: 'Admin#2026' },
-  { label: 'Estudiante', identifier: 'estudiante@inglesconmetodo.demo', password: 'Estudiante#2026' },
-] as const;
+function useDemoAccounts() {
+  return useQuery({
+    queryKey: ['demo-accounts'],
+    queryFn: async (): Promise<DemoAccountOption[]> => {
+      const response = await fetch('/api/demo-auth/accounts');
+      if (!response.ok) return [];
+      const { accounts } = (await response.json()) as { accounts: DemoAccountOption[] };
+      return accounts;
+    },
+    enabled: IS_DEMO_MODE,
+    staleTime: Infinity,
+  });
+}
 
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [formError, setFormError] = useState<string | null>(null);
+  const { data: demoAccounts } = useDemoAccounts();
 
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
@@ -95,16 +114,16 @@ export function LoginForm() {
         {form.formState.isSubmitting ? 'Entrando…' : 'Entrar'}
       </Button>
 
-      {IS_DEMO_MODE && (
+      {IS_DEMO_MODE && demoAccounts && demoAccounts.length > 0 && (
         <div className="rounded-2xl bg-surface-sunken px-3.5 py-3 text-meta font-semibold leading-normal text-fg-soft">
           <p className="font-bold text-fg-subtle">
             Modo demo activo: no hay Supabase configurado. Usa una de estas cuentas de prueba.
           </p>
           <ul className="mt-2 flex flex-col gap-2">
-            {DEMO_DEMO_ACCOUNTS.map((account) => (
-              <li key={account.identifier} className="flex items-center justify-between gap-2">
+            {demoAccounts.map((account) => (
+              <li key={account.email} className="flex items-center justify-between gap-2">
                 <span>
-                  <strong className="text-fg">{account.label}:</strong> {account.identifier} /{' '}
+                  <strong className="text-fg">{account.label}:</strong> {account.email} /{' '}
                   {account.password}
                 </span>
                 <Button
@@ -112,7 +131,7 @@ export function LoginForm() {
                   variant="ghost"
                   size="xs"
                   onClick={() => {
-                    form.setValue('identifier', account.identifier);
+                    form.setValue('identifier', account.email);
                     form.setValue('password', account.password);
                   }}
                 >

@@ -1,37 +1,66 @@
 # Credenciales de prueba
 
-## Modo demo (sin Supabase configurado)
+Las credenciales de las dos cuentas de prueba (administrador y estudiante)
+**ya no están escritas en el código fuente** — antes vivían como texto
+literal en `demo-session.ts`, en la pantalla de login y en
+`scripts/seed-users.mjs`, visibles para cualquiera con acceso al repositorio
+(incluido GitHub, aunque sea privado).
 
-Se muestran directamente en la pantalla de `/login`, con un botón "Usar"
-por cuenta. Válidas siempre que `IS_DEMO_MODE` esté activo (ver
-`src/lib/env.ts`).
+Ahora sólo existen en `.env.local`, que está excluido de git (`.gitignore`).
 
-| Rol | Correo | Contraseña |
-| --- | --- | --- |
-| Administrador | `admin@inglesconmetodo.demo` | `Admin#2026` |
-| Estudiante | `estudiante@inglesconmetodo.demo` | `Estudiante#2026` |
+## Docente (correo + contraseña)
 
-## Con Supabase conectado
+El docente sigue entrando con correo y contraseña normal.
 
-Las mismas dos cuentas, pero como usuarios reales de Supabase Auth. Se
-crean ejecutando:
-
-```bash
-npm run seed:users
+```
+DEMO_ADMIN_EMAIL
+DEMO_ADMIN_PASSWORD
 ```
 
-(requiere `NEXT_PUBLIC_SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` en
-`.env.local` — ver [`supabase/SETUP.md`](../supabase/SETUP.md)).
+## Alumno (matrícula + PIN de 4 dígitos)
 
-| Rol | Correo | Contraseña | Matrícula |
-| --- | --- | --- | --- |
-| Administrador | `admin@inglesconmetodo.demo` | `Admin#2026` | — |
-| Estudiante | `estudiante@inglesconmetodo.demo` | `Estudiante#2026` | ING-000072 |
+Con Supabase conectado, el alumno **ya no entra con una contraseña libre**
+— entra con su matrícula (`ING-000072`, etc.) y un PIN de 4 dígitos, más
+simple de recordar y compartir. El docente le asigna el PIN al crear al
+alumno desde el panel (**Estudiantes → Nuevo estudiante**), y la app
+muestra la matrícula y el PIN en un recuadro con botón de copiar.
 
-El estudiante queda matriculado automáticamente en el curso "Inglés
-conversacional" (sembrado por `supabase/seed.sql`), con un 54 % de avance
-de partida.
+Por dentro, Supabase Auth exige contraseñas de 6+ caracteres, así que la
+contraseña real que se guarda se deriva combinando matrícula + PIN (ver
+`src/lib/auth/student-pin.ts`) — el PIN nunca se guarda ni se compara solo.
 
-**Estas credenciales son sólo para pruebas.** Si este proyecto llega a
-producción con usuarios reales, borra ambas cuentas desde
-**Authentication → Users** en el panel de Supabase.
+El alumno de prueba (`Roberto`, matrícula `ING-000072`) se crea con:
+
+```
+DEMO_STUDENT_EMAIL
+DEMO_STUDENT_PIN
+```
+
+```bash
+node --env-file=.env.local scripts/seed-users.mjs
+```
+
+Queda matriculado automáticamente en el curso "Inglés conversacional"
+(sembrado por `supabase/seed.sql`).
+
+## Modo demo (sin Supabase configurado)
+
+Ese login no pasa por Supabase Auth — es un modo aparte, cookie firmada en
+memoria — así que sigue usando correo+contraseña normal para ambas cuentas:
+
+```
+DEMO_ADMIN_EMAIL / DEMO_ADMIN_PASSWORD
+DEMO_STUDENT_EMAIL / DEMO_STUDENT_PASSWORD
+```
+
+La pantalla de `/login` las lee de `/api/demo-auth/accounts` y muestra un
+botón "Usar" por cuenta — automático mientras esas variables existan.
+
+## Si perdiste los valores
+
+Pídeselos a Claude — quedaron guardados en su memoria de este proyecto.
+
+**Antes de cualquier entorno público con alumnos reales**: cambia estas
+variables por credenciales nuevas (o elimínalas si ya no necesitas cuentas
+de prueba), y borra ambas cuentas desde **Authentication → Users** en el
+panel de Supabase.

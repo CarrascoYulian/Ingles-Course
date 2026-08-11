@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
     "seed:users": "node --env-file=.env.local scripts/seed-users.mjs"
   },
@@ -47,7 +48,8 @@
     "eslint-config-next": "^15.1.4",
     "prettier": "^3.4.2",
     "tailwindcss": "^4.0.0",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "^4.1.10"
   },
   "engines": {
     "node": ">=20.11"

@@ -26,11 +26,24 @@ export interface DemoAccount {
   role: UserRole;
 }
 
-/** Las dos cuentas de prueba pedidas: un administrador y un estudiante. */
-export const DEMO_ACCOUNTS: DemoAccount[] = [
-  { email: 'admin@inglesconmetodo.demo', password: 'Admin#2026', role: 'admin' },
-  { email: 'estudiante@inglesconmetodo.demo', password: 'Estudiante#2026', role: 'student' },
-];
+/**
+ * Las dos cuentas de prueba (admin + estudiante) ya no viven como cadenas
+ * literales aquí — antes cualquiera con acceso al repositorio (p. ej. en
+ * GitHub) podía leerlas directamente del código. Ahora sólo existen en
+ * `.env.local`, que está excluido de git.
+ */
+function getDemoAccounts(): DemoAccount[] {
+  const { DEMO_ADMIN_EMAIL, DEMO_ADMIN_PASSWORD, DEMO_STUDENT_EMAIL, DEMO_STUDENT_PASSWORD } =
+    getServerEnv();
+  const accounts: DemoAccount[] = [];
+  if (DEMO_ADMIN_EMAIL && DEMO_ADMIN_PASSWORD) {
+    accounts.push({ email: DEMO_ADMIN_EMAIL, password: DEMO_ADMIN_PASSWORD, role: 'admin' });
+  }
+  if (DEMO_STUDENT_EMAIL && DEMO_STUDENT_PASSWORD) {
+    accounts.push({ email: DEMO_STUDENT_EMAIL, password: DEMO_STUDENT_PASSWORD, role: 'student' });
+  }
+  return accounts;
+}
 
 const encoder = new TextEncoder();
 
@@ -86,10 +99,15 @@ export function createDemoSessionToken(role: UserRole): Promise<string> {
   return sign(role);
 }
 
+/** Para mostrar el panel de "cuentas de prueba" en `/login` sin hardcodearlas ahí. */
+export function listDemoAccounts(): DemoAccount[] {
+  return getDemoAccounts();
+}
+
 export function findDemoAccount(email: string, password: string): DemoAccount | null {
   const normalized = email.trim().toLowerCase();
   return (
-    DEMO_ACCOUNTS.find(
+    getDemoAccounts().find(
       (account) => account.email === normalized && account.password === password,
     ) ?? null
   );
