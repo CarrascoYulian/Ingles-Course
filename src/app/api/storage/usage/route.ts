@@ -12,10 +12,11 @@ import type { StorageUsage } from '@/types';
 
 export const runtime = 'nodejs';
 
+const DEMO_USED_BYTES = 0.3 * 1024 ** 3;
 const DEMO_USAGE: StorageUsage = {
-  usedBytes: 12 * 1024 ** 3,
+  usedBytes: DEMO_USED_BYTES,
   limitBytes: STORAGE_PLAN_LIMIT_BYTES,
-  usedPercent: Math.round((12 / 200) * 100),
+  usedPercent: Math.round((DEMO_USED_BYTES / STORAGE_PLAN_LIMIT_BYTES) * 100),
   nearLimit: false,
 };
 

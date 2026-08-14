@@ -22,8 +22,13 @@ export const STORAGE_BUCKET = 'course-files';
  * Límite del plan contratado en Supabase, en bytes. La API de Supabase no
  * expone la cuota del plan — hay que fijarla a mano y ajustarla si cambia
  * el plan (panel de Supabase → Settings → Billing).
+ *
+ * El proyecto real está en el plan **Free**: la cuota de Storage es 1 GB,
+ * no los 200 GB del mock original del diseño (verificado contra
+ * https://supabase.com/docs/guides/platform/manage-your-usage/storage-size).
+ * Subir a Pro cambia esto a 100 GB — actualizar este valor si eso pasa.
  */
-export const STORAGE_PLAN_LIMIT_BYTES = 200 * 1024 ** 3; // 200 GB, igual que el mock original del diseño.
+export const STORAGE_PLAN_LIMIT_BYTES = 1 * 1024 ** 3; // 1 GB — cuota real del plan Free.
 
 /** A partir de este porcentaje se dispara la alerta de cuota (issue #39). */
 export const STORAGE_ALERT_THRESHOLD_PERCENT = 80;

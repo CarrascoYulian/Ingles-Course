@@ -350,11 +350,13 @@ export const demoBackend: Backend = {
   },
 
   storage: {
+    // Cuota real del plan Free de Supabase (1 GB) — ver `STORAGE_PLAN_LIMIT_BYTES`
+    // en `src/lib/storage.ts`, que no se puede importar aquí por ser `server-only`.
     getUsage: () =>
       latency({
-        usedBytes: 12 * 1024 ** 3,
-        limitBytes: 200 * 1024 ** 3,
-        usedPercent: 6,
+        usedBytes: 0.3 * 1024 ** 3,
+        limitBytes: 1 * 1024 ** 3,
+        usedPercent: 30,
         nearLimit: false,
       }),
   },

@@ -33,13 +33,21 @@ Si el archivo exportado pesa más de ~500 MB para un video de menos de 20 minuto
 - Exportar PDFs "optimizados para web" en vez de con imágenes sin comprimir — la mayoría de los editores (Word, Canva, Adobe) tienen esa opción al exportar.
 - Evitar escanear páginas como imágenes de alta resolución cuando el documento es texto — un PDF de texto real pesa una fracción de un PDF escaneado.
 
-## Límite de subida actual
+## Límite de subida actual — **corregido, ver actualización**
 
-El límite técnico por archivo es **2 GB** (`supabase/migrations/0003_storage.sql`). Se decidió **mantenerlo sin cambios** por ahora:
+> **Actualización:** la primera versión de esta guía decía que el límite era 2 GB y recomendaba mantenerlo. Eso describía sólo la configuración del bucket (`supabase/migrations/0003_storage.sql`) — **no el límite real que aplica la plataforma.**
 
-- Con las recomendaciones de esta guía (1080p, H.264/H.265, bitrate razonable), incluso una clase de 45-60 minutos queda muy por debajo de 2 GB — el límite actual no es la restricción activa.
-- Bajarlo agresivamente (p. ej. a 500 MB) arriesga rechazar una subida legítima de un docente que no siguió la guía, generando fricción sin resolver la causa real (que es el hábito de subida, no el tope técnico).
-- Si el uso real del bucket (visible ahora en el widget del panel admin, issue #39) muestra que el problema persiste pese a esta guía, ahí sí se justifica revisar el límite — con datos reales en vez de una suposición.
+El proyecto corre en el **plan Free de Supabase**, que impone un **límite global de 50 MB por archivo** sin importar lo que diga la configuración del bucket (el bucket puede pedir hasta 2 GB, pero Supabase lo recorta a 50 MB en Free). Fuente: [Supabase — File limits](https://supabase.com/docs/guides/storage/uploads/file-limits).
+
+Esto significa que, **ahora mismo, cualquier video de más de 50 MB probablemente falla al subirse** — algo que ni el código ni la guía anterior contemplaban. Un video de 10 minutos en 1080p con las recomendaciones de esta misma guía ya pesa bastante más de 50 MB.
+
+También cambia la cuota total: el plan Free da **1 GB de Storage en total**, no 200 GB — corregido en el widget del panel admin (issue #39, `STORAGE_PLAN_LIMIT_BYTES`).
+
+### Qué hacer con esto
+
+- **Corto plazo:** si el equipo docente ya está subiendo videos reales, confirmar si están fallando (el panel debería mostrar un error de subida, no un fallo silencioso — revisar `src/lib/storage.ts` y `/api/uploads` si no es así).
+- **Decisión pendiente, no técnica:** subir a un plan pago de Supabase (Pro: 500 GB por archivo, 100 GB de cuota total) es la solución real para un curso con contenido en video. Es una decisión de negocio/costo, no algo que este PR pueda resolver por su cuenta.
+- Mientras tanto, cualquier subida debe mantenerse por debajo de 50 MB — en la práctica, esto empuja hacia clips más cortos, resolución 720p, y bitrates conservadores (ver recomendaciones arriba), no como optimización sino como restricción dura de la plataforma actual.
 
 ## Transcodificación automática (fuera de alcance de esta fase)
 
