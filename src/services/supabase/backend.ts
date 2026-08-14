@@ -1,9 +1,10 @@
 import { inferBlockType } from '@/features/content/infer-block-type';
+import { isStaff } from '@/lib/auth/rbac';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { DEMO_QUESTION } from '../demo/data';
 import type { AttachUploadInput, Backend } from '../ports';
 import { toContentBlock, toCourse, toLesson, toModule, toStudentSummary } from './mappers';
-import type { Course, PracticeSession, ReportRange } from '@/types';
+import type { Course, PracticeSession, ReportRange, UserRole } from '@/types';
 import type { Database } from '@/types';
 
 type Row<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Row'];
@@ -830,6 +831,58 @@ export const supabaseBackend: Backend = {
         .from('messages')
         .insert({ sender_id: user.id, student_id: user.id, body, read_at: new Date().toISOString() });
       if (error) throw new Error(error.message);
+    },
+
+    async listComments(lessonId) {
+      const rows = unwrap(
+        await db()
+          .from('lesson_comments')
+          .select('*, profiles(full_name, role)')
+          .eq('lesson_id', lessonId)
+          .order('created_at', { ascending: true }),
+      );
+      return rows.map((row) => {
+        const author = (
+          row as unknown as { profiles: Pick<Row<'profiles'>, 'full_name' | 'role'> | null }
+        ).profiles;
+        return {
+          id: row.id,
+          lessonId: row.lesson_id,
+          authorId: row.author_id,
+          authorName: author?.full_name ?? 'Usuario',
+          fromStaff: isStaff((author?.role as UserRole) ?? null),
+          body: row.body,
+          createdAt: row.created_at,
+        };
+      });
+    },
+
+    async addComment(lessonId, body) {
+      const {
+        data: { user },
+      } = await db().auth.getUser();
+      if (!user) throw new Error('No autenticado');
+
+      const row = unwrap<Row<'lesson_comments'>>(
+        await db()
+          .from('lesson_comments')
+          .insert({ lesson_id: lessonId, author_id: user.id, body })
+          .select()
+          .single(),
+      );
+      const profile = unwrap<Pick<Row<'profiles'>, 'full_name' | 'role'>>(
+        await db().from('profiles').select('full_name, role').eq('id', user.id).single(),
+      );
+
+      return {
+        id: row.id,
+        lessonId: row.lesson_id,
+        authorId: row.author_id,
+        authorName: profile.full_name,
+        fromStaff: isStaff(profile.role as UserRole),
+        body: row.body,
+        createdAt: row.created_at,
+      };
     },
   },
 

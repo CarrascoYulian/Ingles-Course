@@ -23,6 +23,7 @@ import type {
   Course,
   CourseResource,
   Lesson,
+  LessonComment,
   LessonNote,
   PracticeSession,
   ReportRange,
@@ -30,6 +31,7 @@ import type {
 } from '@/types';
 
 const demoNotes: LessonNote[] = [];
+const demoComments: LessonComment[] = [];
 
 /**
  * Adaptador en memoria. Reproduce toda la lógica del prototipo (crear curso,
@@ -305,6 +307,20 @@ export const demoBackend: Backend = {
     getMyMessages: () => latency([]),
     markMessageRead: () => latency(undefined),
     sendMyMessage: () => latency(undefined),
+    listComments: (lessonId: string) => latency(demoComments.filter((c) => c.lessonId === lessonId)),
+    addComment: (lessonId: string, body: string) => {
+      const comment: LessonComment = {
+        id: crypto.randomUUID(),
+        lessonId,
+        authorId: DEMO_TEACHER.id,
+        authorName: DEMO_TEACHER.fullName,
+        fromStaff: true,
+        body,
+        createdAt: new Date().toISOString(),
+      };
+      demoComments.push(comment);
+      return latency(comment);
+    },
   },
 
   practice: {

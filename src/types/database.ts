@@ -251,6 +251,21 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['activity_log']['Insert']>;
         Relationships: [];
       };
+      lesson_comments: {
+        Row: {
+          id: string;
+          lesson_id: string;
+          author_id: string;
+          body: string;
+          created_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['lesson_comments']['Row'], 'id' | 'created_at'> & {
+          id?: string;
+          created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['lesson_comments']['Insert']>;
+        Relationships: [];
+      };
       storage_reconcile_runs: {
         Row: {
           id: string;
