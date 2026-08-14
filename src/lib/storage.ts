@@ -30,8 +30,10 @@ export const STORAGE_BUCKET = 'course-files';
  */
 export const STORAGE_PLAN_LIMIT_BYTES = 1 * 1024 ** 3; // 1 GB — cuota real del plan Free.
 
-/** A partir de este porcentaje se dispara la alerta de cuota (issue #39). */
-export const STORAGE_ALERT_THRESHOLD_PERCENT = 80;
+/** 65-89 %: la barra pasa de azul a ámbar — hay que empezar a prestar atención. */
+export const STORAGE_WARNING_THRESHOLD_PERCENT = 65;
+/** 90 %+: la barra pasa a rojo y es lo que dispara la alerta en Actividad reciente. */
+export const STORAGE_CRITICAL_THRESHOLD_PERCENT = 90;
 
 /** Las subidas se firman por 15 min: suficiente para 2 GB en una conexión normal. */
 const UPLOAD_TTL_SECONDS = 15 * 60;

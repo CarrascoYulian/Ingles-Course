@@ -357,7 +357,7 @@ export const demoBackend: Backend = {
         usedBytes: 0.3 * 1024 ** 3,
         limitBytes: 1 * 1024 ** 3,
         usedPercent: 30,
-        nearLimit: false,
+        tier: 'ok',
       }),
   },
 };

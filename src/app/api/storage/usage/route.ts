@@ -4,8 +4,9 @@ import { guard, isDenied } from '../../_lib/guard';
 import { IS_DEMO_MODE } from '@/lib/env';
 import {
   listAllStorageObjects,
-  STORAGE_ALERT_THRESHOLD_PERCENT,
+  STORAGE_CRITICAL_THRESHOLD_PERCENT,
   STORAGE_PLAN_LIMIT_BYTES,
+  STORAGE_WARNING_THRESHOLD_PERCENT,
 } from '@/lib/storage';
 import { getSupabaseAdminClient } from '@/lib/supabase/server';
 import type { StorageUsage } from '@/types';
@@ -17,8 +18,15 @@ const DEMO_USAGE: StorageUsage = {
   usedBytes: DEMO_USED_BYTES,
   limitBytes: STORAGE_PLAN_LIMIT_BYTES,
   usedPercent: Math.round((DEMO_USED_BYTES / STORAGE_PLAN_LIMIT_BYTES) * 100),
-  nearLimit: false,
+  tier: 'ok',
 };
+
+/** < 65 % azul, 65-89 % ámbar, 90 %+ rojo. */
+function tierFor(usedPercent: number): StorageUsage['tier'] {
+  if (usedPercent >= STORAGE_CRITICAL_THRESHOLD_PERCENT) return 'critical';
+  if (usedPercent >= STORAGE_WARNING_THRESHOLD_PERCENT) return 'warning';
+  return 'ok';
+}
 
 /**
  * Fase 3 (issue #39) — uso real del bucket `course-files` para el widget del
@@ -41,22 +49,22 @@ export async function GET() {
   const objects = await listAllStorageObjects();
   const usedBytes = objects.reduce((sum, object) => sum + object.size, 0);
   const usedPercent = Math.min(100, Math.round((usedBytes / STORAGE_PLAN_LIMIT_BYTES) * 100));
-  const nearLimit = usedPercent >= STORAGE_ALERT_THRESHOLD_PERCENT;
+  const tier = tierFor(usedPercent);
 
-  if (nearLimit) await notifyNearLimit(usedPercent);
+  if (tier === 'critical') await notifyCritical(usedPercent);
 
-  const usage: StorageUsage = { usedBytes, limitBytes: STORAGE_PLAN_LIMIT_BYTES, usedPercent, nearLimit };
+  const usage: StorageUsage = { usedBytes, limitBytes: STORAGE_PLAN_LIMIT_BYTES, usedPercent, tier };
   return NextResponse.json(usage, { headers: { 'Cache-Control': 'private, max-age=120' } });
 }
 
 /**
  * Deja una entrada visible en "Actividad reciente" del dashboard cuando se
- * cruza el umbral — es el "correo o log visible" más barato que cumple el
- * criterio de aceptación sin construir un sistema de notificaciones nuevo.
- * Deduplicado a una vez por día: sin esto, cada carga de página por encima
- * del umbral insertaría una fila nueva.
+ * cruza el umbral crítico (90 %) — es el "correo o log visible" más barato
+ * que cumple el criterio de aceptación sin construir un sistema de
+ * notificaciones nuevo. Deduplicado a una vez por día: sin esto, cada carga
+ * de página por encima del umbral insertaría una fila nueva.
  */
-async function notifyNearLimit(usedPercent: number): Promise<void> {
+async function notifyCritical(usedPercent: number): Promise<void> {
   const admin = getSupabaseAdminClient();
   if (!admin) return;
 
@@ -64,13 +72,13 @@ async function notifyNearLimit(usedPercent: number): Promise<void> {
   const { count } = await admin
     .from('activity_log')
     .select('*', { count: 'exact', head: true })
-    .eq('tone', 'warning')
+    .eq('tone', 'danger')
     .contains('segments', [{ text: 'Alerta de almacenamiento', strong: true }])
     .gte('created_at', since);
   if ((count ?? 0) > 0) return;
 
   await admin.from('activity_log').insert({
-    tone: 'warning',
+    tone: 'danger',
     segments: [
       { text: 'Alerta de almacenamiento', strong: true },
       { text: ` · uso al ${usedPercent}% del plan contratado` },
