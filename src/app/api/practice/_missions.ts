@@ -3,6 +3,7 @@ import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { DAILY_XP_GOAL, XP_BADGE_TIERS } from './_constants';
+import { computeStreakDays, findNextBadgeTier } from './logic';
 import type { Database, PracticeMissions } from '@/types';
 
 /** Fixture del modo demo — nunca se sirve fuera de él. */
@@ -41,7 +42,7 @@ export async function getMissions(
   const todayRow = days?.find((d) => d.date === today);
   const doneCount = days?.filter((d) => d.goal_met).length ?? 0;
 
-  const nextTier = XP_BADGE_TIERS.find((t) => t.threshold > totalXp) ?? null;
+  const nextTier = findNextBadgeTier(totalXp, XP_BADGE_TIERS);
 
   return {
     dailyXp: { earned: todayRow?.xp_earned ?? 0, goal: DAILY_XP_GOAL },
@@ -96,5 +97,10 @@ export async function recordDailyXpAndStreak(
     .eq('date', yesterday.toISOString().slice(0, 10))
     .maybeSingle();
 
-  return yesterdayRow?.goal_met ? currentStreak + 1 : 1;
+  return computeStreakDays({
+    wasGoalMet,
+    isGoalMetNow,
+    currentStreak,
+    yesterdayGoalMet: yesterdayRow?.goal_met ?? false,
+  });
 }

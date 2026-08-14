@@ -332,4 +332,14 @@ export const demoBackend: Backend = {
       return latency(structuredClone(store.session));
     },
   },
+
+  storage: {
+    getUsage: () =>
+      latency({
+        usedBytes: 12 * 1024 ** 3,
+        limitBytes: 200 * 1024 ** 3,
+        usedPercent: 6,
+        nearLimit: false,
+      }),
+  },
 };

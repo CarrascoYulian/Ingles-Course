@@ -122,6 +122,7 @@ export function useAttachUpload(moduleId: string) {
     mutationFn: (input: AttachUploadInput) => backend.content.attachUpload(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.blocks(moduleId) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.storageUsage });
     },
     onError: () => toast.error('El archivo se subió, pero no se pudo registrar en la base de datos.'),
   });
@@ -157,6 +158,7 @@ export function useRemoveBlock(moduleId: string) {
     mutationFn: ({ id }: { id: string; title: string }) => backend.content.removeBlock(id),
     onSuccess: (_data, { title }) => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.blocks(moduleId) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.storageUsage });
       toast(`“${title}” eliminado`);
     },
     onError: () => toast.error('No se pudo eliminar el bloque.'),

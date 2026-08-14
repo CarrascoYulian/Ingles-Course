@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useSaveWatchedPercent } from './use-learning';
+import { canAdvanceLesson, computeElapsedSeconds, formatTimeLabel } from '../video-progress-math';
 
 /** Se usa sólo si la lección todavía no tiene duración real cargada. */
 const FALLBACK_LESSON_SECONDS = 8 * 60 + 24;
@@ -105,17 +106,13 @@ export function useVideoProgress(
     setPlaying(true);
   }, [hasVideo, playing, watched, lessonId, save]);
 
-  const elapsed = Math.round((durationSeconds * watched) / 100);
-  const minutes = String(Math.floor(elapsed / 60)).padStart(2, '0');
-  const seconds = String(elapsed % 60).padStart(2, '0');
-  const totalMinutes = String(Math.floor(durationSeconds / 60)).padStart(2, '0');
-  const totalSeconds = String(durationSeconds % 60).padStart(2, '0');
+  const elapsed = computeElapsedSeconds(watched, durationSeconds);
 
   return {
     watched,
     playing,
-    canAdvance: !hasVideo || watched >= 100,
-    timeLabel: `${minutes}:${seconds} / ${totalMinutes}:${totalSeconds}`,
+    canAdvance: canAdvanceLesson(hasVideo, watched),
+    timeLabel: formatTimeLabel(elapsed, durationSeconds),
     elapsedSeconds: elapsed,
     durationSeconds,
     toggle,

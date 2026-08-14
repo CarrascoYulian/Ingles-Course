@@ -20,4 +20,5 @@ export const QUERY_KEYS = {
   resources: ['resources'] as const,
   badges: ['badges'] as const,
   practice: ['practice'] as const,
+  storageUsage: ['storage-usage'] as const,
 } as const;

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
+import { StorageUsageWidget } from '@/components/admin/storage-usage-widget';
 import { LogoMark } from '@/components/shared/logo';
 import { LogoutButton } from '@/components/shared/logout-button';
 import { ADMIN_NAV } from '@/constants/navigation';
@@ -59,7 +60,10 @@ export function AdminSidebar({ teacherName }: AdminSidebarProps) {
         })}
       </nav>
 
-      <LogoutButton onInk className="mt-auto justify-center" />
+      <div className="mt-auto flex flex-col gap-3">
+        <StorageUsageWidget />
+        <LogoutButton onInk className="justify-center" />
+      </div>
     </aside>
   );
 }

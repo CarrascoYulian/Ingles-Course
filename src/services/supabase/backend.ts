@@ -38,6 +38,40 @@ function unwrap<T>(response: { data: T | null; error: { message: string } | null
 
 const STUDENTS_PAGE_SIZE = 20;
 
+/** Mismo bucket que `src/lib/storage.ts` — no se puede importar ese módulo
+ * aquí porque está marcado `server-only` y este adaptador corre en el
+ * navegador bajo RLS. */
+const STORAGE_BUCKET = 'course-files';
+
+/**
+ * Borra objetos de Storage lo mejor que puede: si Storage falla, no aborta
+ * el flujo que la llamó (la fila en Postgres ya se borró o está por
+ * borrarse). El objeto que quede huérfano lo recoge el job de
+ * reconciliación semanal — no bloquear la UI del docente por un error
+ * transitorio de Storage es preferible a arriesgar una fila que no se puede
+ * volver a borrar desde la interfaz.
+ */
+async function removeStorageObjects(mediaKeys: string[]): Promise<void> {
+  const keys = mediaKeys.filter((key): key is string => Boolean(key));
+  if (keys.length === 0) return;
+  const { error } = await db().storage.from(STORAGE_BUCKET).remove(keys);
+  if (error) console.error('No se pudieron borrar objetos de Storage', error);
+}
+
+/** Todas las claves de archivo que cuelgan de un curso, vía sus módulos. */
+async function collectCourseMediaKeys(courseId: string): Promise<string[]> {
+  const { data: modules } = await db().from('modules').select('id').eq('course_id', courseId);
+  const moduleIds = (modules ?? []).map((row) => row.id);
+  if (moduleIds.length === 0) return [];
+
+  const { data } = await db()
+    .from('content_blocks')
+    .select('media_key')
+    .in('module_id', moduleIds)
+    .not('media_key', 'is', null);
+  return (data ?? []).map((row) => row.media_key).filter((key): key is string => Boolean(key));
+}
+
 type ActivityTone = 'success' | 'info' | 'warning' | 'danger';
 type ActivitySegment = { text: string; strong?: boolean };
 
@@ -176,8 +210,15 @@ export const supabaseBackend: Backend = {
     },
 
     async remove(id) {
+      // Igual que en `removeBlock`: hay que leer las claves antes de borrar,
+      // porque el cascade de Postgres se lleva `modules` → `content_blocks`
+      // en el mismo statement y después ya no queda nada que consultar.
+      const mediaKeys = await collectCourseMediaKeys(id);
+
       const { error } = await db().from('courses').delete().eq('id', id);
       if (error) throw new Error(error.message);
+
+      await removeStorageObjects(mediaKeys);
     },
 
     async reorder(id, direction) {
@@ -267,8 +308,18 @@ export const supabaseBackend: Backend = {
     },
 
     async removeBlock(blockId) {
+      // Se lee el `media_key` antes de borrar la fila: una vez borrada, ya
+      // no hay forma de saber qué objeto de Storage le correspondía.
+      const { data: block } = await db()
+        .from('content_blocks')
+        .select('media_key')
+        .eq('id', blockId)
+        .maybeSingle();
+
       const { error } = await db().from('content_blocks').delete().eq('id', blockId);
       if (error) throw new Error(error.message);
+
+      if (block?.media_key) await removeStorageObjects([block.media_key]);
     },
 
     async attachUpload(input: AttachUploadInput) {
@@ -810,6 +861,14 @@ export const supabaseBackend: Backend = {
     async advance() {
       const response = await fetch('/api/practice/advance', { method: 'POST' });
       if (!response.ok) throw new Error('No se pudo avanzar');
+      return response.json();
+    },
+  },
+
+  storage: {
+    async getUsage() {
+      const response = await fetch('/api/storage/usage');
+      if (!response.ok) throw new Error('No se pudo cargar el uso de almacenamiento');
       return response.json();
     },
   },

@@ -251,6 +251,22 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['activity_log']['Insert']>;
         Relationships: [];
       };
+      storage_reconcile_runs: {
+        Row: {
+          id: string;
+          ran_at: string;
+          scanned_count: number;
+          deleted_count: number;
+          deleted_keys: Json;
+          error: string | null;
+        };
+        Insert: Omit<Database['public']['Tables']['storage_reconcile_runs']['Row'], 'id' | 'ran_at'> & {
+          id?: string;
+          ran_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['storage_reconcile_runs']['Insert']>;
+        Relationships: [];
+      };
       messages: {
         Row: {
           id: string;

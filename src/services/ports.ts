@@ -25,6 +25,7 @@ import type {
   PracticeSession,
   ReportRange,
   ReportSnapshot,
+  StorageUsage,
   StudentProgress,
   StudentSummary,
 } from '@/types';
@@ -180,6 +181,11 @@ export interface PracticePort {
   advance(): Promise<PracticeSession>;
 }
 
+export interface StoragePort {
+  /** Uso real del bucket de archivos, contra el límite del plan contratado. */
+  getUsage(): Promise<StorageUsage>;
+}
+
 export interface Backend {
   courses: CoursesPort;
   content: ContentPort;
@@ -187,4 +193,5 @@ export interface Backend {
   analytics: AnalyticsPort;
   learning: LearningPort;
   practice: PracticePort;
+  storage: StoragePort;
 }

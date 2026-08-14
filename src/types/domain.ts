@@ -171,6 +171,15 @@ export interface DashboardMetrics {
   totalStudents: number;
 }
 
+/** Uso real del bucket `course-files` — issue #39 (Fase 3). */
+export interface StorageUsage {
+  usedBytes: number;
+  limitBytes: number;
+  usedPercent: number;
+  /** `true` cuando `usedPercent` ya cruzó el umbral de alerta (~80 %). */
+  nearLimit: boolean;
+}
+
 export type ReportRange = '7 días' | '30 días' | 'Trimestre' | 'Año';
 
 export interface ReportSnapshot {
