@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { useAdminHeader } from '@/components/admin/admin-shell';
@@ -22,8 +22,11 @@ import {
   useResetStudentProgress,
   useSendStudentMessage,
   useStudents,
+  useToggleStudentActive,
+  useUnreadStudentIds,
   useUpdateStudent,
 } from '../hooks/use-students';
+import { BulkMessageDialog } from './bulk-message-dialog';
 import { EditStudentDialog } from './edit-student-dialog';
 import { EnrollStudentDialog } from './enroll-student-dialog';
 import { InviteStudentDialog } from './invite-student-dialog';
@@ -32,7 +35,7 @@ import { MessageStudentDialog } from './message-student-dialog';
 const LEVEL_FILTERS: Array<CefrLevel | 'Todos'> = ['Todos', ...CEFR_LEVELS.filter((l) => l !== 'C1')];
 
 export function StudentsView() {
-  const { appliedQuery } = useAdminSearch();
+  const { query, appliedQuery } = useAdminSearch();
   const [level, setLevel] = useState<CefrLevel | 'Todos'>('Todos');
   const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -40,16 +43,85 @@ export function StudentsView() {
   const [messageTarget, setMessageTarget] = useState<StudentSummary | null>(null);
   const [editTarget, setEditTarget] = useState<StudentSummary | null>(null);
   const [enrollTarget, setEnrollTarget] = useState<StudentSummary | null>(null);
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
+  const [bulkMessageOpen, setBulkMessageOpen] = useState(false);
+  const [bulkSending, setBulkSending] = useState(false);
 
   const { data: result, isPending } = useStudents({ query: appliedQuery, level, page });
-  const students = result?.items;
+  const loadedStudents = result?.items;
+
+  // El buscador tarda ~250 ms (más el viaje de red) en llegar a
+  // `appliedQuery` — sin esto, cada tecleo se sentía "atascado" hasta que
+  // ese viaje resolvía, y al borrar rápido la lista se veía saltar entre
+  // resultados viejos y el reinicio del filtro. Este filtro sobre lo que ya
+  // está cargado en memoria reacciona al instante con cada letra (`query`,
+  // no `appliedQuery`); cuando la búsqueda del servidor llega, ya coincide y
+  // este filtro pasa a ser un no-op.
+  const needle = query.trim().toLocaleLowerCase();
+  const students = useMemo(() => {
+    if (!loadedStudents || !needle) return loadedStudents;
+    return loadedStudents.filter(
+      (student) =>
+        student.name.toLocaleLowerCase().includes(needle) ||
+        student.enrollmentCode.toLocaleLowerCase().includes(needle),
+    );
+  }, [loadedStudents, needle]);
+  // El filtro instantáneo de arriba sólo conoce lo que YA está cargado (la
+  // página que trajo la búsqueda anterior) — si el nombre que se está
+  // escribiendo no estaba en esa página, da un "sin resultados" real por un
+  // instante hasta que la búsqueda al servidor (debounced) trae la lista
+  // correcta. Antes eso se mostraba como el `EmptyState` completo — un
+  // parpadeo de "no hay nada" → resultados. Mientras el texto tecleado
+  // todavía no coincide con la última búsqueda ya confirmada por el
+  // servidor, un cero resultados locales no es definitivo: se trata como
+  // "buscando", no como "sin resultados".
+  const stillSearching = needle !== appliedQuery.trim().toLocaleLowerCase();
+  const noResults = students?.length === 0 && !stillSearching;
+  const searchingWithNoLocalMatch = students?.length === 0 && stillSearching;
   const resetProgress = useResetStudentProgress();
   const sendMessage = useSendStudentMessage();
   const invite = useInviteStudent();
   const updateStudent = useUpdateStudent();
   const deleteStudent = useDeleteStudent();
   const enrollStudent = useEnrollStudent();
+  const toggleActive = useToggleStudentActive();
+  const { data: unreadStudentIds } = useUnreadStudentIds();
+  const unreadSet = new Set(unreadStudentIds);
   const confirmDialog = useConfirmDialog();
+
+  // La selección en bloque vive por página/filtro: cruzar páginas obligaría
+  // a guardar nombres de estudiantes que ya no están cargados en memoria
+  // sólo para poder mostrarlos en el diálogo de mensaje masivo.
+  useEffect(() => setCheckedIds(new Set()), [page, level, appliedQuery]);
+  const checkedStudents = students?.filter((student) => checkedIds.has(student.id)) ?? [];
+  const allVisibleChecked = Boolean(students?.length) && students!.every((student) => checkedIds.has(student.id));
+
+  const toggleCheck = (student: StudentSummary) => {
+    setCheckedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(student.id)) next.delete(student.id);
+      else next.add(student.id);
+      return next;
+    });
+  };
+
+  const toggleCheckAllVisible = () => {
+    setCheckedIds(allVisibleChecked ? new Set() : new Set(students?.map((student) => student.id) ?? []));
+  };
+
+  const sendBulkMessage = async ({ body }: { body: string }) => {
+    setBulkSending(true);
+    try {
+      await Promise.all(
+        checkedStudents.map((student) => sendMessage.mutateAsync({ id: student.id, name: student.name, body })),
+      );
+      toast.success(`Mensaje enviado a ${checkedStudents.length} estudiantes`);
+      setBulkMessageOpen(false);
+      setCheckedIds(new Set());
+    } finally {
+      setBulkSending(false);
+    }
+  };
 
   useAdminHeader(
     result ? `${result.total} estudiantes en total` : 'Cargando estudiantes…',
@@ -82,6 +154,33 @@ export function StudentsView() {
           ))}
         </ChipRow>
 
+        {students && students.length > 0 && (
+          <div className="mb-2 flex items-center justify-between gap-2 lg:mb-2.5">
+            <label className="flex cursor-pointer items-center gap-2 text-tiny font-bold text-fg-ghost">
+              <input
+                type="checkbox"
+                checked={allVisibleChecked}
+                onChange={toggleCheckAllVisible}
+                aria-label="Seleccionar todos los estudiantes visibles"
+                className="size-4 cursor-pointer accent-accent"
+              />
+              Seleccionar todos
+            </label>
+
+            {checkedIds.size > 0 && (
+              <div className="flex items-center gap-2">
+                <p className="text-tiny font-bold text-fg-ghost">{checkedIds.size} seleccionados</p>
+                <Button variant="ghost" size="xs" onClick={() => setBulkMessageOpen(true)}>
+                  Enviar mensaje
+                </Button>
+                <Button variant="quiet" size="xs" onClick={() => setCheckedIds(new Set())}>
+                  Cancelar
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+
         {isPending && (
           <div className="flex flex-col gap-2">
             <LoadingRegion label="Cargando estudiantes" />
@@ -103,12 +202,22 @@ export function StudentsView() {
                 student={student}
                 selected={selected?.id === student.id}
                 onSelect={(next) => setSelectedId(next.id)}
+                checked={checkedIds.has(student.id)}
+                onToggleCheck={toggleCheck}
+                hasUnreadMessage={unreadSet.has(student.id)}
               />
             ))}
           </ul>
         )}
 
-        {students?.length === 0 && (
+        {searchingWithNoLocalMatch && (
+          <div className="flex flex-col gap-2" aria-live="polite">
+            <p className="px-1 text-tiny font-bold text-fg-ghost">Buscando…</p>
+            <Skeleton className="h-[62px] rounded-3xl" />
+          </div>
+        )}
+
+        {noResults && (
           <EmptyState
             title="Sin resultados para tu búsqueda"
             description="Prueba con la matrícula completa (ING-000072) o quita el filtro de nivel."
@@ -144,6 +253,7 @@ export function StudentsView() {
 
       <StudentDetailCard
         student={selected}
+        hasUnreadMessage={selected ? unreadSet.has(selected.id) : false}
         onMessage={(student) => setMessageTarget(student)}
         onEdit={(student) => setEditTarget(student)}
         onEnroll={(student) => setEnrollTarget(student)}
@@ -170,6 +280,21 @@ export function StudentsView() {
               }),
           })
         }
+        onToggleActive={(student) => {
+          if (student.active) {
+            confirmDialog.confirm({
+              title: 'Desactivar estudiante',
+              body: `${student.name} no podrá iniciar sesión con su matrícula y PIN mientras esté inactivo. Puedes reactivarlo cuando quieras.`,
+              confirmLabel: 'Sí, desactivar',
+              onConfirm: () =>
+                toggleActive.mutateAsync({ id: student.id, name: student.name, active: false }).then(() => {
+                  toast.dismiss();
+                }),
+            });
+          } else {
+            toggleActive.mutate({ id: student.id, name: student.name, active: true });
+          }
+        }}
       />
 
       <InviteStudentDialog
@@ -218,6 +343,14 @@ export function StudentsView() {
             .mutateAsync({ id: messageTarget.id, name: messageTarget.name, body: values.body })
             .then(() => undefined);
         }}
+      />
+
+      <BulkMessageDialog
+        open={bulkMessageOpen}
+        studentNames={checkedStudents.map((student) => student.name)}
+        pending={bulkSending}
+        onOpenChange={setBulkMessageOpen}
+        onSubmit={sendBulkMessage}
       />
 
       <ConfirmDialog

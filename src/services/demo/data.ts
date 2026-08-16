@@ -20,6 +20,7 @@ import type {
   PracticeLevel,
   PracticeQuestion,
   Profile,
+  QuizDraft,
   ReportRange,
   StudentSummary,
 } from '@/types';
@@ -91,6 +92,31 @@ export const DEMO_MODULE: Module = {
   title: 'Módulo 4 · Tiempos perfectos',
   position: 3,
   requiresModuleId: 'mod-3',
+};
+
+/** Único quiz de referencia en modo demo — ligado a `DEMO_MODULE`. */
+export const DEMO_QUIZ_ID = 'quiz-mod-4';
+
+export const DEMO_QUIZ_DRAFT: QuizDraft = {
+  passingScore: 70,
+  questions: [
+    {
+      prompt: '¿Cuál es la forma correcta del Present Perfect para "she / finish / her homework"?',
+      options: [
+        { label: 'She has finished her homework.', isCorrect: true },
+        { label: 'She have finished her homework.', isCorrect: false },
+        { label: 'She finished has her homework.', isCorrect: false },
+      ],
+    },
+    {
+      prompt: '¿Qué palabra NO se usa típicamente con Present Perfect?',
+      options: [
+        { label: 'yesterday', isCorrect: true },
+        { label: 'already', isCorrect: false },
+        { label: 'just', isCorrect: false },
+      ],
+    },
+  ],
 };
 
 const DEMO_UPLOAD_DATE = '2026-07-01T12:00:00.000Z';

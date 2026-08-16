@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Check } from 'lucide-react';
 
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -14,6 +14,8 @@ export interface CoursePickerCardProps {
 
 /** Tarjeta de curso — punto de entrada explícito en vez de caer directo al contenido. */
 export function CoursePickerCard({ course, onSelect }: CoursePickerCardProps) {
+  const completed = course.progress >= 100;
+
   return (
     <button type="button" onClick={() => onSelect(course)} className="w-full text-left">
       <Card
@@ -23,11 +25,18 @@ export function CoursePickerCard({ course, onSelect }: CoursePickerCardProps) {
       >
         <div
           aria-hidden
-          className="h-20 w-full"
+          className="relative h-20 w-full"
           style={{
             background: `linear-gradient(135deg, ${avatarColorFor(course.id)}, ${avatarColorFor(course.id)}99)`,
           }}
-        />
+        >
+          {completed && (
+            <span className="absolute right-2.5 top-2.5 flex items-center gap-1 rounded-pill bg-white/95 px-2.5 py-1 text-tiny font-extrabold text-success-strong">
+              <Check aria-hidden size={12} strokeWidth={3} />
+              Completado
+            </span>
+          )}
+        </div>
         <div className="flex flex-col gap-3 p-[18px]">
           <div>
             <p className="text-tiny font-bold uppercase tracking-wide text-fg-ghost">
@@ -46,13 +55,15 @@ export function CoursePickerCard({ course, onSelect }: CoursePickerCardProps) {
             <Progress
               value={course.progress}
               height={6}
+              tone={completed ? 'success' : 'brand'}
               className="mt-1.5"
               label={`Progreso en ${course.name}`}
             />
           </div>
 
           <span className="mt-1 flex items-center gap-1 text-body-sm font-bold text-brand group-hover:gap-1.5">
-            Continuar <ChevronRight aria-hidden size={15} strokeWidth={2.4} />
+            {completed ? 'Ver de nuevo' : 'Continuar'}
+            <ChevronRight aria-hidden size={15} strokeWidth={2.4} />
           </span>
         </div>
       </Card>

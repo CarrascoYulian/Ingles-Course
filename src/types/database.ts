@@ -1,329 +1,1195 @@
-/**
- * Tipos generados a partir del esquema de Supabase.
- * En producción se regeneran con:
- *   npx supabase gen types typescript --project-id <id> > src/types/database.ts
- *
- * Se mantienen aquí a mano para que el proyecto tipe-chequee sin conexión.
- *
- * `Relationships: []` en cada tabla no es decorativo: `supabase-js` sólo
- * infiere los tipos de `.from(...)` cuando cada tabla cumple `GenericTable`
- * (Row/Insert/Update/Relationships). Omitir `Relationships` degrada todo el
- * esquema a `never` de forma silenciosa — el cliente sigue compilando, pero
- * cada `.select()` deja de tipar sus filas.
- */
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
 
-import type { BlockType, CefrLevel, UserRole } from './domain';
-
-export type Json = string | number | boolean | null | { [key: string]: Json } | Json[];
-
-export interface Database {
-  __InternalSupabase: { PostgrestVersion: '12' };
+export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.5"
+  }
   public: {
     Tables: {
-      profiles: {
-        Row: {
-          id: string;
-          role: UserRole;
-          full_name: string;
-          enrollment_code: string | null;
-          level: CefrLevel | null;
-          avatar_color: string | null;
-          is_active: boolean;
-          created_at: string;
-        };
-        Insert: Omit<Database['public']['Tables']['profiles']['Row'], 'created_at'> & {
-          created_at?: string;
-        };
-        Update: Partial<Database['public']['Tables']['profiles']['Insert']>;
-        Relationships: [];
-      };
-      courses: {
-        Row: {
-          id: string;
-          name: string;
-          level: CefrLevel;
-          published: boolean;
-          position: number;
-          created_by: string | null;
-          created_at: string;
-        };
-        Insert: Omit<Database['public']['Tables']['courses']['Row'], 'id' | 'created_at'> & {
-          id?: string;
-          created_at?: string;
-        };
-        Update: Partial<Database['public']['Tables']['courses']['Insert']>;
-        Relationships: [];
-      };
-      modules: {
-        Row: {
-          id: string;
-          course_id: string;
-          title: string;
-          position: number;
-          requires_module_id: string | null;
-        };
-        Insert: Omit<Database['public']['Tables']['modules']['Row'], 'id'> & { id?: string };
-        Update: Partial<Database['public']['Tables']['modules']['Insert']>;
-        Relationships: [];
-      };
-      content_blocks: {
-        Row: {
-          id: string;
-          module_id: string;
-          type: BlockType;
-          title: string;
-          meta: string;
-          position: number;
-          /** Ruta del objeto en Supabase Storage (bucket `course-files`) — nunca el binario. */
-          media_key: string | null;
-          uploaded_by: string | null;
-          created_at: string;
-        };
-        Insert: Omit<Database['public']['Tables']['content_blocks']['Row'], 'id' | 'created_at'> & {
-          id?: string;
-          created_at?: string;
-        };
-        Update: Partial<Database['public']['Tables']['content_blocks']['Insert']>;
-        Relationships: [];
-      };
-      lessons: {
-        Row: {
-          id: string;
-          module_id: string;
-          position: number;
-          title: string;
-          duration_minutes: number;
-          duration_seconds: number | null;
-          media_key: string | null;
-          description: string | null;
-        };
-        Insert: Omit<Database['public']['Tables']['lessons']['Row'], 'id'> & { id?: string };
-        Update: Partial<Database['public']['Tables']['lessons']['Insert']>;
-        Relationships: [];
-      };
-      lesson_notes: {
-        Row: {
-          id: string;
-          lesson_id: string;
-          student_id: string;
-          body: string;
-          timestamp_seconds: number;
-          created_at: string;
-        };
-        Insert: Omit<Database['public']['Tables']['lesson_notes']['Row'], 'id' | 'created_at'> & {
-          id?: string;
-          created_at?: string;
-        };
-        Update: Partial<Database['public']['Tables']['lesson_notes']['Insert']>;
-        Relationships: [];
-      };
-      enrollments: {
-        Row: {
-          id: string;
-          student_id: string;
-          course_id: string;
-          progress: number;
-          watched_minutes: number;
-          completed_lessons: number;
-          created_at: string;
-        };
-        Insert: Omit<Database['public']['Tables']['enrollments']['Row'], 'id' | 'created_at'> & {
-          id?: string;
-          created_at?: string;
-        };
-        Update: Partial<Database['public']['Tables']['enrollments']['Insert']>;
-        Relationships: [];
-      };
-      lesson_progress: {
-        Row: {
-          id: string;
-          student_id: string;
-          lesson_id: string;
-          watched_percent: number;
-          completed_at: string | null;
-        };
-        Insert: Omit<Database['public']['Tables']['lesson_progress']['Row'], 'id'> & { id?: string };
-        Update: Partial<Database['public']['Tables']['lesson_progress']['Insert']>;
-        Relationships: [];
-      };
-      badges: {
-        Row: { id: string; name: string; requirement: string; position: number };
-        Insert: Omit<Database['public']['Tables']['badges']['Row'], 'id'> & { id?: string };
-        Update: Partial<Database['public']['Tables']['badges']['Insert']>;
-        Relationships: [];
-      };
-      student_badges: {
-        Row: { student_id: string; badge_id: string; earned_at: string };
-        Insert: Database['public']['Tables']['student_badges']['Row'];
-        Update: Partial<Database['public']['Tables']['student_badges']['Row']>;
-        Relationships: [];
-      };
-      practice_progress: {
-        Row: {
-          student_id: string;
-          xp: number;
-          coins: number;
-          streak_days: number;
-          current_level: number;
-          current_step: number;
-          hearts_remaining: number;
-          updated_at: string;
-        };
-        Insert: Omit<Database['public']['Tables']['practice_progress']['Row'], 'hearts_remaining'> & {
-          hearts_remaining?: number;
-        };
-        Update: Partial<Database['public']['Tables']['practice_progress']['Insert']>;
-        Relationships: [];
-      };
-      practice_daily_progress: {
-        Row: {
-          student_id: string;
-          date: string;
-          xp_earned: number;
-          goal_met: boolean;
-        };
-        Insert: Database['public']['Tables']['practice_daily_progress']['Row'];
-        Update: Partial<Database['public']['Tables']['practice_daily_progress']['Insert']>;
-        Relationships: [];
-      };
-      course_resources: {
-        Row: {
-          id: string;
-          course_id: string;
-          type: 'PDF' | 'MP3' | 'DOC';
-          title: string;
-          meta: string;
-          media_key: string | null;
-          position: number;
-          created_at: string;
-        };
-        Insert: Omit<Database['public']['Tables']['course_resources']['Row'], 'id' | 'created_at'> & {
-          id?: string;
-          created_at?: string;
-        };
-        Update: Partial<Database['public']['Tables']['course_resources']['Insert']>;
-        Relationships: [];
-      };
-      practice_levels: {
-        Row: {
-          id: string;
-          position: number;
-          title: string;
-          xp_reward: number;
-          total_steps: number;
-          cefr_tier: CefrLevel;
-        };
-        Insert: Omit<Database['public']['Tables']['practice_levels']['Row'], 'id'> & { id?: string };
-        Update: Partial<Database['public']['Tables']['practice_levels']['Insert']>;
-        Relationships: [];
-      };
-      practice_questions: {
-        Row: {
-          id: string;
-          cefr_tier: CefrLevel;
-          position: number;
-          category: string;
-          xp_reward: number;
-          prompt: string;
-          source_text: string;
-          options: Json;
-          correct_option_id: string;
-          explanation_correct: string;
-          explanation_wrong: string;
-        };
-        Insert: Omit<Database['public']['Tables']['practice_questions']['Row'], 'id'> & {
-          id?: string;
-        };
-        Update: Partial<Database['public']['Tables']['practice_questions']['Insert']>;
-        Relationships: [];
-      };
       activity_log: {
         Row: {
-          id: string;
-          tone: 'success' | 'info' | 'warning' | 'danger';
-          segments: Json;
-          created_at: string;
-        };
-        Insert: Omit<Database['public']['Tables']['activity_log']['Row'], 'id' | 'created_at'> & {
-          id?: string;
-          created_at?: string;
-        };
-        Update: Partial<Database['public']['Tables']['activity_log']['Insert']>;
-        Relationships: [];
-      };
+          created_at: string
+          id: string
+          segments: Json
+          tone: "success" | "info" | "warning" | "danger"
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          segments: Json
+          tone: "success" | "info" | "warning" | "danger"
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          segments?: Json
+          tone?: "success" | "info" | "warning" | "danger"
+        }
+        Relationships: []
+      }
+      badges: {
+        Row: {
+          id: string
+          name: string
+          position: number
+          requirement: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          position?: number
+          requirement: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          position?: number
+          requirement?: string
+        }
+        Relationships: []
+      }
+      content_blocks: {
+        Row: {
+          created_at: string
+          id: string
+          media_key: string | null
+          meta: string
+          module_id: string
+          position: number
+          title: string
+          type: Database["public"]["Enums"]["block_type"]
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          media_key?: string | null
+          meta?: string
+          module_id: string
+          position?: number
+          title: string
+          type: Database["public"]["Enums"]["block_type"]
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          media_key?: string | null
+          meta?: string
+          module_id?: string
+          position?: number
+          title?: string
+          type?: Database["public"]["Enums"]["block_type"]
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_blocks_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_blocks_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_ratings: {
+        Row: {
+          course_id: string
+          created_at: string
+          id: string
+          review: string | null
+          stars: number
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          id?: string
+          review?: string | null
+          stars: number
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          id?: string
+          review?: string | null
+          stars?: number
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_ratings_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_ratings_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_resources: {
+        Row: {
+          course_id: string
+          created_at: string
+          id: string
+          media_key: string | null
+          meta: string
+          module_id: string | null
+          position: number
+          title: string
+          type: "PDF" | "MP3" | "DOC"
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          id?: string
+          media_key?: string | null
+          meta?: string
+          module_id?: string | null
+          position?: number
+          title: string
+          type: "PDF" | "MP3" | "DOC"
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          id?: string
+          media_key?: string | null
+          meta?: string
+          module_id?: string | null
+          position?: number
+          title?: string
+          type?: "PDF" | "MP3" | "DOC"
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_resources_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_resources_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_thread_replies: {
+        Row: {
+          author_id: string
+          body: string
+          created_at: string
+          id: string
+          thread_id: string
+        }
+        Insert: {
+          author_id: string
+          body: string
+          created_at?: string
+          id?: string
+          thread_id: string
+        }
+        Update: {
+          author_id?: string
+          body?: string
+          created_at?: string
+          id?: string
+          thread_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_thread_replies_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_thread_replies_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "course_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_threads: {
+        Row: {
+          author_id: string
+          body: string
+          course_id: string
+          created_at: string
+          id: string
+          title: string
+        }
+        Insert: {
+          author_id: string
+          body: string
+          course_id: string
+          created_at?: string
+          id?: string
+          title: string
+        }
+        Update: {
+          author_id?: string
+          body?: string
+          course_id?: string
+          created_at?: string
+          id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_threads_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_threads_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      courses: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          level: Database["public"]["Enums"]["cefr_level"]
+          name: string
+          position: number
+          published: boolean
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          level: Database["public"]["Enums"]["cefr_level"]
+          name: string
+          position?: number
+          published?: boolean
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          level?: Database["public"]["Enums"]["cefr_level"]
+          name?: string
+          position?: number
+          published?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "courses_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      enrollments: {
+        Row: {
+          completed_lessons: number
+          course_id: string
+          created_at: string
+          id: string
+          progress: number
+          student_id: string
+          watched_minutes: number
+        }
+        Insert: {
+          completed_lessons?: number
+          course_id: string
+          created_at?: string
+          id?: string
+          progress?: number
+          student_id: string
+          watched_minutes?: number
+        }
+        Update: {
+          completed_lessons?: number
+          course_id?: string
+          created_at?: string
+          id?: string
+          progress?: number
+          student_id?: string
+          watched_minutes?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "enrollments_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrollments_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lesson_comment_reads: {
+        Row: {
+          last_seen_at: string
+          lesson_id: string
+          user_id: string
+        }
+        Insert: {
+          last_seen_at?: string
+          lesson_id: string
+          user_id: string
+        }
+        Update: {
+          last_seen_at?: string
+          lesson_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lesson_comment_reads_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lesson_comment_reads_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lesson_comments: {
         Row: {
-          id: string;
-          lesson_id: string;
-          author_id: string;
-          body: string;
-          created_at: string;
-        };
-        Insert: Omit<Database['public']['Tables']['lesson_comments']['Row'], 'id' | 'created_at'> & {
-          id?: string;
-          created_at?: string;
-        };
-        Update: Partial<Database['public']['Tables']['lesson_comments']['Insert']>;
-        Relationships: [];
-      };
-      storage_reconcile_runs: {
+          author_id: string
+          body: string
+          created_at: string
+          id: string
+          lesson_id: string
+          parent_id: string | null
+        }
+        Insert: {
+          author_id: string
+          body: string
+          created_at?: string
+          id?: string
+          lesson_id: string
+          parent_id?: string | null
+        }
+        Update: {
+          author_id?: string
+          body?: string
+          created_at?: string
+          id?: string
+          lesson_id?: string
+          parent_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lesson_comments_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lesson_comments_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lesson_comments_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "lesson_comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lesson_notes: {
         Row: {
-          id: string;
-          ran_at: string;
-          scanned_count: number;
-          deleted_count: number;
-          deleted_keys: Json;
-          error: string | null;
-        };
-        Insert: Omit<Database['public']['Tables']['storage_reconcile_runs']['Row'], 'id' | 'ran_at'> & {
-          id?: string;
-          ran_at?: string;
-        };
-        Update: Partial<Database['public']['Tables']['storage_reconcile_runs']['Insert']>;
-        Relationships: [];
-      };
+          body: string
+          created_at: string
+          id: string
+          lesson_id: string
+          student_id: string
+          timestamp_seconds: number
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          lesson_id: string
+          student_id: string
+          timestamp_seconds: number
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          lesson_id?: string
+          student_id?: string
+          timestamp_seconds?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lesson_notes_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lesson_notes_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lesson_progress: {
+        Row: {
+          completed_at: string | null
+          id: string
+          lesson_id: string
+          student_id: string
+          watched_percent: number
+        }
+        Insert: {
+          completed_at?: string | null
+          id?: string
+          lesson_id: string
+          student_id: string
+          watched_percent?: number
+        }
+        Update: {
+          completed_at?: string | null
+          id?: string
+          lesson_id?: string
+          student_id?: string
+          watched_percent?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lesson_progress_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lesson_progress_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lessons: {
+        Row: {
+          description: string | null
+          duration_minutes: number
+          duration_seconds: number | null
+          id: string
+          media_key: string | null
+          module_id: string
+          position: number
+          title: string
+        }
+        Insert: {
+          description?: string | null
+          duration_minutes?: number
+          duration_seconds?: number | null
+          id?: string
+          media_key?: string | null
+          module_id: string
+          position: number
+          title: string
+        }
+        Update: {
+          description?: string | null
+          duration_minutes?: number
+          duration_seconds?: number | null
+          id?: string
+          media_key?: string | null
+          module_id?: string
+          position?: number
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lessons_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
-          id: string;
-          sender_id: string;
-          student_id: string;
-          body: string;
-          read_at: string | null;
-          created_at: string;
-        };
-        Insert: Omit<Database['public']['Tables']['messages']['Row'], 'id' | 'created_at'> & {
-          id?: string;
-          created_at?: string;
-        };
-        Update: Partial<Database['public']['Tables']['messages']['Insert']>;
-        Relationships: [];
-      };
-    };
+          body: string
+          created_at: string
+          id: string
+          read_at: string | null
+          read_by_staff_at: string | null
+          sender_id: string
+          student_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          read_by_staff_at?: string | null
+          sender_id: string
+          student_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          read_by_staff_at?: string | null
+          sender_id?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      modules: {
+        Row: {
+          course_id: string
+          id: string
+          position: number
+          requires_module_id: string | null
+          title: string
+        }
+        Insert: {
+          course_id: string
+          id?: string
+          position?: number
+          requires_module_id?: string | null
+          title: string
+        }
+        Update: {
+          course_id?: string
+          id?: string
+          position?: number
+          requires_module_id?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "modules_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "modules_requires_module_id_fkey"
+            columns: ["requires_module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      practice_daily_progress: {
+        Row: {
+          date: string
+          goal_met: boolean
+          student_id: string
+          xp_earned: number
+        }
+        Insert: {
+          date: string
+          goal_met?: boolean
+          student_id: string
+          xp_earned?: number
+        }
+        Update: {
+          date?: string
+          goal_met?: boolean
+          student_id?: string
+          xp_earned?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "practice_daily_progress_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      practice_levels: {
+        Row: {
+          cefr_tier: Database["public"]["Enums"]["cefr_level"]
+          id: string
+          position: number
+          title: string
+          total_steps: number
+          xp_reward: number
+        }
+        Insert: {
+          cefr_tier: Database["public"]["Enums"]["cefr_level"]
+          id?: string
+          position: number
+          title: string
+          total_steps?: number
+          xp_reward?: number
+        }
+        Update: {
+          cefr_tier?: Database["public"]["Enums"]["cefr_level"]
+          id?: string
+          position?: number
+          title?: string
+          total_steps?: number
+          xp_reward?: number
+        }
+        Relationships: []
+      }
+      practice_progress: {
+        Row: {
+          coins: number
+          current_level: number
+          current_step: number
+          hearts_remaining: number
+          streak_days: number
+          student_id: string
+          updated_at: string
+          xp: number
+        }
+        Insert: {
+          coins?: number
+          current_level?: number
+          current_step?: number
+          hearts_remaining?: number
+          streak_days?: number
+          student_id: string
+          updated_at?: string
+          xp?: number
+        }
+        Update: {
+          coins?: number
+          current_level?: number
+          current_step?: number
+          hearts_remaining?: number
+          streak_days?: number
+          student_id?: string
+          updated_at?: string
+          xp?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "practice_progress_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      practice_questions: {
+        Row: {
+          category: string
+          cefr_tier: Database["public"]["Enums"]["cefr_level"]
+          correct_option_id: string
+          explanation_correct: string
+          explanation_wrong: string
+          id: string
+          options: Json
+          position: number
+          prompt: string
+          source_text: string
+          xp_reward: number
+        }
+        Insert: {
+          category: string
+          cefr_tier: Database["public"]["Enums"]["cefr_level"]
+          correct_option_id: string
+          explanation_correct: string
+          explanation_wrong: string
+          id?: string
+          options: Json
+          position: number
+          prompt: string
+          source_text: string
+          xp_reward: number
+        }
+        Update: {
+          category?: string
+          cefr_tier?: Database["public"]["Enums"]["cefr_level"]
+          correct_option_id?: string
+          explanation_correct?: string
+          explanation_wrong?: string
+          id?: string
+          options?: Json
+          position?: number
+          prompt?: string
+          source_text?: string
+          xp_reward?: number
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_color: string | null
+          created_at: string
+          enrollment_code: string | null
+          full_name: string
+          id: string
+          is_active: boolean
+          level: Database["public"]["Enums"]["cefr_level"] | null
+          role: Database["public"]["Enums"]["user_role"]
+        }
+        Insert: {
+          avatar_color?: string | null
+          created_at?: string
+          enrollment_code?: string | null
+          full_name: string
+          id: string
+          is_active?: boolean
+          level?: Database["public"]["Enums"]["cefr_level"] | null
+          role?: Database["public"]["Enums"]["user_role"]
+        }
+        Update: {
+          avatar_color?: string | null
+          created_at?: string
+          enrollment_code?: string | null
+          full_name?: string
+          id?: string
+          is_active?: boolean
+          level?: Database["public"]["Enums"]["cefr_level"] | null
+          role?: Database["public"]["Enums"]["user_role"]
+        }
+        Relationships: []
+      }
+      quiz_attempts: {
+        Row: {
+          created_at: string
+          id: string
+          passed: boolean
+          quiz_id: string
+          score: number
+          student_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          passed: boolean
+          quiz_id: string
+          score: number
+          student_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          passed?: boolean
+          quiz_id?: string
+          score?: number
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_attempts_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "quizzes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quiz_attempts_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quiz_options: {
+        Row: {
+          id: string
+          is_correct: boolean
+          label: string
+          position: number
+          question_id: string
+        }
+        Insert: {
+          id?: string
+          is_correct?: boolean
+          label: string
+          position?: number
+          question_id: string
+        }
+        Update: {
+          id?: string
+          is_correct?: boolean
+          label?: string
+          position?: number
+          question_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_options_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "quiz_questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quiz_questions: {
+        Row: {
+          id: string
+          position: number
+          prompt: string
+          quiz_id: string
+        }
+        Insert: {
+          id?: string
+          position?: number
+          prompt: string
+          quiz_id: string
+        }
+        Update: {
+          id?: string
+          position?: number
+          prompt?: string
+          quiz_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_questions_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "quizzes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quizzes: {
+        Row: {
+          created_at: string
+          id: string
+          module_id: string
+          passing_score: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          module_id: string
+          passing_score?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          module_id?: string
+          passing_score?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quizzes_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: true
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      storage_reconcile_runs: {
+        Row: {
+          id: string
+          ran_at: string
+          scanned_count: number
+          deleted_count: number
+          deleted_keys: Json
+          error: string | null
+        }
+        Insert: {
+          id?: string
+          ran_at?: string
+          scanned_count: number
+          deleted_count: number
+          deleted_keys: Json
+          error?: string | null
+        }
+        Update: {
+          id?: string
+          ran_at?: string
+          scanned_count?: number
+          deleted_count?: number
+          deleted_keys?: Json
+          error?: string | null
+        }
+        Relationships: []
+      }
+      student_badges: {
+        Row: {
+          badge_id: string
+          earned_at: string
+          student_id: string
+        }
+        Insert: {
+          badge_id: string
+          earned_at?: string
+          student_id: string
+        }
+        Update: {
+          badge_id?: string
+          earned_at?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_badges_badge_id_fkey"
+            columns: ["badge_id"]
+            isOneToOne: false
+            referencedRelation: "badges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_badges_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+    }
     Views: {
       course_aggregates: {
-        Row: { course_id: string; students: number; avg_progress: number };
-        Relationships: [];
-      };
-    };
+        Row: {
+          avg_progress: number | null
+          course_id: string | null
+          students: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "enrollments_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+    }
     Functions: {
+      auth_role: {
+        Args: never
+        Returns: Database["public"]["Enums"]["user_role"]
+      }
+      is_active_student: { Args: never; Returns: boolean }
+      is_admin: { Args: never; Returns: boolean }
+      is_staff: { Args: never; Returns: boolean }
+      next_enrollment_code: { Args: never; Returns: string }
       swap_content_block_position: {
-        Args: { block_a_id: string; block_b_id: string };
-        Returns: void;
-      };
-      next_enrollment_code: {
-        Args: Record<string, never>;
-        Returns: string;
-      };
+        Args: { block_a_id: string; block_b_id: string }
+        Returns: undefined
+      }
       swap_course_position: {
-        Args: { course_a_id: string; course_b_id: string };
-        Returns: void;
-      };
-    };
+        Args: { course_a_id: string; course_b_id: string }
+        Returns: undefined
+      }
+    }
     Enums: {
-      user_role: UserRole;
-      cefr_level: CefrLevel;
-      block_type: BlockType;
-    };
-    CompositeTypes: Record<string, never>;
-  };
+      block_type: "Video" | "PDF" | "Ejercicio" | "Audio" | "Evaluación"
+      cefr_level: "A1" | "A2" | "B1" | "B2" | "C1"
+      user_role: "admin" | "instructor" | "student"
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
 }
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {
+      block_type: ["Video", "PDF", "Ejercicio", "Audio", "Evaluación"],
+      cefr_level: ["A1", "A2", "B1", "B2", "C1"],
+      user_role: ["admin", "instructor", "student"],
+    },
+  },
+} as const

@@ -11,8 +11,11 @@ import {
   DEMO_MODULE,
   DEMO_PRACTICE_LEVELS,
   DEMO_QUESTION,
+  DEMO_QUIZ_DRAFT,
+  DEMO_QUIZ_ID,
   DEMO_REPORT_BARS,
   DEMO_RESOURCES,
+  DEMO_STUDENT,
   DEMO_STUDENTS,
   DEMO_TEACHER,
 } from './data';
@@ -21,17 +24,56 @@ import type {
   BlockType,
   ContentBlock,
   Course,
+  CourseRating,
+  CourseRatingsSummary,
   CourseResource,
+  CourseThread,
+  CourseThreadReply,
   Lesson,
   LessonComment,
   LessonNote,
   PracticeSession,
+  QuizAttempt,
+  QuizDraft,
   ReportRange,
   StudentSummary,
 } from '@/types';
 
 const demoNotes: LessonNote[] = [];
 const demoComments: LessonComment[] = [];
+const demoQuizAttempts: Array<QuizAttempt & { quizId: string }> = [];
+const demoThreads: CourseThread[] = [];
+const demoThreadReplies: CourseThreadReply[] = [];
+const demoRatings = new Map<string, CourseRating>();
+// `null` = el quiz de referencia se borró desde el panel; `undefined` nunca
+// se usa como estado real, sólo como valor inicial antes de leerlo.
+let demoQuizDraft: QuizDraft | null = structuredClone(DEMO_QUIZ_DRAFT);
+
+/**
+ * El propio `Backend` no expone un método de "enviar intento": la
+ * calificación real vive en las rutas API (`/api/quizzes/[moduleId]/attempt`)
+ * para no mandar `isCorrect` al navegador — ver la migración
+ * `0032_module_quizzes.sql`. En modo demo esa misma ruta llama a esta
+ * función para que el intento quede en el mismo store que lee
+ * `learning.listMyQuizAttempts`, en vez de llevar su propio duplicado.
+ */
+export function recordDemoQuizAttempt(quizId: string, score: number, passed: boolean): QuizAttempt {
+  const attempt: QuizAttempt & { quizId: string } = {
+    id: crypto.randomUUID(),
+    quizId,
+    score,
+    passed,
+    createdAt: new Date().toISOString(),
+  };
+  demoQuizAttempts.push(attempt);
+  const { quizId: _quizId, ...rest } = attempt;
+  return rest;
+}
+
+/** El quiz de referencia en demo, con `isCorrect` — la ruta API lo usa para calificar. */
+export function getDemoQuizDraft(moduleId: string): QuizDraft | null {
+  return moduleId === DEMO_MODULE.id ? demoQuizDraft : null;
+}
 
 /**
  * Adaptador en memoria. Reproduce toda la lógica del prototipo (crear curso,
@@ -252,6 +294,13 @@ export const demoBackend: Backend = {
     enroll: () => latency(undefined),
 
     sendMessage: () => latency(undefined),
+
+    setActive: (id, active) => {
+      store.students = store.students.map((s) => (s.id === id ? { ...s, active } : s));
+      const updated = store.students.find((s) => s.id === id);
+      if (!updated) throw new Error(`Estudiante ${id} no encontrado`);
+      return latency(structuredClone(updated));
+    },
   },
 
   analytics: {
@@ -267,6 +316,14 @@ export const demoBackend: Backend = {
         recommendation:
           'Divide la evaluación 4.8 en dos partes: el abandono se concentra después del minuto 12.',
       }),
+    getCourseRatings: (courseId: string): Promise<CourseRatingsSummary> => {
+      const rating = demoRatings.get(courseId);
+      return latency({
+        average: rating ? rating.stars : null,
+        count: rating ? 1 : 0,
+        reviews: rating ? [{ stars: rating.stars, review: rating.review, createdAt: new Date().toISOString() }] : [],
+      });
+    },
   },
 
   learning: {
@@ -278,9 +335,13 @@ export const demoBackend: Backend = {
     // tiene `mediaKey`, así que esta ruta nunca llega a llamarse en la
     // práctica — se deja implementada por completar el contrato.
     getLessonVideoUrl: () => latency(null),
+    // Fixture único en memoria: no hay varios cursos/módulos entre los que
+    // distinguir, así que los filtros no tienen nada real que acotar aquí.
     listResources: (): Promise<CourseResource[]> => latency(DEMO_RESOURCES),
     listBadges: (): Promise<Badge[]> => latency(DEMO_BADGES),
     saveWatchedPercent: () => latency(undefined, 0),
+    // Fixture único en memoria: no hay varios cursos entre los que
+    // distinguir, así que `courseId` no tiene nada real que acotar aquí.
     getMyProgress: () =>
       latency({
         percent: 54,
@@ -308,7 +369,7 @@ export const demoBackend: Backend = {
     markMessageRead: () => latency(undefined),
     sendMyMessage: () => latency(undefined),
     listComments: (lessonId: string) => latency(demoComments.filter((c) => c.lessonId === lessonId)),
-    addComment: (lessonId: string, body: string) => {
+    addComment: (lessonId: string, body: string, parentId?: string) => {
       const comment: LessonComment = {
         id: crypto.randomUUID(),
         lessonId,
@@ -317,9 +378,97 @@ export const demoBackend: Backend = {
         fromStaff: true,
         body,
         createdAt: new Date().toISOString(),
+        parentId: parentId ?? null,
       };
       demoComments.push(comment);
       return latency(comment);
+    },
+    deleteComment: (commentId: string) => {
+      const index = demoComments.findIndex((c) => c.id === commentId);
+      if (index !== -1) demoComments.splice(index, 1);
+      return latency(undefined);
+    },
+    // Modo demo: un solo usuario simulado, no hay "otra persona" cuyo
+    // comentario nuevo detectar — no hace falta persistir nada real.
+    getCommentsLastSeen: () => latency(null),
+    markCommentsSeen: () => latency(undefined),
+    getModuleQuiz: (moduleId: string) =>
+      latency(
+        moduleId === DEMO_MODULE.id && demoQuizDraft
+          ? {
+              id: DEMO_QUIZ_ID,
+              moduleId,
+              passingScore: demoQuizDraft.passingScore,
+              questionCount: demoQuizDraft.questions.length,
+            }
+          : null,
+      ),
+    listMyQuizAttempts: (quizId: string) =>
+      latency(
+        demoQuizAttempts
+          .filter((a) => a.quizId === quizId)
+          .map(({ quizId: _quizId, ...attempt }) => attempt)
+          .reverse(),
+      ),
+    listCourseThreads: (courseId: string) =>
+      latency(
+        demoThreads
+          .filter((t) => t.courseId === courseId)
+          .map((t) => ({ ...t, replyCount: demoThreadReplies.filter((r) => r.threadId === t.id).length }))
+          .reverse(),
+      ),
+    getCourseThread: (threadId: string) => {
+      const thread = demoThreads.find((t) => t.id === threadId);
+      if (!thread) return latency(null);
+      return latency({
+        ...thread,
+        replyCount: demoThreadReplies.filter((r) => r.threadId === threadId).length,
+      });
+    },
+    listThreadReplies: (threadId: string) =>
+      latency(demoThreadReplies.filter((r) => r.threadId === threadId)),
+    createCourseThread: (courseId: string, title: string, body: string) => {
+      const thread: CourseThread = {
+        id: crypto.randomUUID(),
+        courseId,
+        authorId: DEMO_STUDENT.id,
+        authorName: DEMO_STUDENT.fullName,
+        fromStaff: false,
+        title,
+        body,
+        createdAt: new Date().toISOString(),
+        replyCount: 0,
+      };
+      demoThreads.push(thread);
+      return latency(thread);
+    },
+    addThreadReply: (threadId: string, body: string) => {
+      const reply: CourseThreadReply = {
+        id: crypto.randomUUID(),
+        threadId,
+        authorId: DEMO_TEACHER.id,
+        authorName: DEMO_TEACHER.fullName,
+        fromStaff: true,
+        body,
+        createdAt: new Date().toISOString(),
+      };
+      demoThreadReplies.push(reply);
+      return latency(reply);
+    },
+    deleteCourseThread: (threadId: string) => {
+      const index = demoThreads.findIndex((t) => t.id === threadId);
+      if (index !== -1) demoThreads.splice(index, 1);
+      return latency(undefined);
+    },
+    deleteThreadReply: (replyId: string) => {
+      const index = demoThreadReplies.findIndex((r) => r.id === replyId);
+      if (index !== -1) demoThreadReplies.splice(index, 1);
+      return latency(undefined);
+    },
+    getMyCourseRating: (courseId: string) => latency(demoRatings.get(courseId) ?? null),
+    submitCourseRating: (courseId: string, stars: number, review: string) => {
+      demoRatings.set(courseId, { stars, review: review || null });
+      return latency(undefined);
     },
   },
 
@@ -359,5 +508,18 @@ export const demoBackend: Backend = {
         usedPercent: 30,
         tier: 'ok',
       }),
+  },
+
+  quiz: {
+    getQuizDraft: (moduleId: string) =>
+      latency(moduleId === DEMO_MODULE.id ? demoQuizDraft : null),
+    saveQuizDraft: (moduleId: string, draft: QuizDraft) => {
+      if (moduleId === DEMO_MODULE.id) demoQuizDraft = structuredClone(draft);
+      return latency(undefined);
+    },
+    removeQuiz: (moduleId: string) => {
+      if (moduleId === DEMO_MODULE.id) demoQuizDraft = null;
+      return latency(undefined);
+    },
   },
 };

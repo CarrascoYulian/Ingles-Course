@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 
 import { CourseView } from '@/features/learning/components/course-view';
+import { getCurrentProfile } from '@/lib/auth/session';
 
 interface PageProps {
   params: Promise<{ nivel: string; modulo: string; leccion: string }>;
@@ -22,5 +23,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function LessonPage({ params }: PageProps) {
   const { leccion } = await params;
   const order = Number(leccion.replace('leccion-', ''));
-  return <CourseView lessonOrder={Number.isFinite(order) ? order : undefined} />;
+  const profile = await getCurrentProfile();
+  return (
+    <CourseView
+      lessonOrder={Number.isFinite(order) ? order : undefined}
+      currentUserId={profile?.id ?? null}
+    />
+  );
 }

@@ -102,6 +102,86 @@ export interface LessonComment {
   fromStaff: boolean;
   body: string;
   createdAt: string;
+  /** `null` = comentario de primer nivel; con valor = respuesta a ese comentario. */
+  parentId: string | null;
+}
+
+/**
+ * Metadata segura del quiz de un módulo — nunca incluye preguntas ni
+ * opciones. El alumno la usa para saber "¿este módulo tiene evaluación?" sin
+ * poder ver la clave de respuestas.
+ */
+export interface ModuleQuiz {
+  id: string;
+  moduleId: string;
+  passingScore: number;
+  questionCount: number;
+}
+
+export interface QuizAttempt {
+  id: string;
+  score: number;
+  passed: boolean;
+  createdAt: string;
+}
+
+/** Pregunta tal como la ve el alumno al TOMAR el quiz — sin `isCorrect`. */
+export interface QuizQuestionForStudent {
+  id: string;
+  prompt: string;
+  options: Array<{ id: string; label: string }>;
+}
+
+/** Versión completa (con `isCorrect`) que sólo usa la autoría del docente. */
+export interface QuizOptionDraft {
+  label: string;
+  isCorrect: boolean;
+}
+
+export interface QuizQuestionDraft {
+  prompt: string;
+  options: QuizOptionDraft[];
+}
+
+export interface QuizDraft {
+  passingScore: number;
+  questions: QuizQuestionDraft[];
+}
+
+/** Tema del foro DEL CURSO — separado de `LessonComment`, que es por lección. */
+export interface CourseThread {
+  id: string;
+  courseId: string;
+  authorId: string;
+  authorName: string;
+  fromStaff: boolean;
+  title: string;
+  body: string;
+  createdAt: string;
+  replyCount: number;
+}
+
+export interface CourseThreadReply {
+  id: string;
+  threadId: string;
+  authorId: string;
+  authorName: string;
+  fromStaff: boolean;
+  body: string;
+  createdAt: string;
+}
+
+/** Lo que el propio alumno calificó — `null` = todavía no calificó este curso. */
+export interface CourseRating {
+  stars: number;
+  review: string | null;
+}
+
+/** Sólo para el docente: nunca expone qué alumno escribió qué (feedback interno). */
+export interface CourseRatingsSummary {
+  average: number | null;
+  count: number;
+  reviews: Array<{ stars: number; review: string | null; createdAt: string }>;
 }
 
 /** Progreso agregado del alumno que hace la petición — nunca de otro usuario. */

@@ -5,6 +5,7 @@ import { useState } from 'react';
 
 import { useAdminHeader } from '@/components/admin/admin-shell';
 import { CourseCard } from '@/components/admin/course-card';
+import { CourseRatingsDialog } from '@/components/admin/course-ratings-dialog';
 import { CreateCourseDialog } from '@/components/admin/create-course-dialog';
 import { EditCourseDialog } from '@/components/admin/edit-course-dialog';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
@@ -31,6 +32,7 @@ export function CoursesView() {
   const [levelFilter, setLevelFilter] = useState<CefrLevel | 'Todos'>('Todos');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
+  const [ratingsCourse, setRatingsCourse] = useState<Course | null>(null);
 
   const { data: courses, isPending } = useCourses();
   const createCourse = useCreateCourse();
@@ -101,6 +103,7 @@ export function CoursesView() {
           }
           onEdit={() => router.push(ROUTES.admin.contenidoDeCurso(course.id))}
           onRename={setEditingCourse}
+          onViewRatings={setRatingsCourse}
           onReorder={(target, direction) => reorderCourse.mutate({ id: target.id, direction })}
           // El orden real es global (`position`); con un filtro de nivel
           // activo, el vecino visible no es necesariamente el vecino real
@@ -146,6 +149,13 @@ export function CoursesView() {
         pending={confirmDialog.pending}
         onCancel={confirmDialog.dismiss}
         onConfirm={confirmDialog.accept}
+      />
+
+      <CourseRatingsDialog
+        open={ratingsCourse !== null}
+        onOpenChange={(open) => !open && setRatingsCourse(null)}
+        courseId={ratingsCourse?.id ?? null}
+        courseName={ratingsCourse?.name ?? null}
       />
     </div>
   );

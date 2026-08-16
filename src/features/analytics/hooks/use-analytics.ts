@@ -40,3 +40,12 @@ export function useReport(range: ReportRange) {
     placeholderData: keepPreviousData,
   });
 }
+
+/** Feedback interno: promedio + reseñas de un curso, nunca de qué alumno es cada una. */
+export function useCourseRatings(courseId: string | null) {
+  return useQuery({
+    queryKey: ['course-ratings', courseId],
+    queryFn: () => backend.analytics.getCourseRatings(courseId!),
+    enabled: courseId !== null,
+  });
+}

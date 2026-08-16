@@ -11,7 +11,9 @@ export const PERMISSIONS = {
   'course:publish': ['admin'],
   'course:delete': ['admin'],
   'content:edit': ['admin', 'instructor'],
+  'content:delete': ['admin'],
   'student:read': ['admin', 'instructor'],
+  'student:message': ['admin', 'instructor'],
   'student:invite': ['admin'],
   'student:update': ['admin'],
   'student:delete': ['admin'],
@@ -19,6 +21,7 @@ export const PERMISSIONS = {
   'report:read': ['admin', 'instructor'],
   'report:export': ['admin'],
   'practice:play': ['student', 'admin', 'instructor'],
+  'quiz:take': ['student'],
 } as const satisfies Record<string, readonly UserRole[]>;
 
 export type Permission = keyof typeof PERMISSIONS;

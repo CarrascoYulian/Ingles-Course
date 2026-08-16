@@ -109,17 +109,27 @@ export function LoginForm() {
         )}
       </Field>
 
-      <Field label="Contraseña" error={form.formState.errors.password?.message}>
-        {(fieldProps) => (
-          <Input
-            {...fieldProps}
-            {...form.register('password')}
-            type="password"
-            autoComplete="current-password"
-            placeholder="••••••••"
-          />
-        )}
-      </Field>
+      <div>
+        <Field label="Contraseña" error={form.formState.errors.password?.message}>
+          {(fieldProps) => (
+            <Input
+              {...fieldProps}
+              {...form.register('password')}
+              type="password"
+              autoComplete="current-password"
+              placeholder="••••••••"
+            />
+          )}
+        </Field>
+        <div className="mt-2 text-right">
+          <a
+            href="mailto:soporte@ingles-con-metodo.do"
+            className="text-meta font-bold text-brand underline"
+          >
+            ¿Olvidaste tu contraseña?
+          </a>
+        </div>
+      </div>
 
       <Button type="submit" size="block" disabled={form.formState.isSubmitting} className="mt-1">
         {form.formState.isSubmitting ? 'Entrando…' : 'Entrar'}

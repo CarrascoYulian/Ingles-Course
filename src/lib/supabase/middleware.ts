@@ -54,9 +54,17 @@ export async function updateSession(request: NextRequest): Promise<SessionCheck>
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role')
+    .select('role, is_active')
     .eq('id', user.id)
     .single();
+
+  // Un alumno desactivado a mitad de sesión pierde el acceso en la próxima
+  // navegación, no sólo en el próximo login — "pausar" de verdad, no sólo
+  // bloquear la puerta de entrada.
+  if (profile?.role === 'student' && !profile.is_active) {
+    await supabase.auth.signOut();
+    return { response, userId: null, role: null };
+  }
 
   return { response, userId: user.id, role: profile?.role ?? null };
 }

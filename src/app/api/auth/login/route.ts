@@ -57,11 +57,24 @@ export async function POST(request: Request) {
 
     const { data: profile } = await admin
       .from('profiles')
-      .select('id, enrollment_code')
+      .select('id, enrollment_code, is_active')
       .eq('enrollment_code', identifier)
       .eq('role', 'student')
       .maybeSingle();
     if (!profile?.enrollment_code) return genericError();
+    // A propósito NO es el mensaje genérico: un alumno inactivo que ve
+    // "contraseña incorrecta" prueba PINs distintos y termina escribiendo a
+    // soporte por un "olvidé mi contraseña" que no tiene nada que ver — acá
+    // el problema es la cuenta, no el PIN, así que hay que decirlo. Sí
+    // revela que la matrícula existe, pero es un cambio consciente: la
+    // claridad para el alumno pesa más que ese detalle en una app chica de
+    // un solo curso, no un sistema con miles de cuentas para enumerar.
+    if (!profile.is_active) {
+      return NextResponse.json(
+        { error: 'Tu cuenta está inactiva. Contacta a tu docente para reactivarla.' },
+        { status: 403 },
+      );
+    }
 
     const { data: userResult } = await admin.auth.admin.getUserById(profile.id);
     if (!userResult?.user?.email) return genericError();

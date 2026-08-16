@@ -15,7 +15,7 @@ import {
 import { Field } from '@/components/ui/field';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import { useStudentMessages } from '../hooks/use-students';
+import { useMarkStaffMessagesRead, useStudentMessages } from '../hooks/use-students';
 import { messageStudentSchema, type MessageStudentValues } from '../schemas';
 
 export interface MessageStudentDialogProps {
@@ -45,12 +45,34 @@ export function MessageStudentDialog({
   onSubmit,
   pending,
 }: MessageStudentDialogProps) {
-  const { data: messages, isPending: messagesPending } = useStudentMessages(studentId);
+  const {
+    data,
+    isPending: messagesPending,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useStudentMessages(studentId);
+  // Páginas más nuevas primero (así llegan de la API); para mostrar el hilo
+  // en orden cronológico hay que invertir el orden de páginas Y el de cada
+  // página — la más vieja cargada arriba de todo, la más nueva al final.
+  const messages = data ? [...data.pages].reverse().flatMap((page) => [...page.items].reverse()) : undefined;
   const bottomRef = useRef<HTMLDivElement>(null);
+  const markRead = useMarkStaffMessagesRead();
 
+  // Sólo baja al fondo al ABRIR el diálogo — si corriera en cada cambio de
+  // `messages` también dispararía al cargar mensajes más viejos con
+  // "Cargar anteriores", saltando la vista lejos de lo que se acaba de
+  // desplegar arriba.
   useEffect(() => {
     if (open) bottomRef.current?.scrollIntoView({ block: 'end' });
-  }, [open, messages]);
+  }, [open]);
+
+  useEffect(() => {
+    if (open && studentId) markRead.mutate(studentId);
+    // Sólo debe dispararse al abrir el hilo de un alumno, no en cada
+    // render (`markRead` cambia de identidad en cada uno).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, studentId]);
 
   const form = useForm<MessageStudentValues>({
     resolver: zodResolver(messageStudentSchema),
@@ -88,7 +110,19 @@ export function MessageStudentDialog({
           )}
           {messages && messages.length > 0 && (
             <ul className="flex flex-col gap-2">
-              {[...messages].reverse().map((message) => (
+              {hasNextPage && (
+                <li className="flex justify-center pb-1">
+                  <button
+                    type="button"
+                    onClick={() => fetchNextPage()}
+                    disabled={isFetchingNextPage}
+                    className="text-tiny font-bold text-fg-dim hover:text-fg disabled:opacity-50"
+                  >
+                    {isFetchingNextPage ? 'Cargando…' : 'Cargar mensajes anteriores'}
+                  </button>
+                </li>
+              )}
+              {messages.map((message) => (
                 <li key={message.id} className={cn('flex', message.fromStaff ? 'justify-end' : 'justify-start')}>
                   <div
                     className={cn(

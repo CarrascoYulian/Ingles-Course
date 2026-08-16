@@ -112,6 +112,51 @@ export function useMoveBlock(moduleId: string) {
 }
 
 /**
+ * Arrastrar una fila a una posición arbitraria (drag-and-drop). No existe
+ * un RPC de "mover a la posición N": se reutiliza `moveBlock` (swap
+ * atómico con el vecino) caminando paso a paso desde `from` hasta `to` —
+ * mismo endpoint que ya usan los botones ↑/↓, sin tocar el backend ni el
+ * contrato de `Backend` (que exige implementar cualquier método nuevo en
+ * los dos adaptadores, demo y Supabase).
+ */
+export function useReorderBlock(moduleId: string) {
+  const queryClient = useQueryClient();
+  const key = QUERY_KEYS.blocks(moduleId);
+
+  return useMutation({
+    mutationFn: async ({ blockId, from, to }: { blockId: string; from: number; to: number }) => {
+      const direction = to > from ? 1 : -1;
+      for (let position = from; position !== to; position += direction) {
+        await backend.content.moveBlock(moduleId, blockId, direction);
+      }
+    },
+
+    onMutate: async ({ from, to }) => {
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData<ContentBlock[]>(key);
+
+      queryClient.setQueryData<ContentBlock[]>(key, (blocks) => {
+        if (!blocks) return blocks;
+        const next = [...blocks];
+        const [moved] = next.splice(from, 1);
+        if (!moved) return blocks;
+        next.splice(to, 0, moved);
+        return next.map((block, index) => ({ ...block, position: index }));
+      });
+
+      return { previous };
+    },
+
+    onError: (_error, _variables, context) => {
+      if (context?.previous) queryClient.setQueryData(key, context.previous);
+      toast.error('No se pudo reordenar el bloque.');
+    },
+
+    onSettled: () => queryClient.invalidateQueries({ queryKey: key }),
+  });
+}
+
+/**
  * Registra en la base de datos un archivo que ya terminó de subirse a
  * Storage — es lo que hace que aparezca en la lista sin recargar la página.
  */
@@ -123,6 +168,12 @@ export function useAttachUpload(moduleId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.blocks(moduleId) });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.storageUsage });
+      // `onEditLesson` busca la lección por `mediaKey` en esta lista — sin
+      // invalidarla, un video recién subido no aparece ahí hasta recargar la
+      // página, y "Editar título y descripción" falla con un error que
+      // suena a que la lección no se creó (sí se creó, sólo no se había
+      // vuelto a pedir esta lista).
+      queryClient.invalidateQueries({ queryKey: ['module-lessons-admin', moduleId] });
     },
     onError: () => toast.error('El archivo se subió, pero no se pudo registrar en la base de datos.'),
   });
@@ -148,6 +199,23 @@ export function usePreviewFileUrl() {
   return useMutation({
     mutationFn: (mediaKey: string) => backend.content.getFileUrl(mediaKey),
     onError: () => toast.error('No se pudo cargar la vista previa.'),
+  });
+}
+
+/**
+ * URL firmada para la miniatura de un bloque de video en la fila del
+ * constructor — a diferencia de `usePreviewFileUrl` (mutación, bajo
+ * demanda al hacer clic), ésta es una `query` normal: se dispara sola al
+ * mostrar la fila, para poder pintar el primer frame real del video en vez
+ * de sólo un ícono. Sólo se pide para bloques de video (`enabled`); un PDF
+ * o un audio no tienen frame que mostrar.
+ */
+export function useBlockThumbnailUrl(mediaKey: string | null, enabled: boolean) {
+  return useQuery({
+    queryKey: ['block-thumbnail', mediaKey],
+    queryFn: () => backend.content.getFileUrl(mediaKey!),
+    enabled: enabled && mediaKey !== null,
+    staleTime: 60 * 60 * 1000,
   });
 }
 

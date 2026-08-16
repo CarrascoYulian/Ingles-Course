@@ -4,6 +4,9 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 import { ADMIN_NAV, STUDENT_NAV } from '@/constants/navigation';
+import { useUnreadMessageCount } from '@/features/learning/hooks/use-learning';
+import { useUnreadStaffMessageCount } from '@/features/students/hooks/use-students';
+import { ROUTES } from '@/constants/routes';
 import { cn } from '@/lib/utils';
 
 /**
@@ -24,6 +27,14 @@ export function MobileTabBar({ variant }: { variant: 'admin' | 'student' }) {
   const pathname = usePathname();
   const items = variant === 'admin' ? ADMIN_NAV : STUDENT_NAV;
 
+  // Cada hook se llama siempre (las reglas de hooks no permiten condicionarlo
+  // al variant) pero sólo uno queda `enabled` según el rol — el otro no
+  // dispara ninguna petición.
+  const { data: unreadMessages = 0 } = useUnreadMessageCount(variant === 'student');
+  const { data: unreadStaffMessages = 0 } = useUnreadStaffMessageCount(variant === 'admin');
+  const badgeHref = variant === 'admin' ? ROUTES.admin.estudiantes : ROUTES.student.mensajes;
+  const badgeCount = variant === 'admin' ? unreadStaffMessages : unreadMessages;
+
   return (
     <nav
       aria-label="Navegación principal"
@@ -37,13 +48,21 @@ export function MobileTabBar({ variant }: { variant: 'admin' | 'student' }) {
             href={href}
             aria-current={active ? 'page' : undefined}
             className={cn(
-              'flex min-h-11 flex-1 flex-col items-center justify-center gap-1 rounded-lg py-1.5',
+              'relative flex min-h-11 flex-1 flex-col items-center justify-center gap-1 rounded-lg py-1.5',
               'transition-colors duration-[160ms] ease-[cubic-bezier(0.23,1,0.32,1)]',
               '[@media(hover:hover)_and_(pointer:fine)]:active:scale-[0.97]',
               active ? 'text-brand' : 'text-fg-disabled',
             )}
           >
-            <Icon aria-hidden size={19} strokeWidth={1.9} />
+            <span className="relative">
+              <Icon aria-hidden size={19} strokeWidth={1.9} />
+              {href === badgeHref && badgeCount > 0 && (
+                <span
+                  aria-hidden
+                  className="absolute -right-1.5 -top-1 size-[9px] rounded-full bg-danger ring-2 ring-surface"
+                />
+              )}
+            </span>
             <span className="text-micro font-extrabold">{shortLabel}</span>
           </Link>
         );

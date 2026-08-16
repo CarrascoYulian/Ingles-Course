@@ -7,6 +7,8 @@ import { StorageUsageWidget } from '@/components/admin/storage-usage-widget';
 import { LogoMark } from '@/components/shared/logo';
 import { LogoutButton } from '@/components/shared/logout-button';
 import { ADMIN_NAV } from '@/constants/navigation';
+import { ROUTES } from '@/constants/routes';
+import { useUnreadStaffMessageCount } from '@/features/students/hooks/use-students';
 import { cn } from '@/lib/utils';
 
 export interface AdminSidebarProps {
@@ -19,6 +21,7 @@ export interface AdminSidebarProps {
  */
 export function AdminSidebar({ teacherName }: AdminSidebarProps) {
   const pathname = usePathname();
+  const { data: unreadMessages = 0 } = useUnreadStaffMessageCount();
 
   return (
     <aside className="hidden w-sidebar shrink-0 flex-col gap-[26px] bg-ink px-4 py-6 lg:flex">
@@ -55,6 +58,14 @@ export function AdminSidebar({ teacherName }: AdminSidebarProps) {
             >
               <Icon aria-hidden size={17} strokeWidth={1.8} />
               {label}
+              {href === ROUTES.admin.estudiantes && unreadMessages > 0 && (
+                <span
+                  aria-label={`${unreadMessages} mensajes sin leer`}
+                  className="ml-auto grid size-[19px] shrink-0 place-items-center rounded-full bg-danger text-micro font-extrabold text-white"
+                >
+                  {unreadMessages > 9 ? '9+' : unreadMessages}
+                </span>
+              )}
             </Link>
           );
         })}

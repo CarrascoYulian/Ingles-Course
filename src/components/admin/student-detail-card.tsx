@@ -1,9 +1,19 @@
 'use client';
 
+import { MoreVertical } from 'lucide-react';
+
+import { useAdminRole } from '@/components/admin/admin-shell';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Progress } from '@/components/ui/progress';
+import { can } from '@/lib/auth/rbac';
 import type { StudentSummary } from '@/types';
 
 export interface StudentDetailCardProps {
@@ -13,6 +23,9 @@ export interface StudentDetailCardProps {
   onEdit: (student: StudentSummary) => void;
   onDelete: (student: StudentSummary) => void;
   onEnroll: (student: StudentSummary) => void;
+  onToggleActive: (student: StudentSummary) => void;
+  /** Tiene al menos un mensaje sin leer por el docente. */
+  hasUnreadMessage?: boolean;
 }
 
 export function StudentDetailCard({
@@ -22,7 +35,11 @@ export function StudentDetailCard({
   onEdit,
   onDelete,
   onEnroll,
+  onToggleActive,
+  hasUnreadMessage,
 }: StudentDetailCardProps) {
+  const role = useAdminRole();
+
   if (!student) {
     return (
       <Card padding="lg" className="hidden lg:block">
@@ -34,17 +51,55 @@ export function StudentDetailCard({
   }
 
   const { name, enrollmentCode, level, progress, hours, lessons, avatarColor } = student;
+  const canUpdate = can(role, 'student:update');
+  const canReset = can(role, 'student:reset-progress');
+  const canDelete = can(role, 'student:delete');
+  const hasDangerZone = canReset || canDelete;
 
   return (
     <Card padding="lg" aria-label={`Ficha de ${name}`}>
-      <div className="flex items-center gap-3">
-        <Avatar name={name} color={avatarColor} size={44} />
-        <div className="min-w-0">
+      <div className="flex items-start gap-3">
+        <span className="relative shrink-0">
+          <Avatar name={name} color={avatarColor} size={44} />
+          {hasUnreadMessage && (
+            <span
+              aria-label="Mensaje sin leer"
+              className="absolute -right-0.5 -top-0.5 size-3 rounded-full bg-danger ring-2 ring-surface"
+            />
+          )}
+        </span>
+        <div className="min-w-0 flex-1">
           <h2 className="truncate text-title-xs font-bold tracking-tight-2 text-fg">{name}</h2>
           <p className="text-tiny font-semibold text-fg-ghost">
             {enrollmentCode} · Nivel {level}
           </p>
         </div>
+        {hasDangerZone && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="icon"
+                size="square"
+                aria-label={`Más acciones para ${name}`}
+                className="shrink-0"
+              >
+                <MoreVertical aria-hidden size={14} strokeWidth={2.2} />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {canReset && (
+                <DropdownMenuItem variant="danger" onSelect={() => onReset(student)}>
+                  Reiniciar progreso
+                </DropdownMenuItem>
+              )}
+              {canDelete && (
+                <DropdownMenuItem variant="danger" onSelect={() => onDelete(student)}>
+                  Eliminar estudiante
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
 
       <p className="mt-[18px] text-meta font-bold text-fg-dim">Progreso del curso</p>
@@ -73,18 +128,25 @@ export function StudentDetailCard({
         <Button variant="ghost" size="sm" onClick={() => onMessage(student)}>
           Enviar mensaje
         </Button>
-        <Button variant="ghost" size="sm" onClick={() => onEdit(student)}>
-          Editar información
-        </Button>
-        <Button variant="ghost" size="sm" onClick={() => onEnroll(student)}>
-          Matricular en curso
-        </Button>
-        <Button variant="danger" size="sm" onClick={() => onReset(student)}>
-          Reiniciar progreso
-        </Button>
-        <Button variant="danger" size="sm" onClick={() => onDelete(student)}>
-          Eliminar estudiante
-        </Button>
+        {canUpdate && (
+          <>
+            <Button variant="ghost" size="sm" onClick={() => onEdit(student)}>
+              Editar información
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => onEnroll(student)}>
+              Matricular en curso
+            </Button>
+            {student.active ? (
+              <Button variant="danger" size="sm" onClick={() => onToggleActive(student)}>
+                Desactivar estudiante
+              </Button>
+            ) : (
+              <Button variant="ghost" size="sm" onClick={() => onToggleActive(student)}>
+                Activar estudiante
+              </Button>
+            )}
+          </>
+        )}
       </div>
     </Card>
   );

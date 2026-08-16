@@ -20,9 +20,16 @@ import type {
   LessonComment,
   LessonNote,
   Module,
+  ModuleQuiz,
+  CourseRating,
+  CourseRatingsSummary,
+  CourseThread,
+  CourseThreadReply,
   PracticeLevel,
   PracticeQuestion,
   PracticeSession,
+  QuizAttempt,
+  QuizDraft,
   ReportRange,
   ReportSnapshot,
   StorageUsage,
@@ -121,6 +128,8 @@ export interface StudentsPort {
   sendMessage(id: string, body: string): Promise<void>;
   /** Matricula al alumno en un curso — sin esto "Mi curso" se queda vacío para siempre. */
   enroll(studentId: string, courseId: string): Promise<void>;
+  /** Pausa/reactiva al alumno: inactivo no puede iniciar sesión ni mantener una sesión abierta. */
+  setActive(id: string, active: boolean): Promise<StudentSummary>;
 }
 
 export interface AnalyticsPort {
@@ -128,6 +137,8 @@ export interface AnalyticsPort {
   getActivity(): Promise<ActivityEvent[]>;
   getLeaderboard(): Promise<LeaderboardEntry[]>;
   getReport(range: ReportRange): Promise<ReportSnapshot>;
+  /** Sólo docente — promedio + reseñas de un curso, nunca de qué alumno es cada una. */
+  getCourseRatings(courseId: string): Promise<CourseRatingsSummary>;
 }
 
 export interface CreateModuleInput {
@@ -151,12 +162,25 @@ export interface LearningPort {
   listLessons(moduleId: string): Promise<Lesson[]>;
   /** URL firmada del video real de una lección — `null` si no tiene o no existe. */
   getLessonVideoUrl(mediaKey: string): Promise<string | null>;
-  listResources(): Promise<CourseResource[]>;
+  /**
+   * Sin filtros: todo el material de todos los cursos matriculados (lo usa
+   * la biblioteca en `/recursos`). Con `courseId`/`moduleId`: sólo el
+   * material real de esa lección — antes cualquier curso/módulo traía
+   * también los archivos subidos en otros cursos y otros módulos, porque
+   * el filtro sólo miraba "¿está matriculado en ALGÚN curso?".
+   */
+  listResources(filters?: { courseId?: string; moduleId?: string }): Promise<CourseResource[]>;
   listBadges(): Promise<Badge[]>;
   /** Persiste el avance de reproducción de una lección (0-100). */
   saveWatchedPercent(lessonId: string, percent: number): Promise<void>;
-  /** Progreso agregado del alumno autenticado: nunca el de otro usuario. */
-  getMyProgress(): Promise<StudentProgress>;
+  /**
+   * Progreso agregado del alumno autenticado en UN curso concreto — nunca el
+   * de otro usuario. Antes no recibía `courseId` y tomaba la matrícula MÁS
+   * RECIENTE del alumno sin importar cuál: con más de un curso, terminar
+   * módulos enteros de un curso podía seguir mostrando "0 %" si esa no era
+   * la última matrícula creada.
+   */
+  getMyProgress(courseId: string): Promise<StudentProgress>;
   /** Crea el primer/siguiente módulo de un curso desde el panel — sin SQL manual. */
   createModule(input: CreateModuleInput): Promise<Module>;
   /** Notas reales del alumno autenticado sobre una lección, con marca de tiempo del video. */
@@ -169,8 +193,44 @@ export interface LearningPort {
   sendMyMessage(body: string): Promise<void>;
   /** Comentarios reales de una lección — visibles para el alumno y el docente por igual. */
   listComments(lessonId: string): Promise<LessonComment[]>;
-  /** El autor (alumno o docente) se resuelve del usuario autenticado, nunca se recibe como parámetro. */
-  addComment(lessonId: string, body: string): Promise<LessonComment>;
+  /**
+   * El autor (alumno o docente) se resuelve del usuario autenticado, nunca
+   * se recibe como parámetro. `parentId` lo convierte en una respuesta a
+   * ese comentario en vez de uno nuevo de primer nivel.
+   */
+  addComment(lessonId: string, body: string, parentId?: string): Promise<LessonComment>;
+  /** El alumno sólo puede borrar el suyo; el docente, cualquiera — lo aplica RLS. */
+  deleteComment(commentId: string): Promise<void>;
+  /** `null` = nunca los vio. Marca desde cuándo son "nuevos" los comentarios de esa lección para el usuario autenticado. */
+  getCommentsLastSeen(lessonId: string): Promise<string | null>;
+  /** Actualiza esa marca a "ahora" — se llama al abrir la pestaña de comentarios. */
+  markCommentsSeen(lessonId: string): Promise<void>;
+  /** `null` = el módulo no tiene evaluación. Nunca trae preguntas/opciones. */
+  getModuleQuiz(moduleId: string): Promise<ModuleQuiz | null>;
+  /** Historial de intentos del alumno autenticado en ese quiz, más reciente primero. */
+  listMyQuizAttempts(quizId: string): Promise<QuizAttempt[]>;
+  /** Temas del foro de un curso, más reciente primero. */
+  listCourseThreads(courseId: string): Promise<CourseThread[]>;
+  getCourseThread(threadId: string): Promise<CourseThread | null>;
+  listThreadReplies(threadId: string): Promise<CourseThreadReply[]>;
+  createCourseThread(courseId: string, title: string, body: string): Promise<CourseThread>;
+  addThreadReply(threadId: string, body: string): Promise<CourseThreadReply>;
+  /** El alumno sólo puede borrar el suyo; el docente, cualquiera — lo aplica RLS. */
+  deleteCourseThread(threadId: string): Promise<void>;
+  deleteThreadReply(replyId: string): Promise<void>;
+  /** `null` = el alumno autenticado todavía no calificó ese curso. */
+  getMyCourseRating(courseId: string): Promise<CourseRating | null>;
+  /** Crea o actualiza (una calificación por alumno por curso). */
+  submitCourseRating(courseId: string, stars: number, review: string): Promise<void>;
+}
+
+export interface QuizPort {
+  /** Autoría del docente — incluye `isCorrect`. `null` si el módulo no tiene quiz todavía. */
+  getQuizDraft(moduleId: string): Promise<QuizDraft | null>;
+  /** Reemplaza el quiz completo del módulo (preguntas y opciones incluidas). */
+  saveQuizDraft(moduleId: string, draft: QuizDraft): Promise<void>;
+  /** Borra el quiz del módulo entero, con sus preguntas, opciones e intentos. */
+  removeQuiz(moduleId: string): Promise<void>;
 }
 
 export interface PracticePort {
@@ -194,4 +254,5 @@ export interface Backend {
   learning: LearningPort;
   practice: PracticePort;
   storage: StoragePort;
+  quiz: QuizPort;
 }
