@@ -1,4 +1,4 @@
-# Inglés con Método
+# Bertho Community
 
 Plataforma de cursos de inglés con panel docente, plataforma del alumno y
 práctica gamificada. Next.js 15 (App Router) + React 19 + TypeScript +

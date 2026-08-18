@@ -94,7 +94,7 @@ export function CourseCard({
         label={`Avance de ${name}`}
       />
 
-      <div className="mt-3 flex gap-[7px] md:mt-0 md:shrink-0 md:gap-2">
+      <div className="mt-3 flex flex-wrap gap-[7px] md:mt-0 md:shrink-0 md:flex-nowrap md:gap-2">
         <Button
           variant="icon"
           size="square"

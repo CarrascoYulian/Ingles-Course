@@ -3,7 +3,7 @@ export * from './navigation';
 export * from './motion';
 export * from './palettes';
 
-export const APP_NAME = 'Inglés con Método';
+export const APP_NAME = 'Bertho Community';
 export const APP_TAGLINE = 'Aprende inglés con un método guiado, medible y sin relleno.';
 
 /** Claves raíz de la caché de TanStack Query. */
