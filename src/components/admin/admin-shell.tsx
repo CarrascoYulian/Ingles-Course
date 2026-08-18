@@ -14,6 +14,7 @@ import { usePathname } from 'next/navigation';
 import { MobileTabBar } from '@/components/shared/mobile-tab-bar';
 import { Button } from '@/components/ui/button';
 import { ADMIN_PAGE_META } from '@/constants/navigation';
+import type { UserRole } from '@/types';
 import { AdminSidebar } from './admin-sidebar';
 import { AdminTopbar } from './admin-topbar';
 
@@ -24,7 +25,22 @@ interface AdminHeaderState {
 
 const AdminHeaderContext = createContext<{
   set: (state: AdminHeaderState) => void;
+  query: string;
+  setQuery: (query: string) => void;
+  role: UserRole;
 } | null>(null);
+
+/**
+ * Rol del usuario logueado en el panel docente, para ocultar en el cliente
+ * acciones que el servidor de todos modos rechazaría (ver `PERMISSIONS` en
+ * `src/lib/auth/rbac.ts`) — antes sólo el 403 del backend impedía el efecto,
+ * pero el botón (p.ej. "Eliminar estudiante") seguía visible para un
+ * `instructor` sin ese permiso.
+ */
+export function useAdminRole(): UserRole {
+  const context = useContext(AdminHeaderContext);
+  return context?.role ?? 'instructor';
+}
 
 /**
  * Cada sección aporta su subtítulo y su acción primaria; la cabecera es
@@ -42,15 +58,32 @@ export function useAdminHeader(subtitle: string, onAction?: () => void) {
   }, [subtitle]);
 }
 
+/**
+ * Texto en vivo del buscador, compartido entre `AdminTopbar` (que lo
+ * escribe) y la vista de cada sección (que lo lee para filtrar al
+ * instante). Antes `useAdminSearch` guardaba `query` en un `useState`
+ * propio de cada componente que lo llamaba — dos instancias distintas que
+ * sólo se reconciliaban de vuelta a través de la URL, con el mismo retraso
+ * del debounce. Escribir "Roberto" en el topbar nunca llegaba de inmediato
+ * a `StudentsView`: el filtro instantáneo del listado en realidad esperaba
+ * el mismo viaje de red que se quería evitar, y eso era el parpadeo.
+ */
+export function useSharedSearchQuery(): [string, (query: string) => void] {
+  const context = useContext(AdminHeaderContext);
+  return [context?.query ?? '', context?.setQuery ?? (() => undefined)];
+}
+
 export interface AdminShellProps {
   teacherName: string;
+  role: UserRole;
   children: ReactNode;
 }
 
-export function AdminShell({ teacherName, children }: AdminShellProps) {
+export function AdminShell({ teacherName, role, children }: AdminShellProps) {
   const pathname = usePathname();
   const [header, setHeader] = useState<AdminHeaderState>({ subtitle: '', onAction: null });
-  const contextValue = useMemo(() => ({ set: setHeader }), []);
+  const [query, setQuery] = useState('');
+  const contextValue = useMemo(() => ({ set: setHeader, query, setQuery, role }), [query, role]);
 
   const actionLabel = ADMIN_PAGE_META[pathname]?.action ?? 'Nuevo curso';
 

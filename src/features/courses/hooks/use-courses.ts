@@ -98,6 +98,7 @@ export function useDeleteCourse() {
     mutationFn: ({ id }: { id: string; name: string }) => backend.courses.remove(id),
     onSuccess: (_data, { name }) => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.courses });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.storageUsage });
       toast(`“${name}” eliminado`);
     },
     onError: () => toast.error('No se pudo eliminar el curso.'),

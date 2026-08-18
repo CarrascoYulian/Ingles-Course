@@ -34,30 +34,41 @@ export async function GET() {
   const supabase = await getSupabaseServerClient();
   if (!supabase) return NextResponse.json({ error: 'Supabase no disponible' }, { status: 503 });
 
+  // Sin `.limit(5)` aquí a propósito: un alumno matriculado en varios
+  // cursos tiene varias filas de `enrollments`, cada una con su propio
+  // `completed_lessons` — pedir top 5 *filas* podía devolver al mismo
+  // alumno dos veces (mismo `profiles.id` como key, React se quejaba de
+  // keys duplicadas) y además dejaba afuera a alguien con más lecciones
+  // completadas en total pero repartidas entre cursos. Se agrega por
+  // alumno en JS y recién ahí se cortan los primeros 5.
   const { data, error } = await supabase
     .from('enrollments')
-    .select('completed_lessons, profiles!inner(id, full_name, enrollment_code, level, avatar_color)')
-    .order('completed_lessons', { ascending: false })
-    .limit(5);
+    .select('completed_lessons, profiles!inner(id, full_name, enrollment_code, level, avatar_color)');
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   const rows = (data ?? []) as unknown as EnrollmentWithProfile[];
-  const leaderboard: LeaderboardEntry[] = rows
-    .filter((row) => row.profiles !== null)
-    .map((row, index) => {
-      const profile = row.profiles!;
-      return {
-        id: profile.id,
-        rank: index + 1,
-        name: profile.full_name,
-        enrollmentCode: profile.enrollment_code ?? '—',
-        level: profile.level ?? 'A1',
-        score: row.completed_lessons,
-        avatarColor: profile.avatar_color ?? avatarColorFor(profile.id),
-        initials: getInitials(profile.full_name),
-      };
-    });
+  const totalsByStudent = new Map<string, { profile: NonNullable<EnrollmentWithProfile['profiles']>; score: number }>();
+  for (const row of rows) {
+    if (!row.profiles) continue;
+    const existing = totalsByStudent.get(row.profiles.id);
+    if (existing) existing.score += row.completed_lessons;
+    else totalsByStudent.set(row.profiles.id, { profile: row.profiles, score: row.completed_lessons });
+  }
+
+  const leaderboard: LeaderboardEntry[] = Array.from(totalsByStudent.values())
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5)
+    .map(({ profile, score }, index) => ({
+      id: profile.id,
+      rank: index + 1,
+      name: profile.full_name,
+      enrollmentCode: profile.enrollment_code ?? '—',
+      level: profile.level ?? 'A1',
+      score,
+      avatarColor: profile.avatar_color ?? avatarColorFor(profile.id),
+      initials: getInitials(profile.full_name),
+    }));
 
   return NextResponse.json(leaderboard, { headers: { 'Cache-Control': 'private, max-age=300' } });
 }

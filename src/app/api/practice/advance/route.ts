@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { guard, isDenied } from '../../_lib/guard';
 import { DEFAULT_TOTAL_STEPS, HEARTS_TOTAL } from '../_constants';
 import { getMissions } from '../_missions';
+import { computeAdvance } from '../logic';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
@@ -29,13 +30,17 @@ export async function POST() {
     levels?.find((l) => l.position === currentLevel)?.total_steps ?? DEFAULT_TOTAL_STEPS;
   const hasNextLevel = levels?.some((l) => l.position === currentLevel + 1) ?? false;
 
-  const completingLevel = (current?.current_step ?? 1) >= totalSteps;
-  const nextLevel = completingLevel && hasNextLevel ? currentLevel + 1 : currentLevel;
-  const nextStep = completingLevel ? 1 : (current?.current_step ?? 1) + 1;
   // Subir de nivel es un punto de control natural: los corazones se
   // recargan, igual que al iniciar un módulo nuevo en la mayoría de apps de
-  // práctica gamificada.
-  const nextHearts = nextLevel !== currentLevel ? HEARTS_TOTAL : (current?.hearts_remaining ?? HEARTS_TOTAL);
+  // práctica gamificada. Ver `computeAdvance` para la regla completa.
+  const { nextLevel, nextStep, nextHearts } = computeAdvance({
+    currentStep: current?.current_step ?? 1,
+    totalSteps,
+    currentLevel,
+    hasNextLevel,
+    currentHearts: current?.hearts_remaining ?? HEARTS_TOTAL,
+    heartsTotal: HEARTS_TOTAL,
+  });
 
   const { data, error } = await supabase
     .from('practice_progress')

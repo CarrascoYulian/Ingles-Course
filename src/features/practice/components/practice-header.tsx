@@ -1,16 +1,48 @@
 'use client';
 
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Volume2, VolumeX } from 'lucide-react';
 import Link from 'next/link';
 
 import { Hearts, StatPills } from '@/components/duolingo/stat-pills';
 import { Progress } from '@/components/ui/progress';
 import { ROUTES } from '@/constants/routes';
+import { cn } from '@/lib/utils';
 import type { PracticeSession } from '@/types';
 
 export interface PracticeHeaderProps {
   session: PracticeSession;
   levelTitle: string;
+  soundEnabled: boolean;
+  onToggleSound: () => void;
+}
+
+function SoundToggle({
+  enabled,
+  onToggle,
+  className,
+}: {
+  enabled: boolean;
+  onToggle: () => void;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-pressed={enabled}
+      aria-label={enabled ? 'Silenciar sonido de la práctica' : 'Activar sonido de la práctica'}
+      className={cn(
+        'grid size-[34px] shrink-0 place-items-center rounded-lg bg-surface-sunken text-fg-muted transition-colors duration-[160ms] hover:bg-line [@media(hover:hover)_and_(pointer:fine)]:active:scale-[0.97]',
+        className,
+      )}
+    >
+      {enabled ? (
+        <Volume2 aria-hidden size={16} strokeWidth={2.2} />
+      ) : (
+        <VolumeX aria-hidden size={16} strokeWidth={2.2} />
+      )}
+    </button>
+  );
 }
 
 /**
@@ -20,7 +52,12 @@ export interface PracticeHeaderProps {
  * vidas — el alumno necesita ver «cuánto falta» y «cuánto me queda» de un
  * vistazo, sin gastar altura de pantalla.
  */
-export function PracticeHeader({ session, levelTitle }: PracticeHeaderProps) {
+export function PracticeHeader({
+  session,
+  levelTitle,
+  soundEnabled,
+  onToggleSound,
+}: PracticeHeaderProps) {
   const percent = (session.step / session.totalSteps) * 100;
 
   return (
@@ -44,7 +81,10 @@ export function PracticeHeader({ session, levelTitle }: PracticeHeaderProps) {
             </p>
           </div>
         </div>
-        <StatPills streak={session.streak} xp={session.xp} coins={session.coins} />
+        <div className="flex items-center gap-3">
+          <StatPills streak={session.streak} xp={session.xp} coins={session.coins} />
+          <SoundToggle enabled={soundEnabled} onToggle={onToggleSound} />
+        </div>
       </div>
 
       {/* Móvil */}
@@ -64,6 +104,7 @@ export function PracticeHeader({ session, levelTitle }: PracticeHeaderProps) {
             label={`Progreso de ${levelTitle}`}
           />
           <Hearts total={session.hearts.total} remaining={session.hearts.remaining} />
+          <SoundToggle enabled={soundEnabled} onToggle={onToggleSound} className="size-[30px]" />
         </div>
         <StatPills
           streak={session.streak}

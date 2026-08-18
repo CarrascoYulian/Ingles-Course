@@ -1,6 +1,10 @@
+import { Award } from 'lucide-react';
+import Link from 'next/link';
+
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import { ROUTES } from '@/constants/routes';
 import type { CefrLevel } from '@/types';
 
 export interface ProgressCardProps {
@@ -9,10 +13,12 @@ export interface ProgressCardProps {
   hours: number;
   lessons: number;
   badges: number;
+  /** Si se pasa y `percent` llega a 100, ofrece el enlace al certificado. */
+  courseId?: string;
 }
 
 /** Tarjeta «Tu progreso» del raíl derecho del alumno. */
-export function ProgressCard({ percent, level, hours, lessons, badges }: ProgressCardProps) {
+export function ProgressCard({ percent, level, hours, lessons, badges, courseId }: ProgressCardProps) {
   return (
     <Card padding="lg" radius="xl">
       <div className="flex items-center justify-between">
@@ -43,6 +49,16 @@ export function ProgressCard({ percent, level, hours, lessons, badges }: Progres
           <dt className="text-micro font-bold text-fg-ghost">insignias</dt>
         </div>
       </dl>
+
+      {percent >= 100 && courseId && (
+        <Link
+          href={ROUTES.student.certificado(courseId)}
+          className="mt-4 flex items-center justify-center gap-1.5 rounded-xl border border-line-strong bg-surface-muted py-2.5 text-body-sm font-bold text-fg hover:border-fg-placeholder"
+        >
+          <Award aria-hidden size={15} strokeWidth={2.2} />
+          Ver certificado
+        </Link>
+      )}
     </Card>
   );
 }

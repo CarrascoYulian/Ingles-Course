@@ -1,8 +1,9 @@
 'use client';
 
-import { Check, Lock } from 'lucide-react';
+import { Check, Lock, Play } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { avatarColorFor } from '@/constants/palettes';
 import { cn } from '@/lib/utils';
 import type { Lesson } from '@/types';
 
@@ -26,6 +27,8 @@ export function LessonList({ lessons, onSelect }: LessonListProps) {
         const isLocked = lesson.state === 'locked';
         const isDone = lesson.state === 'done';
 
+        const color = avatarColorFor(lesson.id);
+
         return (
           <li key={lesson.id}>
             <button
@@ -40,7 +43,7 @@ export function LessonList({ lessons, onSelect }: LessonListProps) {
                 onSelect?.(lesson);
               }}
               className={cn(
-                'flex w-full items-center gap-[11px] rounded-2xl border-[1.5px] px-3 py-[11px] text-left',
+                'flex w-full items-center gap-3 rounded-2xl border-l-[3px] py-2 pl-2.5 pr-3 text-left',
                 'transition-[background-color,border-color] duration-[160ms] ease-[cubic-bezier(0.23,1,0.32,1)]',
                 isCurrent
                   ? 'border-accent bg-accent-tint'
@@ -50,29 +53,46 @@ export function LessonList({ lessons, onSelect }: LessonListProps) {
             >
               <span
                 aria-hidden
-                className={cn(
-                  'grid size-[26px] shrink-0 place-items-center rounded-full text-tiny font-extrabold',
-                  isDone && 'bg-success text-white',
-                  isCurrent && 'bg-accent text-white',
-                  isLocked && 'bg-line-soft text-fg-disabled',
-                )}
+                className="relative grid size-11 shrink-0 place-items-center overflow-hidden rounded-xl"
+                style={{
+                  background: isLocked
+                    ? undefined
+                    : `linear-gradient(135deg, ${color}, ${color}99)`,
+                }}
               >
-                {isDone ? <Check size={13} strokeWidth={3} /> : isLocked ? '·' : lesson.order}
+                {isLocked ? (
+                  <span className="grid size-full place-items-center bg-line-soft">
+                    <Lock aria-hidden size={15} strokeWidth={2.2} className="text-fg-disabled" />
+                  </span>
+                ) : isDone ? (
+                  <Check aria-hidden size={18} strokeWidth={3} className="text-white" />
+                ) : (
+                  <Play
+                    aria-hidden
+                    size={16}
+                    strokeWidth={0}
+                    fill="white"
+                    className="translate-x-[1px]"
+                  />
+                )}
+                <span className="absolute bottom-0 left-0 right-0 bg-black/45 py-[1px] text-center text-[8px] font-extrabold leading-tight text-white">
+                  {isLocked ? '—' : lesson.duration}
+                </span>
               </span>
 
-              <span
-                className={cn(
-                  'min-w-0 flex-1 truncate text-body-sm',
-                  isCurrent ? 'font-bold text-fg-strong' : 'font-semibold',
-                  isLocked ? 'text-fg-faint' : 'text-fg-strong',
-                )}
-              >
-                {lesson.title}
-              </span>
-
-              <span className="flex shrink-0 items-center gap-1 text-tiny font-bold text-fg-disabled">
-                {isLocked && <Lock aria-hidden size={11} strokeWidth={2.4} />}
-                {isLocked ? 'Bloqueada' : lesson.duration}
+              <span className="min-w-0 flex-1">
+                <span
+                  className={cn(
+                    'block truncate text-body-sm',
+                    isCurrent ? 'font-bold text-fg-strong' : 'font-semibold',
+                    isLocked ? 'text-fg-faint' : 'text-fg-strong',
+                  )}
+                >
+                  {lesson.title}
+                </span>
+                <span className="mt-0.5 block text-tiny font-bold text-fg-disabled">
+                  {isLocked ? 'Bloqueada' : `Lección ${lesson.order}`}
+                </span>
               </span>
             </button>
           </li>

@@ -7,6 +7,8 @@ import { Logo } from '@/components/shared/logo';
 import { LogoutButton } from '@/components/shared/logout-button';
 import { Avatar } from '@/components/ui/avatar';
 import { STUDENT_NAV } from '@/constants/navigation';
+import { ROUTES } from '@/constants/routes';
+import { useUnreadMessageCount } from '@/features/learning/hooks/use-learning';
 import { cn } from '@/lib/utils';
 
 export interface StudentNavbarProps {
@@ -23,6 +25,7 @@ export interface StudentNavbarProps {
 export function StudentNavbar({ name, enrollmentCode, avatarColor, streakDays }: StudentNavbarProps) {
   const pathname = usePathname();
   const firstName = name.split(' ').slice(0, 2).join(' ');
+  const { data: unreadMessages = 0 } = useUnreadMessageCount();
 
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between gap-6 border-b border-line bg-surface px-5 py-3.5 lg:px-[30px] lg:py-4">
@@ -37,13 +40,19 @@ export function StudentNavbar({ name, enrollmentCode, avatarColor, streakDays }:
                 href={href}
                 aria-current={active ? 'page' : undefined}
                 className={cn(
-                  'border-b-2 pb-0.5 text-body-sm font-bold transition-colors duration-[160ms]',
+                  'relative border-b-2 pb-0.5 text-body-sm font-bold transition-colors duration-[160ms]',
                   active
                     ? 'border-brand text-fg'
                     : 'border-transparent text-fg-faint hover:text-fg-subtle',
                 )}
               >
                 {label}
+                {href === ROUTES.student.mensajes && unreadMessages > 0 && (
+                  <span
+                    aria-hidden
+                    className="absolute -right-2 -top-1 size-[7px] rounded-full bg-danger"
+                  />
+                )}
               </Link>
             );
           })}

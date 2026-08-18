@@ -15,10 +15,21 @@ export const runtime = 'nodejs';
  * — no existía tabla para responder con nada real (`course_resources`,
  * añadida en 0005_resources_levels_activity.sql). Ahora consulta los
  * recursos de los cursos en los que el usuario está matriculado.
+ *
+ * Sin `courseId`/`moduleId` en la query: se usa para la biblioteca completa
+ * en `/recursos` (todo lo matriculado). Con `courseId` (y opcionalmente
+ * `moduleId`): se usa desde la pestaña "Archivos" de una lección concreta
+ * — antes ignoraba ambos parámetros y siempre devolvía TODOS los recursos
+ * de TODOS los cursos matriculados, así que un archivo subido en el curso
+ * B aparecía también viendo una lección del curso A.
  */
-export async function GET() {
+export async function GET(request: Request) {
   const result = await guard('course:read');
   if (isDenied(result)) return result.response;
+
+  const { searchParams } = new URL(request.url);
+  const courseIdFilter = searchParams.get('courseId');
+  const moduleIdFilter = searchParams.get('moduleId');
 
   if (IS_DEMO_MODE) {
     return NextResponse.json(DEMO_RESOURCES, {
@@ -38,16 +49,19 @@ export async function GET() {
     return NextResponse.json({ error: enrollmentsError.message }, { status: 500 });
   }
 
-  const courseIds = (enrollments ?? []).map((row) => row.course_id);
+  const enrolledCourseIds = (enrollments ?? []).map((row) => row.course_id);
+  // Filtrar por `courseId` no basta por sí solo: sin cruzarlo con las
+  // matrículas reales, un alumno podría pedir recursos de un curso ajeno
+  // pasando cualquier id en la URL.
+  const courseIds =
+    courseIdFilter && enrolledCourseIds.includes(courseIdFilter) ? [courseIdFilter] : enrolledCourseIds;
   if (courseIds.length === 0) {
     return NextResponse.json([], { headers: { 'Cache-Control': 'private, max-age=600' } });
   }
 
-  const { data: rows, error } = await supabase
-    .from('course_resources')
-    .select('*')
-    .in('course_id', courseIds)
-    .order('position');
+  let query = supabase.from('course_resources').select('*').in('course_id', courseIds);
+  if (moduleIdFilter) query = query.eq('module_id', moduleIdFilter);
+  const { data: rows, error } = await query.order('position');
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

@@ -18,6 +18,13 @@ const clientSchema = z.object({
 const serverSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
   /**
+   * Autentica al Vercel Cron Job que llama a `/api/storage/reconcile`. Con
+   * esta variable configurada en el proyecto de Vercel, la plataforma envía
+   * `Authorization: Bearer <valor>` automáticamente en cada invocación
+   * programada — sin ella, cualquiera podría disparar el borrado por HTTP.
+   */
+  CRON_SECRET: z.string().min(1).optional(),
+  /**
    * Firma la cookie de sesión del modo demo. Sólo importa en desarrollo sin
    * Supabase: con Supabase configurado, la autenticación real de Supabase la
    * sustituye por completo y este secreto deja de usarse.

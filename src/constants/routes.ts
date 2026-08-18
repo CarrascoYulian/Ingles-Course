@@ -23,6 +23,9 @@ export const ROUTES = {
     recursos: '/recursos',
     logros: '/logros',
     mensajes: '/mensajes',
+    certificado: (courseId: string) => `/curso/certificado/${courseId}`,
+    foro: (courseId: string) => `/curso/foro/${courseId}`,
+    foroTema: (courseId: string, threadId: string) => `/curso/foro/${courseId}/${threadId}`,
   },
 
   practice: {

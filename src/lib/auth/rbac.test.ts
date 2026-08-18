@@ -25,6 +25,24 @@ describe('can', () => {
     expect(can('admin', 'student:invite')).toBe(true);
     expect(can('instructor', 'student:invite')).toBe(false);
   });
+
+  it('borrar contenido es sólo de admin aunque instructor pueda editarlo', () => {
+    expect(can('admin', 'content:delete')).toBe(true);
+    expect(can('instructor', 'content:delete')).toBe(false);
+    expect(can('instructor', 'content:edit')).toBe(true);
+  });
+
+  it('enviar mensajes es un permiso propio, no un efecto secundario de leer', () => {
+    expect(can('admin', 'student:message')).toBe(true);
+    expect(can('instructor', 'student:message')).toBe(true);
+    expect(can('student', 'student:message')).toBe(false);
+  });
+
+  it('sólo el alumno rinde el quiz — el staff lo autoría, no lo toma', () => {
+    expect(can('student', 'quiz:take')).toBe(true);
+    expect(can('admin', 'quiz:take')).toBe(false);
+    expect(can('instructor', 'quiz:take')).toBe(false);
+  });
 });
 
 describe('isStaff', () => {

@@ -1,11 +1,12 @@
 import { cn } from '@/lib/utils';
 
-type ProgressTone = 'success' | 'accent' | 'warning' | 'brand' | 'ink';
+type ProgressTone = 'success' | 'accent' | 'warning' | 'danger' | 'brand' | 'ink';
 
 const TONE_CLASS: Record<ProgressTone, string> = {
   success: 'bg-success',
   accent: 'bg-accent',
   warning: 'bg-warning',
+  danger: 'bg-danger',
   brand: 'bg-brand',
   ink: 'bg-accent',
 };
@@ -22,6 +23,12 @@ export interface ProgressProps {
   /** 0-100. */
   value: number;
   tone?: ProgressTone;
+  /**
+   * Color CSS explícito (p. ej. un `rgb()` interpolado) — sobreescribe
+   * `tone` cuando la barra necesita un degradado continuo en vez de un
+   * color fijo por umbral. Ver `StorageUsageWidget`/`storageBarColor`.
+   */
+  color?: string;
   height?: keyof typeof HEIGHT_CLASS;
   /** Pista oscura, para el reproductor sobre fondo #0B1620. */
   onInk?: boolean;
@@ -31,12 +38,15 @@ export interface ProgressProps {
 }
 
 /**
- * Barra de progreso. Se anima únicamente `width` con una transición de
- * 300 ms: es un cambio poco frecuente y comunica avance, no interacción.
+ * Barra de progreso. Se anima `width` con una transición de 300 ms, y
+ * `background-color` con una de 500 ms (más lenta a propósito: un cambio de
+ * color debe leerse como una advertencia que aparece gradualmente, no como
+ * un parpadeo).
  */
 export function Progress({
   value,
   tone = 'success',
+  color,
   height = 4,
   onInk = false,
   className,
@@ -60,10 +70,10 @@ export function Progress({
     >
       <div
         className={cn(
-          'h-full rounded-pill transition-[width] duration-300 ease-[cubic-bezier(0.23,1,0.32,1)]',
-          TONE_CLASS[tone],
+          'h-full rounded-pill transition-[width,background-color] duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] [transition-duration:300ms,500ms]',
+          !color && TONE_CLASS[tone],
         )}
-        style={{ width: `${clamped}%` }}
+        style={{ width: `${clamped}%`, backgroundColor: color }}
       />
     </div>
   );

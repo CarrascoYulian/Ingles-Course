@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useSaveWatchedPercent } from './use-learning';
+import { canAdvanceLesson, computeElapsedSeconds, formatTimeLabel } from '../video-progress-math';
 
 /** Se usa sólo si la lección todavía no tiene duración real cargada. */
 const FALLBACK_LESSON_SECONDS = 8 * 60 + 24;
@@ -11,6 +12,11 @@ const SAVE_THROTTLE_MS = 5000;
 
 export interface VideoProgress {
   watched: number;
+  /** El punto más lejano que el alumno alcanzó viendo — nunca baja, aunque
+   * `watched` sí lo hace al retroceder. Es lo que de verdad debe desbloquear
+   * la siguiente lección y limitar hasta dónde se puede saltar hacia
+   * adelante (retroceder es libre; adelantar no debe superar esto). */
+  maxWatched: number;
   playing: boolean;
   canAdvance: boolean;
   /** «03:12 / 08:24» */
@@ -53,15 +59,22 @@ export function useVideoProgress(
   hasVideo = false,
 ): VideoProgress {
   const [watched, setWatched] = useState(initialWatched);
+  const [maxWatched, setMaxWatched] = useState(initialWatched);
   const [playing, setPlaying] = useState(false);
   const save = useSaveWatchedPercent();
   const previousLessonId = useRef(lessonId);
   const lastSavedAt = useRef(0);
+  // Fuente de verdad síncrona de `maxWatched`: el `state` no se actualiza a
+  // tiempo dentro del mismo `onProgress` para calcular qué guardar sin
+  // arriesgar persistir un valor que retrocedió.
+  const maxWatchedRef = useRef(initialWatched);
 
   useEffect(() => {
     if (lessonId !== previousLessonId.current && lessonId !== '') {
       previousLessonId.current = lessonId;
       setWatched(initialWatched);
+      setMaxWatched(initialWatched);
+      maxWatchedRef.current = initialWatched;
       setPlaying(false);
     }
     // `initialWatched` se omite a propósito: sólo debe reaplicarse cuando
@@ -72,18 +85,47 @@ export function useVideoProgress(
 
   const onProgress = useCallback(
     (percent: number) => {
+      // `watched` sigue el cabezal de reproducción tal cual (baja si el
+      // alumno retrocede) — así se calculan `timeLabel`/`elapsedSeconds`.
+      // `maxWatched` es el punto más lejano alcanzado y nunca baja: es lo
+      // que de verdad desbloquea la siguiente lección y lo que se guarda,
+      // para que retroceder a repasar no le "quite" progreso ya hecho.
       setWatched(percent);
+      const nextMax = Math.max(maxWatchedRef.current, percent);
+      maxWatchedRef.current = nextMax;
+      setMaxWatched(nextMax);
+
       const now = Date.now();
       if (now - lastSavedAt.current >= SAVE_THROTTLE_MS) {
         lastSavedAt.current = now;
-        save.mutate({ lessonId, percent });
+        save.mutate({ lessonId, percent: nextMax });
       }
     },
     [lessonId, save],
   );
 
+  // Antes, salir de la lección (cambiar de ruta, avanzar a la siguiente)
+  // mientras el video seguía reproduciéndose no guardaba nada: `toggle()`
+  // sólo persiste al pausar, y el guardado por `timeupdate` está limitado a
+  // uno cada `SAVE_THROTTLE_MS`. El cleanup de este efecto corre tanto al
+  // desmontar como justo antes de que cambie `lessonId` — cierra sobre el
+  // `lessonId` de ESTE render (no el ref, que ya se actualizó para cuando
+  // el cleanup corre), así guarda el avance de la lección que se está
+  // dejando, no la nueva.
+  useEffect(() => {
+    return () => {
+      if (!lessonId) return;
+      save.mutate({ lessonId, percent: maxWatchedRef.current });
+    };
+    // `save` se omite a propósito: su identidad cambia en cada render y
+    // reinscribirla dispararía este cleanup de más.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lessonId]);
+
   const onEnded = useCallback(() => {
     setWatched(100);
+    maxWatchedRef.current = 100;
+    setMaxWatched(100);
     setPlaying(false);
     lastSavedAt.current = Date.now();
     save.mutate({ lessonId, percent: 100 });
@@ -99,23 +141,20 @@ export function useVideoProgress(
     if (!hasVideo) return;
     if (playing) {
       setPlaying(false);
-      save.mutate({ lessonId, percent: watched });
+      save.mutate({ lessonId, percent: maxWatchedRef.current });
       return;
     }
     setPlaying(true);
-  }, [hasVideo, playing, watched, lessonId, save]);
+  }, [hasVideo, playing, lessonId, save]);
 
-  const elapsed = Math.round((durationSeconds * watched) / 100);
-  const minutes = String(Math.floor(elapsed / 60)).padStart(2, '0');
-  const seconds = String(elapsed % 60).padStart(2, '0');
-  const totalMinutes = String(Math.floor(durationSeconds / 60)).padStart(2, '0');
-  const totalSeconds = String(durationSeconds % 60).padStart(2, '0');
+  const elapsed = computeElapsedSeconds(watched, durationSeconds);
 
   return {
     watched,
+    maxWatched,
     playing,
-    canAdvance: !hasVideo || watched >= 100,
-    timeLabel: `${minutes}:${seconds} / ${totalMinutes}:${totalSeconds}`,
+    canAdvance: canAdvanceLesson(hasVideo, maxWatched),
+    timeLabel: formatTimeLabel(elapsed, durationSeconds),
     elapsedSeconds: elapsed,
     durationSeconds,
     toggle,

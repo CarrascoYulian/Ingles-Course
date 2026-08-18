@@ -1,25 +1,52 @@
-import { Check, Lock } from 'lucide-react';
+'use client';
+
+import { Check, ChevronLeft, ChevronRight, Lock } from 'lucide-react';
+import { useState } from 'react';
 
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import type { PracticeLevel } from '@/types';
 
+const PAGE_SIZE = 6;
+
 /**
  * Ruta de niveles. Se marca como `<ol>` con `aria-current="step"` en el
  * nivel activo: la estructura es una secuencia, no una lista suelta.
+ *
+ * Paginada de a `PAGE_SIZE`: con la ventana que ya recorta la API (hasta 26
+ * niveles alrededor del actual, ver `/api/practice/levels`), mostrarlos
+ * todos de un tirón alargaba la página entera — el rail terminaba siendo
+ * más alto que la tarjeta del ejercicio. Arranca en la página que contiene
+ * el nivel en curso, no en la primera.
  */
 export function LevelPath({ levels }: { levels: PracticeLevel[] }) {
+  const currentIndex = levels.findIndex((level) => level.state === 'current');
+  const totalPages = Math.max(1, Math.ceil(levels.length / PAGE_SIZE));
+  const [page, setPage] = useState(() =>
+    currentIndex === -1 ? 0 : Math.floor(currentIndex / PAGE_SIZE),
+  );
+
+  const start = page * PAGE_SIZE;
+  const pageLevels = levels.slice(start, start + PAGE_SIZE);
+
   return (
     <Card padding="none" radius="xl" className="hidden w-rail shrink-0 self-start p-[22px] lg:block">
-      <h2 className="text-body-lg font-bold tracking-tight-2 text-fg">Ruta de niveles</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-body-lg font-bold tracking-tight-2 text-fg">Ruta de niveles</h2>
+        {totalPages > 1 && (
+          <span className="text-caption font-bold text-fg-ghost">
+            {page + 1}/{totalPages}
+          </span>
+        )}
+      </div>
 
       <ol className="mt-[18px] flex flex-col">
-        {levels.map((level, index) => {
-          const isLast = index === levels.length - 1;
+        {pageLevels.map((level, index) => {
+          const isLast = index === pageLevels.length - 1;
           const isDone = level.state === 'done';
           const isCurrent = level.state === 'current';
-          const nextLevel = levels[index + 1];
+          const nextLevel = pageLevels[index + 1];
           const connectorDone = isDone && nextLevel?.state !== 'locked';
 
           return (
@@ -92,7 +119,7 @@ export function LevelPath({ levels }: { levels: PracticeLevel[] }) {
                   >
                     {isDone
                       ? `Completado · ${level.xp} XP`
-                      : index === levels.findIndex((l) => l.state === 'locked')
+                      : level.id === levels.find((l) => l.state === 'locked')?.id
                         ? `Termina el nivel ${level.order - 1} para abrir`
                         : 'Bloqueado'}
                   </p>
@@ -102,6 +129,32 @@ export function LevelPath({ levels }: { levels: PracticeLevel[] }) {
           );
         })}
       </ol>
+
+      {totalPages > 1 && (
+        <div className="mt-[14px] flex items-center justify-between border-t border-line-soft pt-[14px]">
+          <button
+            type="button"
+            onClick={() => setPage((prev) => Math.max(0, prev - 1))}
+            disabled={page === 0}
+            aria-label="Niveles anteriores"
+            className="grid size-7 place-items-center rounded-md text-fg-muted transition-colors duration-[160ms] hover:bg-surface-sunken disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent"
+          >
+            <ChevronLeft aria-hidden size={16} strokeWidth={2.4} />
+          </button>
+          <span className="text-caption font-bold text-fg-ghost">
+            Niveles {start + 1}–{Math.min(start + PAGE_SIZE, levels.length)} de {levels.length}
+          </span>
+          <button
+            type="button"
+            onClick={() => setPage((prev) => Math.min(totalPages - 1, prev + 1))}
+            disabled={page === totalPages - 1}
+            aria-label="Niveles siguientes"
+            className="grid size-7 place-items-center rounded-md text-fg-muted transition-colors duration-[160ms] hover:bg-surface-sunken disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent"
+          >
+            <ChevronRight aria-hidden size={16} strokeWidth={2.4} />
+          </button>
+        </div>
+      )}
     </Card>
   );
 }

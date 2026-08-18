@@ -133,20 +133,26 @@
   --color-slate: #475569;
 
   /* ── Radios ─────────────────────────────────────────────────────────── */
-  --radius-xs: 7px;
-  --radius-sm: 8px;
-  --radius-md: 9px;
-  --radius-lg: 10px;
-  --radius-xl: 11px;
-  --radius-2xl: 12px;
-  --radius-3xl: 13px;
-  --radius-4xl: 14px;
-  --radius-5xl: 15px;
-  --radius-6xl: 16px;
-  --radius-7xl: 17px;
-  --radius-8xl: 18px;
-  --radius-9xl: 20px;
-  --radius-10xl: 22px;
+  /* Escala comprimida a un máximo de 12px: valores de hasta 22px (antiguo
+   * --radius-10xl) daban un aspecto "de juguete" a cards, dialogs y al
+   * reproductor de video frente a plataformas de referencia (Coursera,
+   * Udemy, LinkedIn Learning), que rara vez superan 12-14px incluso en
+   * superficies grandes. --radius-pill queda igual: es para píldoras y
+   * botones circulares, no para esquinas de superficies. */
+  --radius-xs: 4px;
+  --radius-sm: 5px;
+  --radius-md: 6px;
+  --radius-lg: 6px;
+  --radius-xl: 7px;
+  --radius-2xl: 8px;
+  --radius-3xl: 8px;
+  --radius-4xl: 9px;
+  --radius-5xl: 9px;
+  --radius-6xl: 10px;
+  --radius-7xl: 10px;
+  --radius-8xl: 11px;
+  --radius-9xl: 12px;
+  --radius-10xl: 12px;
   --radius-pill: 99px;
 
   /* ── Sombras ────────────────────────────────────────────────────────── */

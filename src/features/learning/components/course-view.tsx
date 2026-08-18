@@ -1,6 +1,7 @@
 'use client';
 
-import { ArrowLeft, Lock } from 'lucide-react';
+import { ArrowLeft, Lock, MessagesSquare } from 'lucide-react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -9,19 +10,31 @@ import { Eyebrow } from '@/components/shared/section-title';
 import { CoursePickerCard } from '@/components/student/course-picker-card';
 import { LessonList } from '@/components/student/lesson-list';
 import { LessonTabs } from '@/components/student/lesson-tabs';
+import { ModuleCompleteModal } from '@/components/student/module-complete-modal';
 import { ProgressCard } from '@/components/student/progress-card';
+import { QuizTakeDialog } from '@/components/student/quiz-take-dialog';
 import { VideoPlayer } from '@/components/student/video-player';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { LoadingRegion, Skeleton } from '@/components/ui/skeleton';
 import { ROUTES } from '@/constants/routes';
+import { avatarColorFor } from '@/constants/palettes';
+import { useModules } from '@/features/content/hooks/use-content-blocks';
 import {
+  useAddComment,
   useAddNote,
+  useComments,
+  useCommentsLastSeen,
   useCurrentModule,
+  useDeleteComment,
   useLessonVideoUrl,
+  useMarkCommentsSeen,
+  useModuleQuiz,
   useMyCourses,
   useModuleLessons,
   useMyProgress,
+  useMyQuizAttempts,
   useNotes,
   useOpenResource,
   useResources,
@@ -31,9 +44,11 @@ import { useVideoProgress } from '../hooks/use-video-progress';
 export interface CourseViewProps {
   /** `order` de la lección pedida por la URL — si no llega, se usa la "actual". */
   lessonOrder?: number;
+  /** Autor autenticado — decide qué comentarios trae el botón "Borrar". */
+  currentUserId?: string | null;
 }
 
-export function CourseView({ lessonOrder }: CourseViewProps = {}) {
+export function CourseView({ lessonOrder, currentUserId = null }: CourseViewProps = {}) {
   const router = useRouter();
 
   // Antes esta pantalla resolvía "el" módulo global sin importar en qué
@@ -55,10 +70,19 @@ export function CourseView({ lessonOrder }: CourseViewProps = {}) {
   const course = courses?.find((c) => c.id === selectedCourseId);
   const { data: module, isPending: isModulePending } = useCurrentModule(selectedCourseId);
   const { data: lessons, isPending } = useModuleLessons(module?.id ?? '');
-  const { data: progress, isPending: isProgressPending } = useMyProgress();
-  const { data: resources } = useResources();
+  const { data: progress, isPending: isProgressPending } = useMyProgress(selectedCourseId);
+  const { data: resources } = useResources({ courseId: course?.id, moduleId: module?.id });
   const openResource = useOpenResource();
   const [seekRequest, setSeekRequest] = useState<{ seconds: number; nonce: number } | null>(null);
+  const { data: allModules } = useModules(selectedCourseId);
+  const [moduleCompleteOpen, setModuleCompleteOpen] = useState(false);
+  const [quizTakeOpen, setQuizTakeOpen] = useState(false);
+  // Regla confirmada por el cliente: reprobar (o no haber rendido todavía)
+  // el quiz de un módulo bloquea avanzar al siguiente — `hasPassedModuleQuiz`
+  // decide si "Continuar" navega directo o abre el quiz primero.
+  const { data: moduleQuiz } = useModuleQuiz(module?.id ?? '');
+  const { data: moduleQuizAttempts } = useMyQuizAttempts(moduleQuiz?.id ?? '');
+  const hasPassedModuleQuiz = moduleQuizAttempts?.some((attempt) => attempt.passed) ?? false;
 
   // Antes esta pantalla ignoraba por completo el parámetro `leccion-N` de su
   // propia URL y siempre mostraba "la lección actual" calculada por dentro
@@ -81,6 +105,20 @@ export function CourseView({ lessonOrder }: CourseViewProps = {}) {
   const { data: notes = [], isPending: notesPending } = useNotes(currentLesson?.id ?? '');
   const addNote = useAddNote(currentLesson?.id ?? '');
   const noteMarkers = notes.map((note) => (note.timestampSeconds / video.durationSeconds) * 100);
+  const { data: comments = [], isPending: commentsPending } = useComments(currentLesson?.id ?? '');
+  const addComment = useAddComment(currentLesson?.id ?? '');
+  const deleteComment = useDeleteComment(currentLesson?.id ?? '');
+  const { data: commentsLastSeen } = useCommentsLastSeen(currentLesson?.id ?? '');
+  const markCommentsSeen = useMarkCommentsSeen(currentLesson?.id ?? '');
+  // "Nuevo" = alguien más comentó después de la última vez que este usuario
+  // abrió la pestaña — antes no había ninguna señal de esto, ni en el
+  // video ni en la pestaña, igual que ya existe para los mensajes del
+  // docente (bolita en "Mensajes" del nav).
+  const hasUnseenComments = comments.some(
+    (comment) =>
+      comment.authorId !== currentUserId &&
+      (!commentsLastSeen || new Date(comment.createdAt) > new Date(commentsLastSeen)),
+  );
 
   const completed = lessons?.filter((lesson) => lesson.state === 'done').length ?? 0;
   const total = lessons?.length ?? 0;
@@ -94,13 +132,21 @@ export function CourseView({ lessonOrder }: CourseViewProps = {}) {
     );
   }
 
-  // Sin matrícula no hay ningún curso que mostrar.
+  // Sin matrícula no hay ningún curso que mostrar. Antes esto sólo decía
+  // "escríbele a tu docente" en texto plano, sin ningún botón que de verdad
+  // llevara a hacerlo — el alumno tenía que encontrar "Mensajes" solo en el
+  // nav.
   if (!courses || courses.length === 0) {
     return (
       <div className="px-5 py-8 lg:px-[30px] lg:py-12">
         <EmptyState
           title="Todavía no estás matriculado en ningún curso"
-          description="Escribe a tu docente para que te matricule y puedas empezar."
+          description="Escríbele a tu docente para que te matricule y puedas empezar."
+          action={
+            <Button asChild size="md" className="font-extrabold">
+              <Link href={ROUTES.student.mensajes}>Escribirle a mi docente</Link>
+            </Button>
+          }
         />
       </div>
     );
@@ -168,6 +214,32 @@ export function CourseView({ lessonOrder }: CourseViewProps = {}) {
   const moduleLabel = module.title;
   const lessonTitle = currentLesson?.title ?? moduleLabel;
   const lessonPosition = currentLesson ? lessons!.indexOf(currentLesson) + 1 : 0;
+  const isLastModule = allModules ? allModules.at(-1)?.id === module.id : false;
+
+  // Se engancha al evento nativo `ended` del `<video>` (no a un efecto
+  // reactivo sobre `watched`) a propósito: sólo debe abrirse en el
+  // instante real en que el alumno termina de ver un video, nunca al
+  // volver a entrar a un módulo que ya estaba completo de antes. Revisar
+  // las OTRAS lecciones (no la actual) cubre cualquier orden en que las
+  // haya visto, no sólo "la última del listado".
+  const handleVideoEnded = () => {
+    video.onEnded();
+    if (!currentLesson || !lessons) return;
+    const others = lessons.filter((lesson) => lesson.id !== currentLesson.id);
+    const wasLastPending = others.every((lesson) => lesson.state === 'done');
+    if (wasLastPending) setModuleCompleteOpen(true);
+  };
+
+  const continueAfterModule = () => {
+    // Al terminar el curso entero no alcanza con navegar a `/curso`: como
+    // el módulo "actual" de un curso 100 % completo cae al último (para
+    // poder repasar), sin resetear el curso elegido acá mismo la pantalla
+    // se quedaba mostrando ese último video en vez de la lista de "Mis
+    // cursos". Si todavía quedan módulos, sólo hace falta la navegación —
+    // el próximo módulo ya se resuelve solo.
+    if (isLastModule) setSelectedCourseId('');
+    router.push(ROUTES.student.curso);
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -178,22 +250,31 @@ export function CourseView({ lessonOrder }: CourseViewProps = {}) {
             contextLabel={`Lección ${lessonPosition} de ${total} · ${moduleLabel}`}
             contextLabelShort={`Lección ${lessonPosition} · ${moduleLabel}`}
             watched={video.watched}
+            maxWatched={video.maxWatched}
             playing={video.playing}
             timeLabel={video.timeLabel}
             canAdvance={video.canAdvance}
             onToggle={video.toggle}
             src={videoUrl}
             onProgress={video.onProgress}
-            onEnded={video.onEnded}
+            onEnded={handleVideoEnded}
             markers={noteMarkers}
             seekRequest={seekRequest}
-            onNext={() =>
-              toast(
-                video.canAdvance
-                  ? 'Siguiente lección desbloqueada · progreso guardado'
-                  : 'Debes terminar el video para continuar',
-              )
-            }
+            hasUnseenComments={hasUnseenComments}
+            onNext={() => {
+              if (!video.canAdvance) {
+                toast('Debes terminar el video para continuar');
+                return;
+              }
+              const nextLesson = currentLesson ? lessons?.[lessonPosition] : undefined;
+              if (!nextLesson) {
+                toast('Ya completaste todas las lecciones de este módulo');
+                return;
+              }
+              router.push(
+                ROUTES.student.leccion(course.level.toLowerCase(), module.id, nextLesson.order),
+              );
+            }}
           />
 
           <div className="px-5 lg:px-0">
@@ -202,15 +283,34 @@ export function CourseView({ lessonOrder }: CourseViewProps = {}) {
               radius="xl"
               className="max-lg:border-0 max-lg:bg-transparent lg:px-6 lg:py-[22px]"
             >
-              <Eyebrow>{moduleLabel.toUpperCase()}</Eyebrow>
-              <h1 className="mt-[5px] text-heading-sm font-extrabold tracking-heading text-fg text-pretty lg:mt-1.5 lg:text-heading-lg">
-                {lessonTitle}
-              </h1>
+              <div className="flex items-start gap-3">
+                <span
+                  aria-hidden
+                  className="mt-0.5 hidden size-9 shrink-0 rounded-full sm:block"
+                  style={{
+                    background: `linear-gradient(135deg, ${avatarColorFor(module.id)}, ${avatarColorFor(module.id)}99)`,
+                  }}
+                />
+                <div className="min-w-0">
+                  <Eyebrow>{moduleLabel.toUpperCase()}</Eyebrow>
+                  <h1 className="mt-[5px] text-heading-sm font-extrabold tracking-heading text-fg text-pretty lg:mt-1.5 lg:text-heading-lg">
+                    {lessonTitle}
+                  </h1>
+                </div>
+              </div>
+
+              <ul className="mt-3 flex flex-wrap gap-2.5">
+                <li className="rounded-md bg-surface-sunken px-3 py-[7px] text-meta font-bold text-fg-subtle">
+                  Duración {currentLesson?.duration ?? '—'}
+                </li>
+                <li className="rounded-md bg-surface-sunken px-3 py-[7px] text-meta font-bold text-fg-subtle">
+                  Nivel {course.level}
+                </li>
+              </ul>
+
               <div className="mt-3.5 lg:mt-[18px]">
                 <LessonTabs
                   description={currentLesson?.description ?? null}
-                  duration={currentLesson?.duration ?? '—'}
-                  level={course.level}
                   files={resources ?? []}
                   onOpenFile={(mediaKey) => openResource.mutate(mediaKey)}
                   notes={notes}
@@ -219,6 +319,14 @@ export function CourseView({ lessonOrder }: CourseViewProps = {}) {
                   onAddNote={(body) => addNote.mutate({ body, timestampSeconds: video.elapsedSeconds })}
                   addNotePending={addNote.isPending}
                   onSeekToNote={(seconds) => setSeekRequest({ seconds, nonce: Date.now() })}
+                  comments={comments}
+                  commentsPending={commentsPending}
+                  onAddComment={(body, parentId) => addComment.mutate({ body, parentId })}
+                  addCommentPending={addComment.isPending}
+                  onDeleteComment={(commentId) => deleteComment.mutate(commentId)}
+                  currentUserId={currentUserId}
+                  hasUnseenComments={hasUnseenComments}
+                  onCommentsTabOpen={() => markCommentsSeen.mutate()}
                 />
               </div>
             </Card>
@@ -234,8 +342,25 @@ export function CourseView({ lessonOrder }: CourseViewProps = {}) {
               hours={progress.hoursStudied}
               lessons={progress.lessonsCompleted}
               badges={progress.badgesEarned}
+              courseId={course.id}
             />
           )}
+
+          <Link href={ROUTES.student.foro(course.id)}>
+            <Card
+              padding="md"
+              radius="xl"
+              className="flex items-center gap-2.5 transition-colors duration-[160ms] hover:border-fg-placeholder"
+            >
+              <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-accent-soft text-accent">
+                <MessagesSquare aria-hidden size={16} strokeWidth={2.2} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-body-sm font-bold text-fg">Foro del curso</span>
+                <span className="block text-tiny font-semibold text-fg-ghost">Preguntas y respuestas con tus compañeros</span>
+              </span>
+            </Card>
+          </Link>
 
           <Card padding="lg" radius="xl">
             <div className="mb-3 flex items-center justify-between lg:mb-3.5">
@@ -292,6 +417,42 @@ export function CourseView({ lessonOrder }: CourseViewProps = {}) {
           </Card>
         </aside>
       </div>
+
+      <ModuleCompleteModal
+        open={moduleCompleteOpen}
+        onOpenChange={setModuleCompleteOpen}
+        moduleTitle={moduleLabel}
+        isLastModule={isLastModule}
+        onViewCertificate={
+          isLastModule
+            ? () => {
+                setModuleCompleteOpen(false);
+                router.push(ROUTES.student.certificado(course.id));
+              }
+            : undefined
+        }
+        onContinue={() => {
+          setModuleCompleteOpen(false);
+          // Terminar los videos no alcanza si el módulo tiene evaluación y
+          // todavía no se aprobó — el quiz se interpone antes de dejar
+          // avanzar, en vez de navegar directo al siguiente módulo.
+          if (moduleQuiz && !hasPassedModuleQuiz) {
+            setQuizTakeOpen(true);
+            return;
+          }
+          continueAfterModule();
+        }}
+      />
+
+      {moduleQuiz && (
+        <QuizTakeDialog
+          open={quizTakeOpen}
+          onOpenChange={setQuizTakeOpen}
+          moduleId={module.id}
+          moduleTitle={moduleLabel}
+          onContinue={continueAfterModule}
+        />
+      )}
     </div>
   );
 }

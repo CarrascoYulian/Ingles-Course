@@ -18,6 +18,23 @@ import { getSupabaseAdminClient, getSupabaseServerClient } from '@/lib/supabase/
 
 export const STORAGE_BUCKET = 'course-files';
 
+/**
+ * Límite del plan contratado en Supabase, en bytes. La API de Supabase no
+ * expone la cuota del plan — hay que fijarla a mano y ajustarla si cambia
+ * el plan (panel de Supabase → Settings → Billing).
+ *
+ * El proyecto real está en el plan **Free**: la cuota de Storage es 1 GB,
+ * no los 200 GB del mock original del diseño (verificado contra
+ * https://supabase.com/docs/guides/platform/manage-your-usage/storage-size).
+ * Subir a Pro cambia esto a 100 GB — actualizar este valor si eso pasa.
+ */
+export const STORAGE_PLAN_LIMIT_BYTES = 1 * 1024 ** 3; // 1 GB — cuota real del plan Free.
+
+/** 65-89 %: la barra pasa de azul a ámbar — hay que empezar a prestar atención. */
+export const STORAGE_WARNING_THRESHOLD_PERCENT = 65;
+/** 90 %+: la barra pasa a rojo y es lo que dispara la alerta en Actividad reciente. */
+export const STORAGE_CRITICAL_THRESHOLD_PERCENT = 90;
+
 /** Las subidas se firman por 15 min: suficiente para 2 GB en una conexión normal. */
 const UPLOAD_TTL_SECONDS = 15 * 60;
 /** Duración por defecto de las URLs de reproducción/descarga: 1 h. */
@@ -125,3 +142,70 @@ function normalizeFileName(fileName: string): string {
 }
 
 export { UPLOAD_TTL_SECONDS };
+
+export interface StorageObjectInfo {
+  /** Ruta completa del objeto dentro del bucket — mismo formato que `media_key`. */
+  key: string;
+  size: number;
+  createdAt: string;
+}
+
+const LIST_PAGE_SIZE = 1000;
+
+/**
+ * Recorre el bucket recursivamente y devuelve TODOS los objetos reales
+ * (nunca "carpetas"). `storage.list()` de Supabase sólo lista un nivel a la
+ * vez — igual que un `ls` sin `-R` — así que hay que bajar manualmente por
+ * la jerarquía `cursos/<id>/modulos/<id>/<archivo>` que arma `buildMediaKey`.
+ *
+ * Usado por el job de reconciliación (Fase 2) y el widget de uso de Storage
+ * (Fase 3): ambos necesitan la lista completa de objetos reales del bucket,
+ * no lo que Postgres cree que hay.
+ */
+export async function listAllStorageObjects(): Promise<StorageObjectInfo[]> {
+  const admin = getSupabaseAdminClient();
+  if (!admin) return [];
+
+  const objects: StorageObjectInfo[] = [];
+
+  async function walk(prefix: string): Promise<void> {
+    let offset = 0;
+    for (;;) {
+      const { data, error } = await admin!.storage
+        .from(STORAGE_BUCKET)
+        .list(prefix, { limit: LIST_PAGE_SIZE, offset, sortBy: { column: 'name', order: 'asc' } });
+      if (error || !data) return;
+
+      for (const entry of data) {
+        const fullPath = prefix ? `${prefix}/${entry.name}` : entry.name;
+        // Supabase Storage no tiene carpetas reales: `id === null` es la
+        // convención con la que el cliente marca un prefijo agrupador.
+        if (entry.id === null) {
+          await walk(fullPath);
+        } else {
+          objects.push({
+            key: fullPath,
+            size: entry.metadata?.size ?? 0,
+            createdAt: entry.created_at ?? new Date(0).toISOString(),
+          });
+        }
+      }
+
+      if (data.length < LIST_PAGE_SIZE) return;
+      offset += LIST_PAGE_SIZE;
+    }
+  }
+
+  await walk('');
+  return objects;
+}
+
+/** Borra objetos por clave en lotes — la API de Storage acepta un array por llamada. */
+export async function removeStorageObjects(keys: string[]): Promise<{ removed: string[]; error: string | null }> {
+  const admin = getSupabaseAdminClient();
+  if (!admin || keys.length === 0) return { removed: [], error: null };
+
+  const { data, error } = await admin.storage.from(STORAGE_BUCKET).remove(keys);
+  if (error) return { removed: [], error: error.message };
+  return { removed: (data ?? []).map((entry) => entry.name), error: null };
+}

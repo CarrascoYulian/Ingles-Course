@@ -5,6 +5,7 @@ import { badRequest, guard, isDenied } from '../../_lib/guard';
 import { getQuestionForStep } from '../_bank';
 import { HEARTS_TOTAL } from '../_constants';
 import { recordDailyXpAndStreak } from '../_missions';
+import { computeHeartsRemaining } from '../logic';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import type { AnswerResult } from '@/services';
 
@@ -68,9 +69,7 @@ export async function POST(request: Request) {
     // Antes los corazones eran un valor decorativo fijo que la API siempre
     // devolvía igual — ahora una respuesta incorrecta resta uno de verdad
     // (nunca por debajo de 0); una correcta no los toca.
-    const heartsRemaining = correct
-      ? (current?.hearts_remaining ?? HEARTS_TOTAL)
-      : Math.max(0, (current?.hearts_remaining ?? HEARTS_TOTAL) - 1);
+    const heartsRemaining = computeHeartsRemaining(correct, current?.hearts_remaining ?? HEARTS_TOTAL);
 
     // Antes `streak_days` nunca se recalculaba en ningún endpoint, sólo se
     // leía — la racha mostrada era la misma desde que se creó la fila.

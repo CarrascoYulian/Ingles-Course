@@ -16,6 +16,7 @@ export interface CourseCardProps {
   onRename: (course: Course) => void;
   onDelete: (course: Course) => void;
   onReorder: (course: Course, direction: -1 | 1) => void;
+  onViewRatings: (course: Course) => void;
   isFirst?: boolean;
   isLast?: boolean;
   pending?: boolean;
@@ -35,6 +36,7 @@ export function CourseCard({
   onRename,
   onDelete,
   onReorder,
+  onViewRatings,
   isFirst,
   isLast,
   pending,
@@ -118,6 +120,9 @@ export function CourseCard({
         </Button>
         <Button variant="ghost" size="sm" onClick={() => onRename(course)}>
           Editar curso
+        </Button>
+        <Button variant="ghost" size="sm" onClick={() => onViewRatings(course)}>
+          Calificaciones
         </Button>
         <Button variant="ghost" size="sm" onClick={() => onEdit(course)}>
           <span className="md:hidden">Módulos</span>

@@ -1,9 +1,10 @@
 import { inferBlockType } from '@/features/content/infer-block-type';
+import { isStaff } from '@/lib/auth/rbac';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { DEMO_QUESTION } from '../demo/data';
 import type { AttachUploadInput, Backend } from '../ports';
 import { toContentBlock, toCourse, toLesson, toModule, toStudentSummary } from './mappers';
-import type { Course, PracticeSession, ReportRange } from '@/types';
+import type { Course, PracticeSession, ReportRange, UserRole } from '@/types';
 import type { Database } from '@/types';
 
 type Row<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Row'];
@@ -37,6 +38,40 @@ function unwrap<T>(response: { data: T | null; error: { message: string } | null
 }
 
 const STUDENTS_PAGE_SIZE = 20;
+
+/** Mismo bucket que `src/lib/storage.ts` — no se puede importar ese módulo
+ * aquí porque está marcado `server-only` y este adaptador corre en el
+ * navegador bajo RLS. */
+const STORAGE_BUCKET = 'course-files';
+
+/**
+ * Borra objetos de Storage lo mejor que puede: si Storage falla, no aborta
+ * el flujo que la llamó (la fila en Postgres ya se borró o está por
+ * borrarse). El objeto que quede huérfano lo recoge el job de
+ * reconciliación semanal — no bloquear la UI del docente por un error
+ * transitorio de Storage es preferible a arriesgar una fila que no se puede
+ * volver a borrar desde la interfaz.
+ */
+async function removeStorageObjects(mediaKeys: string[]): Promise<void> {
+  const keys = mediaKeys.filter((key): key is string => Boolean(key));
+  if (keys.length === 0) return;
+  const { error } = await db().storage.from(STORAGE_BUCKET).remove(keys);
+  if (error) console.error('No se pudieron borrar objetos de Storage', error);
+}
+
+/** Todas las claves de archivo que cuelgan de un curso, vía sus módulos. */
+async function collectCourseMediaKeys(courseId: string): Promise<string[]> {
+  const { data: modules } = await db().from('modules').select('id').eq('course_id', courseId);
+  const moduleIds = (modules ?? []).map((row) => row.id);
+  if (moduleIds.length === 0) return [];
+
+  const { data } = await db()
+    .from('content_blocks')
+    .select('media_key')
+    .in('module_id', moduleIds)
+    .not('media_key', 'is', null);
+  return (data ?? []).map((row) => row.media_key).filter((key): key is string => Boolean(key));
+}
 
 type ActivityTone = 'success' | 'info' | 'warning' | 'danger';
 type ActivitySegment = { text: string; strong?: boolean };
@@ -176,8 +211,15 @@ export const supabaseBackend: Backend = {
     },
 
     async remove(id) {
+      // Igual que en `removeBlock`: hay que leer las claves antes de borrar,
+      // porque el cascade de Postgres se lleva `modules` → `content_blocks`
+      // en el mismo statement y después ya no queda nada que consultar.
+      const mediaKeys = await collectCourseMediaKeys(id);
+
       const { error } = await db().from('courses').delete().eq('id', id);
       if (error) throw new Error(error.message);
+
+      await removeStorageObjects(mediaKeys);
     },
 
     async reorder(id, direction) {
@@ -267,8 +309,18 @@ export const supabaseBackend: Backend = {
     },
 
     async removeBlock(blockId) {
+      // Se lee el `media_key` antes de borrar la fila: una vez borrada, ya
+      // no hay forma de saber qué objeto de Storage le correspondía.
+      const { data: block } = await db()
+        .from('content_blocks')
+        .select('media_key')
+        .eq('id', blockId)
+        .maybeSingle();
+
       const { error } = await db().from('content_blocks').delete().eq('id', blockId);
       if (error) throw new Error(error.message);
+
+      if (block?.media_key) await removeStorageObjects([block.media_key]);
     },
 
     async attachUpload(input: AttachUploadInput) {
@@ -327,6 +379,7 @@ export const supabaseBackend: Backend = {
           .from('course_resources')
           .insert({
             course_id: moduleRow.course_id,
+            module_id: input.moduleId,
             type: type === 'Audio' ? 'MP3' : 'PDF',
             title,
             meta: input.sizeLabel,
@@ -346,11 +399,21 @@ export const supabaseBackend: Backend = {
     },
 
     async updateLesson(lessonId, input) {
-      const { error } = await db()
+      const { data: lesson, error } = await db()
         .from('lessons')
         .update({ title: input.title, description: input.description || null })
-        .eq('id', lessonId);
+        .eq('id', lessonId)
+        .select('media_key')
+        .single();
       if (error) throw new Error(error.message);
+
+      // `content_blocks` (la fila del constructor) y `lessons` (lo que ve el
+      // alumno) son tablas separadas sin llave foránea — sin este segundo
+      // update, el título quedaba "actualizado" para el alumno pero seguía
+      // mostrando el nombre del archivo original en el panel del docente.
+      if (lesson.media_key) {
+        await db().from('content_blocks').update({ title: input.title }).eq('media_key', lesson.media_key);
+      }
     },
   },
 
@@ -500,6 +563,35 @@ export const supabaseBackend: Backend = {
       });
       if (!response.ok) throw new Error('No se pudo enviar el mensaje');
     },
+
+    async setActive(id, active) {
+      const response = await fetch(`/api/students/${id}/active`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ active }),
+      });
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(body?.error ?? 'No se pudo cambiar el estado del estudiante');
+      }
+
+      const row = unwrap<Row<'profiles'>>(await db().from('profiles').select('*').eq('id', id).single());
+      await logActivity(active ? 'success' : 'warning', [
+        { text: active ? 'Estudiante activado · ' : 'Estudiante desactivado · ' },
+        { text: row.full_name, strong: true },
+      ]);
+      const enrollment = unwrap<
+        Pick<Row<'enrollments'>, 'progress' | 'watched_minutes' | 'completed_lessons'>[]
+      >(
+        await db()
+          .from('enrollments')
+          .select('progress, watched_minutes, completed_lessons')
+          .eq('student_id', id)
+          .order('created_at', { ascending: false })
+          .limit(1),
+      );
+      return toStudentSummary(row, enrollment[0] ?? null);
+    },
   },
 
   analytics: {
@@ -522,6 +614,30 @@ export const supabaseBackend: Backend = {
       const response = await fetch(`/api/analytics/report?range=${encodeURIComponent(range)}`);
       if (!response.ok) throw new Error('No se pudo cargar el reporte');
       return response.json();
+    },
+
+    // Sin ruta API: a diferencia de los quizzes, acá no hay ninguna columna
+    // que esconderle al staff — RLS ("docentes ven todas las
+    // calificaciones", 0033) ya resuelve el acceso completo.
+    async getCourseRatings(courseId) {
+      const rows = unwrap<Pick<Row<'course_ratings'>, 'stars' | 'review' | 'created_at'>[]>(
+        await db()
+          .from('course_ratings')
+          .select('stars, review, created_at')
+          .eq('course_id', courseId)
+          .order('created_at', { ascending: false }),
+      );
+      const average =
+        rows.length > 0 ? rows.reduce((sum, row) => sum + row.stars, 0) / rows.length : null;
+      return {
+        average,
+        count: rows.length,
+        reviews: rows.map((row) => ({
+          stars: row.stars,
+          review: row.review,
+          createdAt: row.created_at,
+        })),
+      };
     },
   },
 
@@ -548,14 +664,48 @@ export const supabaseBackend: Backend = {
     },
 
     async getCurrentModule(courseId) {
-      // Antes ignoraba por completo de qué curso venía la petición y
-      // devolvía el primer módulo de TODA la base — con más de un curso, un
-      // alumno matriculado sólo en el curso B podía ver contenido del curso
-      // A. Ahora se filtra por el curso real del alumno.
-      const rows = unwrap(
-        await db().from('modules').select('*').eq('course_id', courseId).order('position').limit(1),
+      // Antes devolvía SIEMPRE el primer módulo del curso, sin importar
+      // cuánto hubiera avanzado el alumno — terminar el módulo 1 entero
+      // nunca llevaba al módulo 2, porque nada volvía a preguntar "¿cuál
+      // es el primero que todavía no terminé?". Ahora sí: el módulo
+      // "actual" es el primero (por posición) que tenga alguna lección sin
+      // terminar; uno sin lecciones todavía (aún sin contenido) se salta en
+      // vez de bloquear el avance. Si ya están todos completos, se cae en
+      // el último para poder seguir repasando.
+      const modules = unwrap(
+        await db().from('modules').select('*').eq('course_id', courseId).order('position'),
       );
-      return rows[0] ? toModule(rows[0]) : null;
+      if (modules.length === 0) return null;
+      if (modules.length === 1) return toModule(modules[0]!);
+
+      const moduleIds = modules.map((m) => m.id);
+      const lessons = unwrap(
+        await db().from('lessons').select('id, module_id').in('module_id', moduleIds),
+      );
+
+      const {
+        data: { user },
+      } = await db().auth.getUser();
+      const progress = user
+        ? unwrap(
+            await db()
+              .from('lesson_progress')
+              .select('lesson_id, completed_at')
+              .eq('student_id', user.id)
+              .in('lesson_id', lessons.map((l) => l.id)),
+          )
+        : [];
+      const completedLessonIds = new Set(
+        progress.filter((p) => p.completed_at).map((p) => p.lesson_id),
+      );
+
+      for (const m of modules) {
+        const moduleLessons = lessons.filter((l) => l.module_id === m.id);
+        if (moduleLessons.length === 0) continue;
+        const allDone = moduleLessons.every((l) => completedLessonIds.has(l.id));
+        if (!allDone) return toModule(m);
+      }
+      return toModule(modules[modules.length - 1]!);
     },
 
     async listLessons(moduleId) {
@@ -598,8 +748,12 @@ export const supabaseBackend: Backend = {
       return url;
     },
 
-    async listResources() {
-      const response = await fetch('/api/resources');
+    async listResources(filters) {
+      const params = new URLSearchParams();
+      if (filters?.courseId) params.set('courseId', filters.courseId);
+      if (filters?.moduleId) params.set('moduleId', filters.moduleId);
+      const query = params.toString();
+      const response = await fetch(`/api/resources${query ? `?${query}` : ''}`);
       if (!response.ok) throw new Error('No se pudieron cargar los recursos');
       return response.json();
     },
@@ -625,7 +779,7 @@ export const supabaseBackend: Backend = {
       if (error) throw new Error(error.message);
     },
 
-    async getMyProgress() {
+    async getMyProgress(courseId) {
       const {
         data: { user },
       } = await db().auth.getUser();
@@ -635,12 +789,15 @@ export const supabaseBackend: Backend = {
 
       const [profileResult, enrollmentResult, badgesResult] = await Promise.all([
         db().from('profiles').select('level').eq('id', user.id).single(),
+        // Antes: sin `.eq('course_id', ...)`, ordenaba por `created_at` y
+        // tomaba la matrícula más reciente sin importar cuál — con dos
+        // cursos, terminar módulos del curso A podía seguir mostrando el
+        // progreso (0 %) del curso B si ese se matriculó después.
         db()
           .from('enrollments')
           .select('progress, watched_minutes, completed_lessons')
           .eq('student_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
+          .eq('course_id', courseId)
           .maybeSingle(),
         db()
           .from('student_badges')
@@ -767,7 +924,339 @@ export const supabaseBackend: Backend = {
 
       const { error } = await db()
         .from('messages')
-        .insert({ sender_id: user.id, student_id: user.id, body, read_at: new Date().toISOString() });
+        .insert({
+          sender_id: user.id,
+          student_id: user.id,
+          body,
+          read_at: new Date().toISOString(),
+          read_by_staff_at: null,
+        });
+      if (error) throw new Error(error.message);
+    },
+
+    async listComments(lessonId) {
+      const rows = unwrap(
+        await db()
+          .from('lesson_comments')
+          .select('*, profiles(full_name, role)')
+          .eq('lesson_id', lessonId)
+          .order('created_at', { ascending: true }),
+      );
+      return rows.map((row) => {
+        const author = (
+          row as unknown as { profiles: Pick<Row<'profiles'>, 'full_name' | 'role'> | null }
+        ).profiles;
+        return {
+          id: row.id,
+          lessonId: row.lesson_id,
+          authorId: row.author_id,
+          authorName: author?.full_name ?? 'Usuario',
+          fromStaff: isStaff((author?.role as UserRole) ?? null),
+          body: row.body,
+          createdAt: row.created_at,
+          parentId: row.parent_id,
+        };
+      });
+    },
+
+    async addComment(lessonId, body, parentId) {
+      const {
+        data: { user },
+      } = await db().auth.getUser();
+      if (!user) throw new Error('No autenticado');
+
+      const row = unwrap<Row<'lesson_comments'>>(
+        await db()
+          .from('lesson_comments')
+          .insert({ lesson_id: lessonId, author_id: user.id, body, parent_id: parentId ?? null })
+          .select()
+          .single(),
+      );
+      const profile = unwrap<Pick<Row<'profiles'>, 'full_name' | 'role'>>(
+        await db().from('profiles').select('full_name, role').eq('id', user.id).single(),
+      );
+
+      return {
+        id: row.id,
+        lessonId: row.lesson_id,
+        authorId: row.author_id,
+        authorName: profile.full_name,
+        fromStaff: isStaff(profile.role as UserRole),
+        body: row.body,
+        createdAt: row.created_at,
+        parentId: row.parent_id,
+      };
+    },
+
+    async deleteComment(commentId) {
+      const { error } = await db().from('lesson_comments').delete().eq('id', commentId);
+      if (error) throw new Error(error.message);
+    },
+
+    async getCommentsLastSeen(lessonId) {
+      const {
+        data: { user },
+      } = await db().auth.getUser();
+      if (!user) return null;
+
+      const row = unwrap<Pick<Row<'lesson_comment_reads'>, 'last_seen_at'> | null>(
+        await db()
+          .from('lesson_comment_reads')
+          .select('last_seen_at')
+          .eq('user_id', user.id)
+          .eq('lesson_id', lessonId)
+          .maybeSingle(),
+      );
+      return row?.last_seen_at ?? null;
+    },
+
+    async markCommentsSeen(lessonId) {
+      const {
+        data: { user },
+      } = await db().auth.getUser();
+      if (!user) return;
+
+      const { error } = await db()
+        .from('lesson_comment_reads')
+        .upsert(
+          { user_id: user.id, lesson_id: lessonId, last_seen_at: new Date().toISOString() },
+          { onConflict: 'user_id,lesson_id' },
+        );
+      if (error) throw new Error(error.message);
+    },
+
+    async getModuleQuiz(moduleId) {
+      const { data: quiz, error } = await db()
+        .from('quizzes')
+        .select('id, module_id, passing_score')
+        .eq('module_id', moduleId)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      if (!quiz) return null;
+
+      const { count } = await db()
+        .from('quiz_questions')
+        .select('id', { count: 'exact', head: true })
+        .eq('quiz_id', quiz.id);
+
+      return {
+        id: quiz.id,
+        moduleId: quiz.module_id,
+        passingScore: quiz.passing_score,
+        questionCount: count ?? 0,
+      };
+    },
+
+    async listMyQuizAttempts(quizId) {
+      const rows = unwrap(
+        await db()
+          .from('quiz_attempts')
+          .select('id, score, passed, created_at')
+          .eq('quiz_id', quizId)
+          .order('created_at', { ascending: false }),
+      );
+      return rows.map((row) => ({
+        id: row.id,
+        score: row.score,
+        passed: row.passed,
+        createdAt: row.created_at,
+      }));
+    },
+
+    async listCourseThreads(courseId) {
+      const threads = unwrap<Row<'course_threads'>[]>(
+        await db()
+          .from('course_threads')
+          .select('*')
+          .eq('course_id', courseId)
+          .order('created_at', { ascending: false }),
+      );
+      if (threads.length === 0) return [];
+
+      const authorIds = [...new Set(threads.map((t) => t.author_id))];
+      const profiles = unwrap<Pick<Row<'profiles'>, 'id' | 'full_name' | 'role'>[]>(
+        await db().from('profiles').select('id, full_name, role').in('id', authorIds),
+      );
+      const profileById = new Map(profiles.map((p) => [p.id, p]));
+
+      const replies = unwrap<Pick<Row<'course_thread_replies'>, 'thread_id'>[]>(
+        await db()
+          .from('course_thread_replies')
+          .select('thread_id')
+          .in('thread_id', threads.map((t) => t.id)),
+      );
+      const replyCountByThread = new Map<string, number>();
+      for (const reply of replies) {
+        replyCountByThread.set(reply.thread_id, (replyCountByThread.get(reply.thread_id) ?? 0) + 1);
+      }
+
+      return threads.map((t) => {
+        const author = profileById.get(t.author_id);
+        return {
+          id: t.id,
+          courseId: t.course_id,
+          authorId: t.author_id,
+          authorName: author?.full_name ?? 'Alguien',
+          fromStaff: author ? isStaff(author.role as UserRole) : false,
+          title: t.title,
+          body: t.body,
+          createdAt: t.created_at,
+          replyCount: replyCountByThread.get(t.id) ?? 0,
+        };
+      });
+    },
+
+    async getCourseThread(threadId) {
+      const { data: t } = await db().from('course_threads').select('*').eq('id', threadId).maybeSingle();
+      if (!t) return null;
+
+      const profile = unwrap<Pick<Row<'profiles'>, 'full_name' | 'role'>>(
+        await db().from('profiles').select('full_name, role').eq('id', t.author_id).single(),
+      );
+      const { count } = await db()
+        .from('course_thread_replies')
+        .select('id', { count: 'exact', head: true })
+        .eq('thread_id', threadId);
+
+      return {
+        id: t.id,
+        courseId: t.course_id,
+        authorId: t.author_id,
+        authorName: profile.full_name,
+        fromStaff: isStaff(profile.role as UserRole),
+        title: t.title,
+        body: t.body,
+        createdAt: t.created_at,
+        replyCount: count ?? 0,
+      };
+    },
+
+    async listThreadReplies(threadId) {
+      const replies = unwrap<Row<'course_thread_replies'>[]>(
+        await db()
+          .from('course_thread_replies')
+          .select('*')
+          .eq('thread_id', threadId)
+          .order('created_at', { ascending: true }),
+      );
+      if (replies.length === 0) return [];
+
+      const authorIds = [...new Set(replies.map((r) => r.author_id))];
+      const profiles = unwrap<Pick<Row<'profiles'>, 'id' | 'full_name' | 'role'>[]>(
+        await db().from('profiles').select('id, full_name, role').in('id', authorIds),
+      );
+      const profileById = new Map(profiles.map((p) => [p.id, p]));
+
+      return replies.map((r) => {
+        const author = profileById.get(r.author_id);
+        return {
+          id: r.id,
+          threadId: r.thread_id,
+          authorId: r.author_id,
+          authorName: author?.full_name ?? 'Alguien',
+          fromStaff: author ? isStaff(author.role as UserRole) : false,
+          body: r.body,
+          createdAt: r.created_at,
+        };
+      });
+    },
+
+    async createCourseThread(courseId, title, body) {
+      const {
+        data: { user },
+      } = await db().auth.getUser();
+      if (!user) throw new Error('No autenticado');
+
+      const row = unwrap<Row<'course_threads'>>(
+        await db()
+          .from('course_threads')
+          .insert({ course_id: courseId, author_id: user.id, title, body })
+          .select()
+          .single(),
+      );
+      const profile = unwrap<Pick<Row<'profiles'>, 'full_name' | 'role'>>(
+        await db().from('profiles').select('full_name, role').eq('id', user.id).single(),
+      );
+
+      return {
+        id: row.id,
+        courseId: row.course_id,
+        authorId: row.author_id,
+        authorName: profile.full_name,
+        fromStaff: isStaff(profile.role as UserRole),
+        title: row.title,
+        body: row.body,
+        createdAt: row.created_at,
+        replyCount: 0,
+      };
+    },
+
+    async addThreadReply(threadId, body) {
+      const {
+        data: { user },
+      } = await db().auth.getUser();
+      if (!user) throw new Error('No autenticado');
+
+      const row = unwrap<Row<'course_thread_replies'>>(
+        await db()
+          .from('course_thread_replies')
+          .insert({ thread_id: threadId, author_id: user.id, body })
+          .select()
+          .single(),
+      );
+      const profile = unwrap<Pick<Row<'profiles'>, 'full_name' | 'role'>>(
+        await db().from('profiles').select('full_name, role').eq('id', user.id).single(),
+      );
+
+      return {
+        id: row.id,
+        threadId: row.thread_id,
+        authorId: row.author_id,
+        authorName: profile.full_name,
+        fromStaff: isStaff(profile.role as UserRole),
+        body: row.body,
+        createdAt: row.created_at,
+      };
+    },
+
+    async deleteCourseThread(threadId) {
+      const { error } = await db().from('course_threads').delete().eq('id', threadId);
+      if (error) throw new Error(error.message);
+    },
+
+    async deleteThreadReply(replyId) {
+      const { error } = await db().from('course_thread_replies').delete().eq('id', replyId);
+      if (error) throw new Error(error.message);
+    },
+
+    async getMyCourseRating(courseId) {
+      const {
+        data: { user },
+      } = await db().auth.getUser();
+      if (!user) return null;
+
+      const { data } = await db()
+        .from('course_ratings')
+        .select('stars, review')
+        .eq('course_id', courseId)
+        .eq('student_id', user.id)
+        .maybeSingle();
+      if (!data) return null;
+      return { stars: data.stars, review: data.review };
+    },
+
+    async submitCourseRating(courseId, stars, review) {
+      const {
+        data: { user },
+      } = await db().auth.getUser();
+      if (!user) throw new Error('No autenticado');
+
+      const { error } = await db()
+        .from('course_ratings')
+        .upsert(
+          { course_id: courseId, student_id: user.id, stars, review: review || null, updated_at: new Date().toISOString() },
+          { onConflict: 'course_id,student_id' },
+        );
       if (error) throw new Error(error.message);
     },
   },
@@ -801,6 +1290,119 @@ export const supabaseBackend: Backend = {
       const response = await fetch('/api/practice/advance', { method: 'POST' });
       if (!response.ok) throw new Error('No se pudo avanzar');
       return response.json();
+    },
+  },
+
+  storage: {
+    async getUsage() {
+      const response = await fetch('/api/storage/usage');
+      if (!response.ok) throw new Error('No se pudo cargar el uso de almacenamiento');
+      return response.json();
+    },
+  },
+
+  quiz: {
+    // Autoría de docente: `is_correct` viaja tal cual porque quien llama
+    // esto ya pasó la política "docentes gestionan opciones" (is_staff()).
+    async getQuizDraft(moduleId) {
+      const { data: quiz, error } = await db()
+        .from('quizzes')
+        .select('id, passing_score')
+        .eq('module_id', moduleId)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      if (!quiz) return null;
+
+      const questions = unwrap(
+        await db()
+          .from('quiz_questions')
+          .select('id, prompt, position')
+          .eq('quiz_id', quiz.id)
+          .order('position'),
+      );
+      const options = unwrap(
+        await db()
+          .from('quiz_options')
+          .select('id, question_id, label, is_correct, position')
+          .in('question_id', questions.map((q) => q.id))
+          .order('position'),
+      );
+
+      return {
+        passingScore: quiz.passing_score,
+        questions: questions.map((question) => ({
+          prompt: question.prompt,
+          options: options
+            .filter((option) => option.question_id === question.id)
+            .map((option) => ({ label: option.label, isCorrect: option.is_correct })),
+        })),
+      };
+    },
+
+    // Reemplazo completo: más simple y menos propenso a errores que hacer
+    // diff de qué pregunta/opción cambió — un quiz de módulo tiene pocas
+    // preguntas, no hay costo real en borrar y reinsertar todo cada vez.
+    async saveQuizDraft(moduleId, draft) {
+      const { data: existing } = await db()
+        .from('quizzes')
+        .select('id')
+        .eq('module_id', moduleId)
+        .maybeSingle();
+
+      const quizId =
+        existing?.id ??
+        unwrap<Pick<Row<'quizzes'>, 'id'>>(
+          await db()
+            .from('quizzes')
+            .insert({ module_id: moduleId, passing_score: draft.passingScore })
+            .select('id')
+            .single(),
+        ).id;
+
+      if (existing) {
+        const { error } = await db()
+          .from('quizzes')
+          .update({ passing_score: draft.passingScore })
+          .eq('id', quizId);
+        if (error) throw new Error(error.message);
+
+        const oldQuestions = unwrap(
+          await db().from('quiz_questions').select('id').eq('quiz_id', quizId),
+        );
+        if (oldQuestions.length > 0) {
+          const { error: deleteError } = await db()
+            .from('quiz_questions')
+            .delete()
+            .in('id', oldQuestions.map((q) => q.id));
+          if (deleteError) throw new Error(deleteError.message);
+        }
+      }
+
+      for (const [index, question] of draft.questions.entries()) {
+        const insertedQuestion = unwrap<Pick<Row<'quiz_questions'>, 'id'>>(
+          await db()
+            .from('quiz_questions')
+            .insert({ quiz_id: quizId, prompt: question.prompt, position: index })
+            .select('id')
+            .single(),
+        );
+        const { error: optionsError } = await db()
+          .from('quiz_options')
+          .insert(
+            question.options.map((option, optionIndex) => ({
+              question_id: insertedQuestion.id,
+              label: option.label,
+              is_correct: option.isCorrect,
+              position: optionIndex,
+            })),
+          );
+        if (optionsError) throw new Error(optionsError.message);
+      }
+    },
+
+    async removeQuiz(moduleId) {
+      const { error } = await db().from('quizzes').delete().eq('module_id', moduleId);
+      if (error) throw new Error(error.message);
     },
   },
 };
