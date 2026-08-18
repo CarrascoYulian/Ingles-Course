@@ -1,11 +1,14 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
+
 import { Hearts } from '@/components/duolingo/stat-pills';
 import { LevelPath } from '@/components/duolingo/level-path';
 import { MissionCards } from '@/components/duolingo/mission-cards';
 import { QuizCard } from '@/components/duolingo/quiz-card';
 import { Progress } from '@/components/ui/progress';
 import { LoadingRegion, Skeleton } from '@/components/ui/skeleton';
+import { playCorrectChime, playIncorrectBuzz, primeAudio, speakEnglish } from '../lib/answer-audio';
 import { PracticeHeader } from './practice-header';
 import {
   usePracticeLevels,
@@ -13,12 +16,52 @@ import {
   usePracticeRunner,
   usePracticeSession,
 } from '../hooks/use-practice';
+import { useSoundPreference } from '../hooks/use-sound-preference';
 
 export function PracticeView() {
   const session = usePracticeSession();
   const levels = usePracticeLevels();
   const question = usePracticeQuestion(session.data?.step ?? 1);
   const runner = usePracticeRunner(question.data?.id);
+  const sound = useSoundPreference();
+
+  // El ding/buzz suena al resolver el chequeo (llega por la mutation async),
+  // pero el `AudioContext` sólo se puede desbloquear de forma síncrona
+  // dentro de un gesto del usuario — por eso `primeAudio()` se llama en
+  // `handleSubmit`, no acá.
+  const lastAnnouncedResultRef = useRef<typeof runner.result>(null);
+  useEffect(() => {
+    if (!runner.result || runner.result === lastAnnouncedResultRef.current) return;
+    lastAnnouncedResultRef.current = runner.result;
+    if (!sound.enabled) return;
+
+    if (runner.result.correct) {
+      playCorrectChime();
+      return;
+    }
+    playIncorrectBuzz();
+    // Si falló, además de la que tocó (ya escuchada al seleccionar), que
+    // oiga la respuesta correcta.
+    const correctText = question.data?.options.find(
+      (option) => option.id === runner.result?.correctOptionId,
+    )?.text;
+    if (correctText) {
+      const timeout = window.setTimeout(() => speakEnglish(correctText), 350);
+      return () => window.clearTimeout(timeout);
+    }
+  }, [runner.result, sound.enabled, question.data]);
+
+  const handleSelect = (optionId: string) => {
+    runner.select(optionId);
+    if (!sound.enabled || runner.result) return;
+    const optionText = question.data?.options.find((option) => option.id === optionId)?.text;
+    if (optionText) speakEnglish(optionText);
+  };
+
+  const handleSubmit = () => {
+    if (sound.enabled && !runner.result) primeAudio();
+    runner.submit();
+  };
 
   if (!session.data) {
     return (
@@ -34,7 +77,12 @@ export function PracticeView() {
 
   return (
     <div className="flex min-h-dvh flex-col bg-surface-muted">
-      <PracticeHeader session={session.data} levelTitle={currentLevel?.title ?? 'Nivel 1'} />
+      <PracticeHeader
+        session={session.data}
+        levelTitle={currentLevel?.title ?? 'Nivel 1'}
+        soundEnabled={sound.enabled}
+        onToggleSound={sound.toggle}
+      />
 
       <div className="flex flex-1 gap-[22px] p-[18px] md:px-[30px] md:py-[26px]">
         {levels.data && <LevelPath levels={levels.data} />}
@@ -63,8 +111,8 @@ export function PracticeView() {
               selectedOptionId={runner.selectedOptionId}
               result={runner.result}
               isPending={runner.isPending}
-              onSelect={runner.select}
-              onSubmit={runner.submit}
+              onSelect={handleSelect}
+              onSubmit={handleSubmit}
             />
           ) : (
             <Skeleton className="h-[420px] rounded-10xl" />

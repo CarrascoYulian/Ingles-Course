@@ -86,7 +86,7 @@ export function QuizCard({
     <Card
       radius="2xl"
       padding="none"
-      className="flex flex-1 flex-col px-[18px] py-5 md:px-[38px] md:pb-[30px] md:pt-[34px]"
+      className="flex flex-col px-[18px] py-5 md:px-[38px] md:pb-[30px] md:pt-[34px]"
     >
       <div className="flex items-center gap-2.5">
         <Badge tone="brand" size="md">
