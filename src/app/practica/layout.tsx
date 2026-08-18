@@ -5,7 +5,7 @@ import { ROUTES } from '@/constants/routes';
 import { getCurrentProfile } from '@/lib/auth/session';
 
 export const metadata: Metadata = {
-  title: { default: 'Práctica diaria', template: '%s · Práctica' },
+  title: { default: 'BerthoGo', template: '%s · BerthoGo' },
 };
 
 /**

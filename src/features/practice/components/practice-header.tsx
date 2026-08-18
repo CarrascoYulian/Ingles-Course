@@ -74,7 +74,7 @@ export function PracticeHeader({
           </Link>
           <div>
             <h1 className="text-title-sm font-extrabold tracking-tight-2 text-fg">
-              Práctica diaria · Unidad 3
+              BerthoGo · Unidad 3
             </h1>
             <p className="text-meta font-semibold text-fg-ghost">
               Vocabulario y gramática · {session.step} de {session.totalSteps} ejercicios
