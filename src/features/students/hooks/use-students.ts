@@ -112,6 +112,10 @@ export function useResetStudentProgress() {
     mutationFn: ({ id }: { id: string; name: string }) => backend.students.resetProgress(id),
     onSuccess: (_data, { name }) => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
+      // Reiniciar progreso mueve el promedio del dashboard y el ranking del
+      // mes — sin esto, "Resumen general" seguía mostrando el número viejo
+      // hasta que su propio staleTime (4 min) expirara solo.
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboard });
       toast(`Progreso de ${name} reiniciado`);
     },
     onError: () => toast.error('No se pudo reiniciar el progreso.'),
@@ -141,6 +145,7 @@ export function useUpdateStudent() {
       backend.students.update(id, input),
     onSuccess: (student) => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboard });
       toast(`Datos de ${student.name} actualizados`);
     },
     onError: (error) =>
@@ -155,6 +160,11 @@ export function useDeleteStudent() {
     mutationFn: ({ id }: { id: string; name: string }) => backend.students.remove(id),
     onSuccess: (_data, { name }) => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
+      // Un alumno borrado sale del conteo, del promedio y del ranking del
+      // dashboard — sin esto, "Resumen general" seguía contándolo hasta que
+      // su propio staleTime expirara solo, mostrando alumnos "eliminados"
+      // como si siguieran matriculados.
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboard });
       toast(`${name} eliminado`);
     },
     onError: (error) =>
@@ -171,6 +181,7 @@ export function useToggleStudentActive() {
       backend.students.setActive(id, active),
     onSuccess: (_data, { name, active }) => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboard });
       toast(active ? `${name} activado` : `${name} desactivado`);
     },
     onError: (error) =>
@@ -188,6 +199,7 @@ export function useEnrollStudent() {
       backend.students.enroll(id, courseId),
     onSuccess: (_data, { name }) => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboard });
       toast(`${name} matriculado`);
     },
     onError: (error) =>
@@ -204,6 +216,7 @@ export function useInviteStudent() {
       // El diálogo ya muestra la matrícula en un recuadro copiable; el toast
       // sólo confirmaba lo mismo un instante y desaparecía.
       queryClient.invalidateQueries({ queryKey: ['students'] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboard });
     },
     onError: (error) =>
       toast.error(error instanceof Error ? error.message : 'No se pudo crear el estudiante.'),

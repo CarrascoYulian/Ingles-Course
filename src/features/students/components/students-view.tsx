@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
-import { useAdminHeader } from '@/components/admin/admin-shell';
+import { useAdminHeader, useAdminRole } from '@/components/admin/admin-shell';
 import { StudentDetailCard } from '@/components/admin/student-detail-card';
 import { StudentRow } from '@/components/admin/student-row';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
@@ -13,6 +13,7 @@ import { Chip, ChipRow } from '@/components/ui/chip';
 import { EmptyState } from '@/components/ui/empty-state';
 import { LoadingRegion, Skeleton } from '@/components/ui/skeleton';
 import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
+import { can } from '@/lib/auth/rbac';
 import { CEFR_LEVELS, type CefrLevel, type StudentSummary } from '@/types';
 import { useAdminSearch } from '../hooks/use-admin-search';
 import {
@@ -88,6 +89,8 @@ export function StudentsView() {
   const { data: unreadStudentIds } = useUnreadStudentIds();
   const unreadSet = new Set(unreadStudentIds);
   const confirmDialog = useConfirmDialog();
+  const role = useAdminRole();
+  const canDeleteStudents = can(role, 'student:delete');
 
   // La selección en bloque vive por página/filtro: cruzar páginas obligaría
   // a guardar nombres de estudiantes que ya no están cargados en memoria
@@ -121,6 +124,23 @@ export function StudentsView() {
     } finally {
       setBulkSending(false);
     }
+  };
+
+  const confirmBulkDelete = () => {
+    const targets = checkedStudents;
+    confirmDialog.confirm({
+      title: `Eliminar ${targets.length} estudiantes`,
+      body: `Se borrarán las cuentas de ${targets.map((s) => s.name).join(', ')} y todos sus datos (matrícula, progreso, mensajes) de forma permanente en Supabase. Esta acción no se puede deshacer.`,
+      confirmLabel: `Sí, eliminar ${targets.length}`,
+      onConfirm: () =>
+        Promise.all(targets.map((student) => deleteStudent.mutateAsync({ id: student.id, name: student.name })))
+          .then(() => {
+            toast.success(`${targets.length} estudiantes eliminados`);
+            setCheckedIds(new Set());
+            if (targets.some((s) => s.id === selectedId)) setSelectedId(null);
+            toast.dismiss();
+          }),
+    });
   };
 
   useAdminHeader(
@@ -173,6 +193,11 @@ export function StudentsView() {
                 <Button variant="ghost" size="xs" onClick={() => setBulkMessageOpen(true)}>
                   Enviar mensaje
                 </Button>
+                {canDeleteStudents && (
+                  <Button variant="danger" size="xs" onClick={confirmBulkDelete}>
+                    Eliminar
+                  </Button>
+                )}
                 <Button variant="quiet" size="xs" onClick={() => setCheckedIds(new Set())}>
                   Cancelar
                 </Button>

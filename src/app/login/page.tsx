@@ -14,7 +14,10 @@ export const metadata: Metadata = { title: 'Entrar' };
  */
 export default function LoginPage() {
   return (
-    <main id="contenido-principal" className="relative grid min-h-dvh bg-canvas lg:grid-cols-[60%_40%]">
+    <main
+      id="contenido-principal"
+      className="relative grid min-h-dvh overflow-x-hidden bg-canvas lg:grid-cols-[60%_40%]"
+    >
       {/* Waves decorativos (estilo getwaves.io), a lo ancho de TODA la
           página (no sólo el panel del formulario) — antes vivían dentro del
           panel izquierdo con `overflow-hidden`, así que `w-full` medía el
@@ -67,7 +70,7 @@ export default function LoginPage() {
         />
       </svg>
 
-      <div className="relative flex items-center justify-center px-5 py-10">
+      <div className="relative flex items-center justify-center px-5 py-8 lg:py-10">
         <div className="relative z-10 w-full max-w-[420px]">
           <Card radius="2xl" padding="none" className="relative overflow-visible p-6 pt-24 shadow-card">
             {/* Hueco: círculo del color de fondo de la página, más grande que el logo. */}
