@@ -1,6 +1,6 @@
 'use client';
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 import { QUERY_KEYS } from '@/constants';
@@ -73,6 +73,40 @@ export function useResources(filters?: { courseId?: string; moduleId?: string })
     queryFn: () => backend.learning.listResources(filters),
     staleTime: 10 * 60 * 1000,
   });
+}
+
+/**
+ * Recursos de la biblioteca (`/recursos`), segmentados por curso matriculado.
+ *
+ * Antes esta pantalla pedía la biblioteca completa sin `courseId`, así que
+ * un alumno con material en dos cursos veía todo mezclado en una sola lista
+ * — y el filtro por curso, si existiera, dependería de que el alumno lo
+ * eligiera a mano. Acá no hay elección manual: se resuelve automáticamente
+ * a partir de la matrícula real (`useMyCourses`) y se pide una lista de
+ * recursos por curso, ya acotada en el servidor.
+ */
+export function useResourcesByCourse() {
+  const { data: courses, isPending: isCoursesPending } = useMyCourses();
+
+  const queries = useQueries({
+    queries: (courses ?? []).map((course) => ({
+      queryKey: ['resources', course.id, null],
+      queryFn: () => backend.learning.listResources({ courseId: course.id }),
+      staleTime: 10 * 60 * 1000,
+      enabled: courses !== undefined,
+    })),
+  });
+
+  const groups = (courses ?? []).map((course, index) => ({
+    course,
+    resources: queries[index]?.data ?? [],
+    isPending: queries[index]?.isPending ?? true,
+  }));
+
+  return {
+    groups,
+    isPending: isCoursesPending || groups.some((group) => group.isPending),
+  };
 }
 
 /** Abre el archivo real de un recurso — antes "Descargar" sólo mostraba un toast falso. */

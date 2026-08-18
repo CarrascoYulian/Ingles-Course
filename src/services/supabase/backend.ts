@@ -733,9 +733,24 @@ export const supabaseBackend: Backend = {
         ]),
       );
 
+      // El punto más lejano ya completado, igual que `maxWatched` a nivel de
+      // video: nunca baja. Antes el desbloqueo dependía sólo de que la
+      // lección INMEDIATAMENTE anterior mostrara `previousCompleted` en esta
+      // misma pasada — al retroceder a repasar una lección ya vista, un
+      // reproche de guardado en tránsito podía dejarla momentáneamente sin
+      // `completed_at`, y eso volvía a bloquear TODO lo que venía después
+      // aunque el alumno ya lo hubiera terminado. Con el máximo alcanzado
+      // como piso, una lección ya alcanzada sigue desbloqueada aunque la
+      // anterior parpadee a "no completada".
+      const maxCompletedPosition = rows.reduce(
+        (max, row) => (byLesson.get(row.id)?.completed ? Math.max(max, row.position) : max),
+        0,
+      );
+
       let previousCompleted = true;
       return rows.map((row) => {
-        const lesson = toLesson(row, byLesson.get(row.id), previousCompleted);
+        const reachedBefore = row.position <= maxCompletedPosition + 1;
+        const lesson = toLesson(row, byLesson.get(row.id), previousCompleted || reachedBefore);
         previousCompleted = lesson.state === 'done';
         return lesson;
       });

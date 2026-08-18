@@ -261,6 +261,17 @@ export function CourseView({ lessonOrder, currentUserId = null }: CourseViewProp
             markers={noteMarkers}
             seekRequest={seekRequest}
             hasUnseenComments={hasUnseenComments}
+            onPrevious={
+              currentLesson && lessonPosition > 1
+                ? () => {
+                    const prevLesson = lessons?.[lessonPosition - 2];
+                    if (!prevLesson) return;
+                    router.push(
+                      ROUTES.student.leccion(course.level.toLowerCase(), module.id, prevLesson.order),
+                    );
+                  }
+                : undefined
+            }
             onNext={() => {
               if (!video.canAdvance) {
                 toast('Debes terminar el video para continuar');
