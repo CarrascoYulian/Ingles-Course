@@ -1,9 +1,11 @@
+import Image from 'next/image';
+
 import { cn } from '@/lib/utils';
 import { APP_NAME } from '@/constants';
 
 const MARK_SIZE = {
-  30: 'size-[30px] rounded-md text-[13px]',
-  32: 'size-8 rounded-lg text-[13px]',
+  30: 'size-[30px]',
+  32: 'size-8',
 } as const;
 
 export function LogoMark({
@@ -15,14 +17,13 @@ export function LogoMark({
 }) {
   return (
     <span
-      aria-hidden
       className={cn(
-        'grid shrink-0 place-items-center bg-brand font-extrabold tracking-tight-2 text-white',
+        'relative grid shrink-0 place-items-center overflow-hidden rounded-full',
         MARK_SIZE[size],
         className,
       )}
     >
-      in
+      <Image src="/login/logo.jpeg" alt="" aria-hidden fill sizes="32px" className="object-cover" />
     </span>
   );
 }
