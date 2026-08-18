@@ -8,7 +8,11 @@ import { LogoutButton } from '@/components/shared/logout-button';
 import { Avatar } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { ADMIN_PAGE_META } from '@/constants/navigation';
+import { ROUTES } from '@/constants/routes';
 import { useAdminSearch } from '@/features/students/hooks/use-admin-search';
+
+/** Páginas donde el buscador global filtra algo — en el resto se oculta. */
+const SEARCHABLE_PATHS: readonly string[] = [ROUTES.admin.estudiantes, ROUTES.admin.cursos];
 
 export interface AdminTopbarProps {
   subtitle: string;
@@ -25,6 +29,9 @@ export function AdminTopbar({ subtitle, teacherName, action }: AdminTopbarProps)
   const pathname = usePathname();
   const { query, setQuery } = useAdminSearch();
   const meta = ADMIN_PAGE_META[pathname];
+  const searchable = SEARCHABLE_PATHS.includes(pathname);
+  const placeholder = pathname === ROUTES.admin.cursos ? 'Buscar curso…' : 'Buscar estudiante…';
+  const ariaLabel = pathname === ROUTES.admin.cursos ? 'Buscar curso' : 'Buscar estudiante';
 
   return (
     <header className="border-b border-line bg-surface px-5 py-3 lg:px-[30px] lg:py-[22px]">
@@ -38,30 +45,34 @@ export function AdminTopbar({ subtitle, teacherName, action }: AdminTopbarProps)
         </div>
 
         <div className="flex shrink-0 items-center gap-2.5">
-          <Input
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Buscar estudiante o curso…"
-            aria-label="Buscar estudiante o curso"
-            icon={<Search size={15} strokeWidth={2} />}
-            className="hidden w-[230px] lg:flex"
-          />
+          {searchable && (
+            <Input
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder={placeholder}
+              aria-label={ariaLabel}
+              icon={<Search size={15} strokeWidth={2} />}
+              className="hidden w-[230px] lg:flex"
+            />
+          )}
           <div className="hidden lg:block">{action}</div>
           <Avatar name={teacherName} color="#0F5257" size={34} className="lg:hidden" />
           <LogoutButton iconOnly className="lg:hidden" />
         </div>
       </div>
 
-      <Input
-        type="search"
-        value={query}
-        onChange={(event) => setQuery(event.target.value)}
-        placeholder="Buscar estudiante…"
-        aria-label="Buscar estudiante"
-        icon={<Search size={15} strokeWidth={2} />}
-        className="mt-3.5 lg:hidden"
-      />
+      {searchable && (
+        <Input
+          type="search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder={placeholder}
+          aria-label={ariaLabel}
+          icon={<Search size={15} strokeWidth={2} />}
+          className="mt-3.5 lg:hidden"
+        />
+      )}
     </header>
   );
 }

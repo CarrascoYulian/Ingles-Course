@@ -15,6 +15,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton, LoadingRegion } from '@/components/ui/skeleton';
 import { ROUTES } from '@/constants/routes';
 import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
+import { useAdminSearch } from '@/features/students/hooks/use-admin-search';
 import { CEFR_LEVELS, type CefrLevel, type Course } from '@/types';
 import {
   useCourses,
@@ -34,6 +35,7 @@ export function CoursesView() {
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [ratingsCourse, setRatingsCourse] = useState<Course | null>(null);
 
+  const { appliedQuery } = useAdminSearch();
   const { data: courses, isPending } = useCourses();
   const createCourse = useCreateCourse();
   const updateCourse = useUpdateCourse();
@@ -49,8 +51,11 @@ export function CoursesView() {
     () => setDialogOpen(true),
   );
 
+  const needle = appliedQuery.trim().toLocaleLowerCase();
   const visible = courses?.filter(
-    (course) => levelFilter === 'Todos' || course.level === levelFilter,
+    (course) =>
+      (levelFilter === 'Todos' || course.level === levelFilter) &&
+      (needle === '' || course.name.toLocaleLowerCase().includes(needle)),
   );
 
   return (
