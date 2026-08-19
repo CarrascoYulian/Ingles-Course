@@ -123,7 +123,7 @@ export function LoginForm() {
         </Field>
         <div className="mt-2 text-right">
           <a
-            href="mailto:soporte@ingles-con-metodo.do"
+            href="mailto:berthocommunity@gmail.com"
             className="text-meta font-bold text-brand underline"
           >
             ¿Olvidaste tu contraseña?

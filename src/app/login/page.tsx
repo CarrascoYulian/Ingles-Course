@@ -110,10 +110,10 @@ export default function LoginPage() {
           <p className="mt-5 text-center text-meta font-semibold text-fg-faint">
             ¿Problemas para entrar? Escribe a{' '}
             <a
-              href="mailto:soporte@ingles-con-metodo.do"
+              href="mailto:berthocommunity@gmail.com"
               className="font-bold text-brand underline"
             >
-              soporte@ingles-con-metodo.do
+              berthocommunity@gmail.com
             </a>
           </p>
         </div>
