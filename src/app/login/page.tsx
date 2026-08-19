@@ -70,16 +70,20 @@ export default function LoginPage() {
         />
       </svg>
 
-      <div className="relative flex items-center justify-center px-5 py-8 lg:py-10">
+      <div className="relative flex items-center justify-center overflow-y-auto px-5 py-[clamp(0.75rem,3vh,2.5rem)]">
         <div className="relative z-10 w-full max-w-[420px]">
-          <Card radius="2xl" padding="none" className="relative overflow-visible p-6 pt-24 shadow-card">
+          <Card
+            radius="2xl"
+            padding="none"
+            className="relative overflow-visible p-6 pt-[clamp(3rem,10vh,6rem)] shadow-card"
+          >
             {/* Hueco: círculo del color de fondo de la página, más grande que el logo. */}
             <div
               aria-hidden
-              className="absolute left-1/2 top-0 size-[140px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-canvas"
+              className="absolute left-1/2 top-0 size-[clamp(100px,14vh,140px)] -translate-x-1/2 -translate-y-1/2 rounded-full bg-canvas"
             />
             {/* Logo: la "pieza" que encaja en el hueco, ligeramente más chica y por encima. */}
-            <div className="absolute left-1/2 top-0 z-10 size-28 -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full">
+            <div className="absolute left-1/2 top-0 z-10 size-[clamp(80px,11vh,112px)] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full">
               <Image
                 src="/login/logo.jpeg"
                 alt="Bertho Community"
@@ -107,7 +111,7 @@ export default function LoginPage() {
             </div>
           </Card>
 
-          <p className="mt-5 text-center text-meta font-semibold text-fg-faint">
+          <p className="mt-[clamp(0.5rem,2vh,1.25rem)] text-center text-meta font-semibold text-fg-faint">
             ¿Problemas para entrar? Escribe a{' '}
             <a
               href="mailto:berthocommunity@gmail.com"
