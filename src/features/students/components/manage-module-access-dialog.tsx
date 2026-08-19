@@ -2,15 +2,15 @@
 
 import { useEffect, useState } from 'react';
 
-import { useCourses } from '@/features/courses/hooks/use-courses';
 import { useModules } from '@/features/content/hooks/use-content-blocks';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from '@/components/ui/dialog';
 import { EmptyState } from '@/components/ui/empty-state';
 import type { StudentSummary } from '@/types';
+import { useModuleAccess, useStudentEnrollments } from '../hooks/use-students';
 import { ModuleAccessChecklist } from './module-access-checklist';
 
-export interface EnrollStudentDialogProps {
+export interface ManageModuleAccessDialogProps {
   open: boolean;
   student: StudentSummary | null;
   onOpenChange: (open: boolean) => void;
@@ -19,24 +19,29 @@ export interface EnrollStudentDialogProps {
 }
 
 /**
- * Crear un estudiante no lo matricula en ningún curso — "Mi curso" se queda
- * vacío hasta que el maestro lo matricule explícitamente aquí. Matricular
- * además exige elegir a qué módulos del curso tiene acceso — nunca ninguno,
- * o el alumno queda matriculado sin nada que ver.
+ * A diferencia de "Matricular en curso", acá el alumno ya tiene matrícula —
+ * sólo se ajusta a qué módulos de un curso ya cursado tiene acceso. Por eso
+ * el primer paso elige entre los cursos en los que YA está matriculado, no
+ * entre todos los publicados.
  */
-export function EnrollStudentDialog({ open, student, onOpenChange, onSubmit, pending }: EnrollStudentDialogProps) {
-  const { data: courses, isPending: coursesPending } = useCourses();
+export function ManageModuleAccessDialog({
+  open,
+  student,
+  onOpenChange,
+  onSubmit,
+  pending,
+}: ManageModuleAccessDialogProps) {
+  const { data: enrollments, isPending: enrollmentsPending } = useStudentEnrollments(student?.id ?? null);
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [selectedModuleIds, setSelectedModuleIds] = useState<Set<string>>(new Set());
-  const publishedCourses = courses?.filter((c) => c.published) ?? [];
   const { data: modules, isPending: modulesPending } = useModules(selectedCourseId ?? '');
+  const { data: currentAccess } = useModuleAccess(student?.id ?? null, selectedCourseId);
 
-  // Al elegir el curso, el default es acceso a todos sus módulos — mantiene
-  // el comportamiento de siempre (matrícula = acceso total); el maestro
-  // desmarca si quiere limitar desde el arranque.
+  // Se precarga con el acceso YA otorgado — a diferencia de matricular, acá
+  // el default no es "todos", sino lo que el alumno ya tiene.
   useEffect(() => {
-    if (modules) setSelectedModuleIds(new Set(modules.map((m) => m.id)));
-  }, [modules]);
+    if (currentAccess) setSelectedModuleIds(new Set(currentAccess));
+  }, [currentAccess]);
 
   if (!student) return null;
 
@@ -60,32 +65,31 @@ export function EnrollStudentDialog({ open, student, onOpenChange, onSubmit, pen
       }}
     >
       <DialogContent width={420}>
-        <DialogTitle>Matricular en curso</DialogTitle>
-        <DialogDescription>Elige el curso en el que quieres matricular a “{student.name}”.</DialogDescription>
+        <DialogTitle>Dar acceso a módulos</DialogTitle>
+        <DialogDescription>Elige el curso y los módulos a los que “{student.name}” debe tener acceso.</DialogDescription>
 
         <div className="mt-5 flex flex-col gap-2">
-          {coursesPending && <p className="text-body-sm font-semibold text-fg-faint">Cargando cursos…</p>}
+          {enrollmentsPending && <p className="text-body-sm font-semibold text-fg-faint">Cargando cursos…</p>}
 
-          {!coursesPending && publishedCourses.length === 0 && (
+          {!enrollmentsPending && (!enrollments || enrollments.length === 0) && (
             <EmptyState
-              title="No hay cursos publicados"
-              description="Publica un curso desde “Cursos y módulos” antes de matricular estudiantes."
+              title="Todavía no está matriculado en ningún curso"
+              description="Matricula primero al alumno en un curso desde “Matricular en curso”."
             />
           )}
 
-          {publishedCourses.map((course) => (
+          {enrollments?.map((enrollment) => (
             <button
-              key={course.id}
+              key={enrollment.courseId}
               type="button"
-              onClick={() => setSelectedCourseId(course.id)}
+              onClick={() => setSelectedCourseId(enrollment.courseId)}
               className={`rounded-2xl border px-4 py-3 text-left text-body-sm font-bold transition-colors ${
-                selectedCourseId === course.id
+                selectedCourseId === enrollment.courseId
                   ? 'border-brand bg-brand-soft text-brand'
                   : 'border-line text-fg hover:border-line-strong'
               }`}
             >
-              {course.name}
-              <span className="ml-2 font-semibold text-fg-ghost">Nivel {course.level}</span>
+              {enrollment.courseName}
             </button>
           ))}
         </div>
@@ -112,7 +116,7 @@ export function EnrollStudentDialog({ open, student, onOpenChange, onSubmit, pen
             disabled={pending || !selectedCourseId || selectedModuleIds.size === 0}
             onClick={submit}
           >
-            {pending ? 'Matriculando…' : 'Matricular'}
+            {pending ? 'Guardando…' : 'Guardar acceso'}
           </Button>
         </DialogFooter>
       </DialogContent>

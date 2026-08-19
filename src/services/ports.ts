@@ -126,10 +126,16 @@ export interface StudentsPort {
   /** Borra al alumno de Auth y, en cascada, todos sus datos reales en Supabase. */
   remove(id: string): Promise<void>;
   sendMessage(id: string, body: string): Promise<void>;
-  /** Matricula al alumno en un curso — sin esto "Mi curso" se queda vacío para siempre. */
-  enroll(studentId: string, courseId: string): Promise<void>;
+  /** Matricula al alumno en un curso y le otorga acceso a los módulos indicados (al menos uno). */
+  enroll(studentId: string, courseId: string, moduleIds: string[]): Promise<void>;
   /** Pausa/reactiva al alumno: inactivo no puede iniciar sesión ni mantener una sesión abierta. */
   setActive(id: string, active: boolean): Promise<StudentSummary>;
+  /** Cursos en los que el alumno ya está matriculado — para elegir a cuál darle acceso a más módulos. */
+  listEnrollments(studentId: string): Promise<{ courseId: string; courseName: string }[]>;
+  /** Ids de los módulos de ese curso a los que el alumno ya tiene acceso otorgado. */
+  getModuleAccess(studentId: string, courseId: string): Promise<string[]>;
+  /** Reemplaza el conjunto de módulos otorgados de ese curso — no matricula, sólo ajusta el acceso. */
+  setModuleAccess(studentId: string, courseId: string, moduleIds: string[]): Promise<void>;
 }
 
 export interface AnalyticsPort {
