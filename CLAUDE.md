@@ -14,12 +14,20 @@ Supabase (Postgres, Auth, Storage).
 ## Infraestructura real (no asumir, verificar si algo no cuadra)
 
 - **Repo GitHub:** `CarrascoYulian/Ingles-Course`. Rama base: `main`.
-- **Supabase:** proyecto `ingles-con-metodo` (id `uowupbmydcmhqkayzfwy`), región `us-east-1`.
+- **Supabase:** proyecto `berthocommunity@gmail.com's Project` (id `bbiipfzsicasespoqcqj`,
+  org `vrekndkatftvqesdfruk`), región `us-east-2`. Se migró desde el proyecto
+  viejo `ingles-con-metodo` (`uowupbmydcmhqkayzfwy`) a esta cuenta nueva
+  (`berthocommunity@gmail.com`) — si algo de infraestructura no cuadra con
+  este id, verificar de nuevo con el MCP de Supabase antes de asumir.
   - **Plan Free.** Esto importa mucho más de lo que parece:
     - Cuota total de Storage: **1 GB** (no 200 GB — un mock viejo del diseño decía eso y quedó hardcodeado un tiempo, ver `STORAGE_PLAN_LIMIT_BYTES` en `src/lib/storage.ts`).
     - **Límite global de archivo: 50 MB**, sin importar lo que diga `file_size_limit` en `storage.buckets` (la migración `0003_storage.sql` pide 2 GB a nivel de bucket, pero la plataforma lo recorta a 50 MB en Free). Cualquier video de más de 50 MB probablemente falla al subir — ver `docs/guia-subida-de-videos.md`.
-    - Verificar con el MCP de Supabase (`get_organization` sobre el org id `nlqamvvztuxshlrkzfyb`) antes de asumir que esto cambió.
-- **Vercel:** proyecto `ingles-course` (team `carrasco-team1`, `team_RW94amIsRUxpxAlRFzINFvsK`). Deploys automáticos por PR vía integración de GitHub.
+    - Verificar con el MCP de Supabase (`get_organization` sobre el org id `vrekndkatftvqesdfruk`) antes de asumir que esto cambió.
+- **Vercel:** proyecto `berthocommunity` (id `prj_R3IAEGlk5Lsj92zmSVlcDqNpVl9a`, team
+  `bertho-community-team1` / `team_PdSs2OVZpugZsloTLvynHuh9` — antes
+  `ingles-course` / `carrasco-team1`, migrado a la cuenta `berthocommunity@gmail.com`).
+  Deploys automáticos por PR vía integración de GitHub; merge a `main` dispara
+  producción.
 - **CI:** GitHub Actions (`.github/workflows/ci.yml`) — lint → typecheck → test → build, en cada PR/push a `main`.
 
 ## Arquitectura: puertos + dos adaptadores
