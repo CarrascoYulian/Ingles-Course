@@ -22,6 +22,7 @@ import {
   useInviteStudent,
   useResetStudentProgress,
   useSendStudentMessage,
+  useSetModuleAccess,
   useStudents,
   useToggleStudentActive,
   useUnreadStudentIds,
@@ -31,6 +32,7 @@ import { BulkMessageDialog } from './bulk-message-dialog';
 import { EditStudentDialog } from './edit-student-dialog';
 import { EnrollStudentDialog } from './enroll-student-dialog';
 import { InviteStudentDialog } from './invite-student-dialog';
+import { ManageModuleAccessDialog } from './manage-module-access-dialog';
 import { MessageStudentDialog } from './message-student-dialog';
 
 const LEVEL_FILTERS: Array<CefrLevel | 'Todos'> = ['Todos', ...CEFR_LEVELS.filter((l) => l !== 'C1')];
@@ -44,6 +46,7 @@ export function StudentsView() {
   const [messageTarget, setMessageTarget] = useState<StudentSummary | null>(null);
   const [editTarget, setEditTarget] = useState<StudentSummary | null>(null);
   const [enrollTarget, setEnrollTarget] = useState<StudentSummary | null>(null);
+  const [moduleAccessTarget, setModuleAccessTarget] = useState<StudentSummary | null>(null);
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [bulkMessageOpen, setBulkMessageOpen] = useState(false);
   const [bulkSending, setBulkSending] = useState(false);
@@ -85,6 +88,7 @@ export function StudentsView() {
   const updateStudent = useUpdateStudent();
   const deleteStudent = useDeleteStudent();
   const enrollStudent = useEnrollStudent();
+  const setModuleAccess = useSetModuleAccess();
   const toggleActive = useToggleStudentActive();
   const { data: unreadStudentIds } = useUnreadStudentIds();
   const unreadSet = new Set(unreadStudentIds);
@@ -282,6 +286,7 @@ export function StudentsView() {
         onMessage={(student) => setMessageTarget(student)}
         onEdit={(student) => setEditTarget(student)}
         onEnroll={(student) => setEnrollTarget(student)}
+        onManageModuleAccess={(student) => setModuleAccessTarget(student)}
         onReset={(student) =>
           confirmDialog.confirm({
             title: 'Reiniciar el progreso',
@@ -348,11 +353,24 @@ export function StudentsView() {
         student={enrollTarget}
         onOpenChange={(open) => !open && setEnrollTarget(null)}
         pending={enrollStudent.isPending}
-        onSubmit={(courseId) => {
+        onSubmit={(courseId, moduleIds) => {
           if (!enrollTarget) return Promise.resolve();
           return enrollStudent
-            .mutateAsync({ id: enrollTarget.id, name: enrollTarget.name, courseId })
+            .mutateAsync({ id: enrollTarget.id, name: enrollTarget.name, courseId, moduleIds })
             .then(() => setEnrollTarget(null));
+        }}
+      />
+
+      <ManageModuleAccessDialog
+        open={moduleAccessTarget !== null}
+        student={moduleAccessTarget}
+        onOpenChange={(open) => !open && setModuleAccessTarget(null)}
+        pending={setModuleAccess.isPending}
+        onSubmit={(courseId, moduleIds) => {
+          if (!moduleAccessTarget) return Promise.resolve();
+          return setModuleAccess
+            .mutateAsync({ studentId: moduleAccessTarget.id, name: moduleAccessTarget.name, courseId, moduleIds })
+            .then(() => setModuleAccessTarget(null));
         }}
       />
 

@@ -533,7 +533,7 @@ export const supabaseBackend: Backend = {
       ]);
     },
 
-    async enroll(studentId, courseId) {
+    async enroll(studentId, courseId, moduleIds) {
       const { error } = await db()
         .from('enrollments')
         .upsert(
@@ -541,6 +541,16 @@ export const supabaseBackend: Backend = {
           { onConflict: 'student_id,course_id', ignoreDuplicates: true },
         );
       if (error) throw new Error(error.message);
+
+      if (moduleIds.length > 0) {
+        const { error: accessError } = await db()
+          .from('module_access')
+          .upsert(
+            moduleIds.map((moduleId) => ({ student_id: studentId, module_id: moduleId })),
+            { onConflict: 'student_id,module_id', ignoreDuplicates: true },
+          );
+        if (accessError) throw new Error(accessError.message);
+      }
 
       const student = unwrap<Row<'profiles'>>(
         await db().from('profiles').select('full_name').eq('id', studentId).single(),
@@ -552,6 +562,72 @@ export const supabaseBackend: Backend = {
         { text: student.full_name, strong: true },
         { text: ` matriculado en ` },
         { text: course.name, strong: true },
+      ]);
+    },
+
+    async listEnrollments(studentId) {
+      const rows = unwrap(
+        await db()
+          .from('enrollments')
+          .select('course_id, courses(name)')
+          .eq('student_id', studentId),
+      );
+      return rows
+        .map((row) => {
+          const course = (row as unknown as { courses: Pick<Row<'courses'>, 'name'> | null }).courses;
+          return course ? { courseId: row.course_id, courseName: course.name } : null;
+        })
+        .filter((entry): entry is { courseId: string; courseName: string } => entry !== null);
+    },
+
+    async getModuleAccess(studentId, courseId) {
+      const modules = unwrap(
+        await db().from('modules').select('id').eq('course_id', courseId),
+      );
+      if (modules.length === 0) return [];
+      const rows = unwrap(
+        await db()
+          .from('module_access')
+          .select('module_id')
+          .eq('student_id', studentId)
+          .in('module_id', modules.map((m) => m.id)),
+      );
+      return rows.map((r) => r.module_id);
+    },
+
+    async setModuleAccess(studentId, courseId, moduleIds) {
+      const modules = unwrap(
+        await db().from('modules').select('id').eq('course_id', courseId),
+      );
+      const allModuleIds = modules.map((m) => m.id);
+      const wanted = new Set(moduleIds);
+      const toRemove = allModuleIds.filter((id) => !wanted.has(id));
+      const toAdd = moduleIds.filter((id) => allModuleIds.includes(id));
+
+      if (toRemove.length > 0) {
+        const { error } = await db()
+          .from('module_access')
+          .delete()
+          .eq('student_id', studentId)
+          .in('module_id', toRemove);
+        if (error) throw new Error(error.message);
+      }
+      if (toAdd.length > 0) {
+        const { error } = await db()
+          .from('module_access')
+          .upsert(
+            toAdd.map((moduleId) => ({ student_id: studentId, module_id: moduleId })),
+            { onConflict: 'student_id,module_id', ignoreDuplicates: true },
+          );
+        if (error) throw new Error(error.message);
+      }
+
+      const student = unwrap<Row<'profiles'>>(
+        await db().from('profiles').select('full_name').eq('id', studentId).single(),
+      );
+      await logActivity('success', [
+        { text: student.full_name, strong: true },
+        { text: ` · acceso a módulos actualizado (${moduleIds.length})` },
       ]);
     },
 
@@ -672,6 +748,10 @@ export const supabaseBackend: Backend = {
       // terminar; uno sin lecciones todavía (aún sin contenido) se salta en
       // vez de bloquear el avance. Si ya están todos completos, se cae en
       // el último para poder seguir repasando.
+      // Sólo entran a la carrera los módulos a los que el alumno tiene acceso
+      // otorgado — el RLS de `modules` ya filtra esto en la consulta, pero
+      // acá además decide "cuál de los otorgados es el actual", no sólo "cuál
+      // es el primero del curso entero".
       const modules = unwrap(
         await db().from('modules').select('*').eq('course_id', courseId).order('position'),
       );

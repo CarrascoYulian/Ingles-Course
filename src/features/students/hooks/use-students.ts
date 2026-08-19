@@ -195,15 +195,60 @@ export function useEnrollStudent() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, courseId }: { id: string; name: string; courseId: string }) =>
-      backend.students.enroll(id, courseId),
-    onSuccess: (_data, { name }) => {
+    mutationFn: ({ id, courseId, moduleIds }: { id: string; name: string; courseId: string; moduleIds: string[] }) =>
+      backend.students.enroll(id, courseId, moduleIds),
+    onSuccess: (_data, { id, name, courseId }) => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboard });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.studentEnrollments(id) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.moduleAccess(id, courseId) });
       toast(`${name} matriculado`);
     },
     onError: (error) =>
       toast.error(error instanceof Error ? error.message : 'No se pudo matricular al estudiante.'),
+  });
+}
+
+/** Cursos en los que un alumno ya está matriculado — para el diálogo de
+ * "dar acceso a módulos", que sólo tiene sentido sobre un curso ya cursado. */
+export function useStudentEnrollments(studentId: string | null) {
+  return useQuery({
+    queryKey: QUERY_KEYS.studentEnrollments(studentId ?? ''),
+    queryFn: () => backend.students.listEnrollments(studentId!),
+    enabled: studentId !== null,
+  });
+}
+
+/** Ids de módulo ya otorgados a un alumno dentro de un curso. */
+export function useModuleAccess(studentId: string | null, courseId: string | null) {
+  return useQuery({
+    queryKey: QUERY_KEYS.moduleAccess(studentId ?? '', courseId ?? ''),
+    queryFn: () => backend.students.getModuleAccess(studentId!, courseId!),
+    enabled: studentId !== null && courseId !== null,
+  });
+}
+
+export function useSetModuleAccess() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      studentId,
+      courseId,
+      moduleIds,
+    }: {
+      studentId: string;
+      name: string;
+      courseId: string;
+      moduleIds: string[];
+    }) => backend.students.setModuleAccess(studentId, courseId, moduleIds),
+    onSuccess: (_data, { studentId, name, courseId }) => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.moduleAccess(studentId, courseId) });
+      queryClient.invalidateQueries({ queryKey: ['students'] });
+      toast(`Acceso a módulos de ${name} actualizado`);
+    },
+    onError: (error) =>
+      toast.error(error instanceof Error ? error.message : 'No se pudo actualizar el acceso a módulos.'),
   });
 }
 

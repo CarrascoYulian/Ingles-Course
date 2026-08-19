@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import { Eyebrow } from '@/components/shared/section-title';
+import { Chip, ChipRow } from '@/components/ui/chip';
 import { CoursePickerCard } from '@/components/student/course-picker-card';
 import { LessonList } from '@/components/student/lesson-list';
 import { LessonTabs } from '@/components/student/lesson-tabs';
@@ -69,18 +70,25 @@ export function CourseView({ lessonOrder, currentUserId = null }: CourseViewProp
 
   const course = courses?.find((c) => c.id === selectedCourseId);
   const { data: module, isPending: isModulePending } = useCurrentModule(selectedCourseId);
-  const { data: lessons, isPending } = useModuleLessons(module?.id ?? '');
+  const { data: allModules } = useModules(selectedCourseId);
+  // El alumno sólo ve los módulos a los que se le otorgó acceso (RLS +
+  // `allModules` ya vienen filtrados por eso) — `module` es "el actual"
+  // calculado automático, pero si tiene acceso a más de uno puede elegir
+  // cuál mirar en vez de quedar atado siempre al automático.
+  const [manualModuleId, setManualModuleId] = useState<string | null>(null);
+  useEffect(() => setManualModuleId(null), [selectedCourseId]);
+  const effectiveModule = (manualModuleId && allModules?.find((m) => m.id === manualModuleId)) || module;
+  const { data: lessons, isPending } = useModuleLessons(effectiveModule?.id ?? '');
   const { data: progress, isPending: isProgressPending } = useMyProgress(selectedCourseId);
-  const { data: resources } = useResources({ courseId: course?.id, moduleId: module?.id });
+  const { data: resources } = useResources({ courseId: course?.id, moduleId: effectiveModule?.id });
   const openResource = useOpenResource();
   const [seekRequest, setSeekRequest] = useState<{ seconds: number; nonce: number } | null>(null);
-  const { data: allModules } = useModules(selectedCourseId);
   const [moduleCompleteOpen, setModuleCompleteOpen] = useState(false);
   const [quizTakeOpen, setQuizTakeOpen] = useState(false);
   // Regla confirmada por el cliente: reprobar (o no haber rendido todavía)
   // el quiz de un módulo bloquea avanzar al siguiente — `hasPassedModuleQuiz`
   // decide si "Continuar" navega directo o abre el quiz primero.
-  const { data: moduleQuiz } = useModuleQuiz(module?.id ?? '');
+  const { data: moduleQuiz } = useModuleQuiz(effectiveModule?.id ?? '');
   const { data: moduleQuizAttempts } = useMyQuizAttempts(moduleQuiz?.id ?? '');
   const hasPassedModuleQuiz = moduleQuizAttempts?.some((attempt) => attempt.passed) ?? false;
 
@@ -197,7 +205,7 @@ export function CourseView({ lessonOrder, currentUserId = null }: CourseViewProp
   // Antes, sin módulos reales en la base de datos, esto caía a un módulo de
   // ejemplo fijo — el alumno veía "Present Perfect vs. Past Simple" como si
   // fuera contenido real de su curso. Ahora se muestra un vacío honesto.
-  if (!module) {
+  if (!effectiveModule) {
     return (
       <div className="flex flex-col gap-4">
         {courseSwitcher}
@@ -211,10 +219,10 @@ export function CourseView({ lessonOrder, currentUserId = null }: CourseViewProp
     );
   }
 
-  const moduleLabel = module.title;
+  const moduleLabel = effectiveModule.title;
   const lessonTitle = currentLesson?.title ?? moduleLabel;
   const lessonPosition = currentLesson ? lessons!.indexOf(currentLesson) + 1 : 0;
-  const isLastModule = allModules ? allModules.at(-1)?.id === module.id : false;
+  const isLastModule = allModules ? allModules.at(-1)?.id === effectiveModule.id : false;
 
   // Se engancha al evento nativo `ended` del `<video>` (no a un efecto
   // reactivo sobre `watched`) a propósito: sólo debe abrirse en el
@@ -267,7 +275,7 @@ export function CourseView({ lessonOrder, currentUserId = null }: CourseViewProp
                     const prevLesson = lessons?.[lessonPosition - 2];
                     if (!prevLesson) return;
                     router.push(
-                      ROUTES.student.leccion(course.level.toLowerCase(), module.id, prevLesson.order),
+                      ROUTES.student.leccion(course.level.toLowerCase(), effectiveModule.id, prevLesson.order),
                     );
                   }
                 : undefined
@@ -283,7 +291,7 @@ export function CourseView({ lessonOrder, currentUserId = null }: CourseViewProp
                 return;
               }
               router.push(
-                ROUTES.student.leccion(course.level.toLowerCase(), module.id, nextLesson.order),
+                ROUTES.student.leccion(course.level.toLowerCase(), effectiveModule.id, nextLesson.order),
               );
             }}
           />
@@ -299,7 +307,7 @@ export function CourseView({ lessonOrder, currentUserId = null }: CourseViewProp
                   aria-hidden
                   className="mt-0.5 hidden size-9 shrink-0 rounded-full sm:block"
                   style={{
-                    background: `linear-gradient(135deg, ${avatarColorFor(module.id)}, ${avatarColorFor(module.id)}99)`,
+                    background: `linear-gradient(135deg, ${avatarColorFor(effectiveModule.id)}, ${avatarColorFor(effectiveModule.id)}99)`,
                   }}
                 />
                 <div className="min-w-0">
@@ -373,6 +381,23 @@ export function CourseView({ lessonOrder, currentUserId = null }: CourseViewProp
             </Card>
           </Link>
 
+          {allModules && allModules.length > 1 && (
+            <Card padding="md" radius="xl">
+              <p className="mb-2 text-tiny font-bold text-fg-ghost">Tus módulos</p>
+              <ChipRow label="Elegir módulo" className="flex-wrap">
+                {allModules.map((m) => (
+                  <Chip
+                    key={m.id}
+                    active={m.id === effectiveModule.id}
+                    onClick={() => setManualModuleId(m.id)}
+                  >
+                    {m.title}
+                  </Chip>
+                ))}
+              </ChipRow>
+            </Card>
+          )}
+
           <Card padding="lg" radius="xl">
             <div className="mb-3 flex items-center justify-between lg:mb-3.5">
               <h2 className="text-body-lg font-bold text-fg">Contenido del módulo</h2>
@@ -398,7 +423,7 @@ export function CourseView({ lessonOrder, currentUserId = null }: CourseViewProp
                   router.push(
                     ROUTES.student.leccion(
                       course?.level.toLowerCase() ?? 'b1',
-                      module.id,
+                      effectiveModule.id,
                       lesson.order,
                     ),
                   );
@@ -459,7 +484,7 @@ export function CourseView({ lessonOrder, currentUserId = null }: CourseViewProp
         <QuizTakeDialog
           open={quizTakeOpen}
           onOpenChange={setQuizTakeOpen}
-          moduleId={module.id}
+          moduleId={effectiveModule.id}
           moduleTitle={moduleLabel}
           onContinue={continueAfterModule}
         />

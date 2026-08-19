@@ -86,12 +86,17 @@ interface DemoStore {
   blocks: ContentBlock[];
   students: StudentSummary[];
   session: PracticeSession;
+  /** `"${studentId}:${courseId}"` → ids de módulo otorgados. El fixture sólo
+   * modela un módulo por curso (`DEMO_MODULE`), así que en la práctica esto
+   * es "tiene o no tiene" acceso al único módulo del curso. */
+  moduleAccess: Map<string, Set<string>>;
 }
 
 const store: DemoStore = {
   courses: structuredClone(DEMO_COURSES),
   blocks: structuredClone(DEMO_BLOCKS),
   students: structuredClone(DEMO_STUDENTS),
+  moduleAccess: new Map(),
   session: {
     levelId: 'n3',
     step: 6,
@@ -291,7 +296,10 @@ export const demoBackend: Backend = {
       return latency(undefined);
     },
 
-    enroll: () => latency(undefined),
+    enroll: (studentId, courseId, moduleIds) => {
+      store.moduleAccess.set(`${studentId}:${courseId}`, new Set(moduleIds));
+      return latency(undefined);
+    },
 
     sendMessage: () => latency(undefined),
 
@@ -300,6 +308,26 @@ export const demoBackend: Backend = {
       const updated = store.students.find((s) => s.id === id);
       if (!updated) throw new Error(`Estudiante ${id} no encontrado`);
       return latency(structuredClone(updated));
+    },
+
+    listEnrollments: (studentId) => {
+      const entries = Array.from(store.moduleAccess.keys())
+        .filter((key) => key.startsWith(`${studentId}:`))
+        .map((key) => key.split(':')[1]!);
+      return latency(
+        entries
+          .map((courseId) => store.courses.find((c) => c.id === courseId))
+          .filter((c): c is Course => c !== undefined)
+          .map((c) => ({ courseId: c.id, courseName: c.name })),
+      );
+    },
+
+    getModuleAccess: (studentId, courseId) =>
+      latency(Array.from(store.moduleAccess.get(`${studentId}:${courseId}`) ?? [])),
+
+    setModuleAccess: (studentId, courseId, moduleIds) => {
+      store.moduleAccess.set(`${studentId}:${courseId}`, new Set(moduleIds));
+      return latency(undefined);
     },
   },
 

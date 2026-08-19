@@ -23,6 +23,7 @@ export interface StudentDetailCardProps {
   onEdit: (student: StudentSummary) => void;
   onDelete: (student: StudentSummary) => void;
   onEnroll: (student: StudentSummary) => void;
+  onManageModuleAccess: (student: StudentSummary) => void;
   onToggleActive: (student: StudentSummary) => void;
   /** Tiene al menos un mensaje sin leer por el docente. */
   hasUnreadMessage?: boolean;
@@ -35,6 +36,7 @@ export function StudentDetailCard({
   onEdit,
   onDelete,
   onEnroll,
+  onManageModuleAccess,
   onToggleActive,
   hasUnreadMessage,
 }: StudentDetailCardProps) {
@@ -135,6 +137,9 @@ export function StudentDetailCard({
             </Button>
             <Button variant="ghost" size="sm" onClick={() => onEnroll(student)}>
               Matricular en curso
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => onManageModuleAccess(student)}>
+              Dar acceso a módulos
             </Button>
             {student.active ? (
               <Button variant="danger" size="sm" onClick={() => onToggleActive(student)}>
