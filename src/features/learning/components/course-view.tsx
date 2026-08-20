@@ -258,6 +258,20 @@ export function CourseView({ lessonOrder, currentUserId = null }: CourseViewProp
   const lessonPosition = currentLesson ? lessons!.indexOf(currentLesson) + 1 : 0;
   const isLastModule = allModules ? allModules.at(-1)?.id === effectiveModule.id : false;
 
+  // Todas las lecciones (video + archivos) del módulo ya están hechas —
+  // decide qué mostrar: si queda una evaluación sin aprobar, ésa es la
+  // acción pendiente real (antes esto saltaba directo al modal de "¡Termi-
+  // naste el curso!" aunque la evaluación siguiera sin rendirse, con
+  // "Ver certificado" habilitado por error). Sólo cuando no hay evaluación
+  // pendiente se considera de verdad terminado el módulo.
+  const onAllLessonsDone = () => {
+    if (moduleQuiz && !hasPassedModuleQuiz) {
+      setQuizTakeOpen(true);
+    } else {
+      setModuleCompleteOpen(true);
+    }
+  };
+
   // Se engancha al evento nativo `ended` del `<video>` (no a un efecto
   // reactivo sobre `watched`) a propósito: sólo debe abrirse en el
   // instante real en que el alumno termina de ver un video, nunca al
@@ -269,7 +283,7 @@ export function CourseView({ lessonOrder, currentUserId = null }: CourseViewProp
     if (!currentLesson || !lessons) return;
     const others = lessons.filter((lesson) => lesson.id !== currentLesson.id);
     const wasLastPending = others.every((lesson) => lesson.state === 'done');
-    if (wasLastPending) setModuleCompleteOpen(true);
+    if (wasLastPending) onAllLessonsDone();
   };
 
   const continueAfterModule = () => {
@@ -304,21 +318,35 @@ export function CourseView({ lessonOrder, currentUserId = null }: CourseViewProp
       return;
     }
     if (!currentLesson || !lessons) return;
-    const isFileLesson = currentLesson.type !== 'Video' && currentLesson.type !== 'Evaluación';
-    if (isFileLesson && currentLesson.state !== 'done') {
-      markViewed.mutate(currentLesson.id);
-      const others = lessons.filter((lesson) => lesson.id !== currentLesson.id);
-      if (others.every((lesson) => lesson.state === 'done')) {
-        setModuleCompleteOpen(true);
+    const advance = () => {
+      const nextLesson = lessons[lessonPosition];
+      if (!nextLesson) {
+        toast('Ya completaste todas las lecciones de este módulo');
         return;
       }
-    }
-    const nextLesson = lessons[lessonPosition];
-    if (!nextLesson) {
-      toast('Ya completaste todas las lecciones de este módulo');
+      router.push(ROUTES.student.leccion(course.level.toLowerCase(), effectiveModule.id, nextLesson.order));
+    };
+    const isFileLesson = currentLesson.type !== 'Video' && currentLesson.type !== 'Evaluación';
+    if (isFileLesson && currentLesson.state !== 'done') {
+      // Antes esto seguía de largo (calculaba "¿ya terminé todo?" y hasta
+      // navegaba) sin esperar a que el guardado realmente llegara al
+      // servidor — si la mutación fallaba en silencio, el alumno veía
+      // "¡Terminaste el curso!" aunque esta lección nunca hubiera quedado
+      // guardada como vista. Ahora la decisión espera la confirmación real.
+      markViewed.mutate(currentLesson.id, {
+        onSuccess: () => {
+          const others = lessons.filter((lesson) => lesson.id !== currentLesson.id);
+          if (others.every((lesson) => lesson.state === 'done')) {
+            onAllLessonsDone();
+          } else {
+            advance();
+          }
+        },
+        onError: () => toast.error('No se pudo guardar tu avance. Intenta de nuevo.'),
+      });
       return;
     }
-    router.push(ROUTES.student.leccion(course.level.toLowerCase(), effectiveModule.id, nextLesson.order));
+    advance();
   };
 
   return (

@@ -112,15 +112,23 @@ export function useVideoProgress(
   // `lessonId` de ESTE render (no el ref, que ya se actualizó para cuando
   // el cleanup corre), así guarda el avance de la lección que se está
   // dejando, no la nueva.
+  //
+  // `hasVideo` en `false` corta esto por completo: para un PDF/Audio,
+  // `maxWatchedRef` nunca se actualiza (no hay `onProgress`/`onEnded` de un
+  // `<video>` real que lo mueva) y se queda clavado en `initialWatched`. Sin
+  // este corte, salir de la lección después de marcarla vista (acción
+  // explícita del alumno, ver `goToNext` en `CourseView`) pisaba ese 100 %
+  // recién guardado con el 0 % inicial — el certificado se abría y volvía a
+  // cerrar solo porque el propio desmontaje deshacía el progreso.
   useEffect(() => {
     return () => {
-      if (!lessonId) return;
+      if (!lessonId || !hasVideo) return;
       save.mutate({ lessonId, percent: maxWatchedRef.current });
     };
     // `save` se omite a propósito: su identidad cambia en cada render y
     // reinscribirla dispararía este cleanup de más.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lessonId]);
+  }, [lessonId, hasVideo]);
 
   const onEnded = useCallback(() => {
     setWatched(100);
