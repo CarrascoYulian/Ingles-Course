@@ -318,10 +318,15 @@ export function CourseView({ lessonOrder, currentUserId = null }: CourseViewProp
       return;
     }
     if (!currentLesson || !lessons) return;
+    // Antes, sin lección siguiente, esto sólo mostraba un toast sin salida
+    // ("Ya completaste todas las lecciones") — un callejón sin salida real
+    // si quedaba la evaluación pendiente, o si ya estaba aprobada pero el
+    // alumno volvió a revisitar la última lección. Ahora reevalúa qué falta
+    // de verdad (evaluación pendiente → la abre; todo hecho → certificado).
     const advance = () => {
       const nextLesson = lessons[lessonPosition];
       if (!nextLesson) {
-        toast('Ya completaste todas las lecciones de este módulo');
+        onAllLessonsDone();
         return;
       }
       router.push(ROUTES.student.leccion(course.level.toLowerCase(), effectiveModule.id, nextLesson.order));

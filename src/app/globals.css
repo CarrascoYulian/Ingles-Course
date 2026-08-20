@@ -134,3 +134,18 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* ============================================================================
+ * IMPRESIÓN — certificado
+ * Sin esto, "Guardar como PDF" usa el tamaño/orientación por defecto del
+ * navegador (Carta, retrato) — el certificado (pensado para landscape, ver
+ * CertificateView) quedaba angosto con márgenes grandes en vez de ocupar
+ * la página. `size: landscape` fija la orientación desde el propio
+ * documento, sin depender de que el alumno la cambie a mano en el diálogo.
+ * ========================================================================== */
+@media print {
+  @page {
+    size: landscape;
+    margin: 0.4in;
+  }
+}

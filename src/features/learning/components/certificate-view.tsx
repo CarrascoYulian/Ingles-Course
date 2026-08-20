@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowLeft, Printer } from 'lucide-react';
+import { ArrowLeft, Award, Printer } from 'lucide-react';
 import Link from 'next/link';
 
 import { LogoMark } from '@/components/shared/logo';
@@ -9,6 +9,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { APP_NAME } from '@/constants';
 import { ROUTES } from '@/constants/routes';
+import { cn } from '@/lib/utils';
 import { CourseRatingWidget } from './course-rating-widget';
 import { useMyCourses } from '../hooks/use-learning';
 
@@ -76,7 +77,7 @@ export function CertificateView({ courseId, studentName }: CertificateViewProps)
   }
 
   return (
-    <div className="mx-auto max-w-[720px] px-5 py-8 lg:px-[30px] lg:py-12 print:max-w-none print:p-0">
+    <div className="mx-auto max-w-[860px] px-5 py-8 lg:px-[30px] lg:py-12 print:max-w-none print:p-0">
       <div className="mb-4 flex items-center justify-between print:hidden">
         <Link
           href={ROUTES.student.curso}
@@ -91,30 +92,48 @@ export function CertificateView({ courseId, studentName }: CertificateViewProps)
         </Button>
       </div>
 
-      <div className="rounded-2xl border-[3px] border-double border-line-strong bg-surface p-8 shadow-card print:border-2 print:border-solid print:border-fg print:p-10 print:shadow-none sm:p-12">
-        <div className="flex flex-col items-center text-center">
+      <div
+        className={cn(
+          'relative overflow-hidden rounded-3xl border-[3px] border-double border-line-strong p-10 shadow-card sm:p-14',
+          'print:h-[100vh] print:w-full print:rounded-none print:border-2 print:border-solid print:border-fg print:p-16 print:shadow-none',
+          'bg-[radial-gradient(circle_at_15%_0%,color-mix(in_oklch,var(--color-brand)_10%,transparent)_0%,transparent_55%),radial-gradient(circle_at_100%_100%,color-mix(in_oklch,var(--color-warning)_12%,transparent)_0%,transparent_55%)] bg-surface',
+        )}
+      >
+        {/* Marca decorativa: sólo aporta "vida" visual, no información — oculta a lectores de pantalla. */}
+        <Award
+          aria-hidden
+          strokeWidth={1}
+          className="pointer-events-none absolute -right-10 -top-10 size-64 text-brand opacity-[0.06] print:opacity-[0.08]"
+        />
+
+        <div className="relative flex flex-col items-center text-center">
           <LogoMark size={32} />
-          <p className="mt-4 text-tiny font-bold uppercase tracking-eyebrow text-fg-faint">
+          <p className="mt-5 text-label font-bold uppercase tracking-eyebrow text-fg-faint">
             Certificado de finalización
           </p>
 
-          <p className="mt-7 text-body-sm font-semibold text-fg-soft">Se certifica que</p>
-          <h1 className="mt-2 text-display-sm font-extrabold tracking-display text-fg text-balance sm:text-display">
+          <p className="mt-9 text-title-xs font-semibold text-fg-soft">Se certifica que</p>
+          <h1 className="mt-2.5 text-display font-extrabold tracking-display text-fg text-balance sm:text-display-lg">
             {studentName || 'Estudiante'}
           </h1>
-          <p className="mt-4 text-body-sm font-semibold text-fg-soft">completó satisfactoriamente el curso</p>
-          <h2 className="mt-1.5 text-title-lg font-bold text-brand text-balance">{course.name}</h2>
+          <p className="mt-5 text-title-xs font-semibold text-fg-soft">completó satisfactoriamente el curso</p>
+          <h2 className="mt-2 text-title-lg font-bold text-brand text-balance sm:text-heading-sm">{course.name}</h2>
 
-          <p className="mt-5 text-tiny font-bold text-fg-ghost">Nivel {course.level}</p>
+          <p className="mt-6 max-w-md text-balance text-body-sm font-semibold leading-normal text-fg-soft">
+            Un logro que se construye clase a clase — felicitaciones por el esfuerzo y la constancia hasta cruzar
+            la meta.
+          </p>
 
-          <div className="mt-8 flex w-full items-center justify-between border-t border-line pt-5">
+          <p className="mt-6 text-tiny font-bold text-fg-ghost">Nivel {course.level}</p>
+
+          <div className="mt-10 flex w-full items-center justify-between border-t border-line pt-5">
             <p className="text-tiny font-semibold text-fg-faint">Emitido el {formatIssueDate()}</p>
             <p className="text-tiny font-bold text-fg-dim">{APP_NAME}</p>
           </div>
         </div>
       </div>
 
-      <div className="mt-5">
+      <div className="mt-5 print:hidden">
         <CourseRatingWidget courseId={courseId} courseName={course.name} />
       </div>
     </div>
