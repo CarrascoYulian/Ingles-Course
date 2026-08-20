@@ -2,7 +2,6 @@
 
 import { FileAudio, FileText, Video } from 'lucide-react';
 
-import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { BLOCK_TYPES, type BlockType } from '@/types';
 
@@ -22,82 +21,33 @@ const FILE_TYPES: Array<{ type: BlockType; label: string; icon: typeof Video }> 
   { type: 'Audio', label: 'Audio de listening', icon: FileAudio },
 ];
 
-const LABELS: Record<BlockType, string> = {
-  Video: 'Video',
-  PDF: 'PDF o documento',
-  Audio: 'Audio de listening',
-  Ejercicio: '+ Ejercicio interactivo',
-  Evaluación: '+ Evaluación del módulo',
-};
-
-const SHORT_LABELS: Record<BlockType, string> = {
-  Video: 'Video',
-  PDF: 'PDF',
-  Audio: 'Audio',
-  Ejercicio: '+ Ejercicio',
-  Evaluación: '+ Evaluación',
-};
-
-/** Los únicos tipos que siguen creándose con un clic — no son archivos. */
-const CREATABLE: BlockType[] = ['Ejercicio', 'Evaluación'];
-
-export function AddBlockPanel({
-  onAdd,
-  pending,
-}: {
-  onAdd: (type: BlockType) => void;
-  pending?: boolean;
-}) {
+/**
+ * "Ejercicio" y "Evaluación" ya no se crean desde acá: eran bloques vacíos
+ * ("Pendiente de subir") sin ninguna forma real de cargarles contenido. La
+ * evaluación real de un módulo vive en el botón "+ Evaluación" de la
+ * cabecera (`QuizEditorDialog`, vía `useSaveQuizDraft`) — ese sí queda
+ * funcional para el alumno.
+ */
+export function AddBlockPanel() {
   return (
-    <>
-      {/* Escritorio: raíl lateral con nota explicativa. */}
-      <Card className="hidden flex-col gap-[9px] lg:flex">
-        <h2 className="text-body font-bold text-fg">Añadir bloque</h2>
+    <Card className="hidden flex-col gap-[9px] lg:flex">
+      <h2 className="text-body font-bold text-fg">Añadir bloque</h2>
 
-        <div className="flex flex-col gap-1 rounded-2xl bg-surface-muted p-[13px]">
-          <p className="text-meta font-bold text-fg-subtle">Archivos: sube directo abajo</p>
-          {FILE_TYPES.map(({ type, label, icon: Icon }) => (
-            <span key={type} className="flex items-center gap-2 text-meta font-semibold text-fg-soft">
-              <Icon aria-hidden size={13} strokeWidth={2} />
-              {label}
-            </span>
-          ))}
-        </div>
-
-        {CREATABLE.map((type) => (
-          <Button
-            key={type}
-            variant="dashed"
-            size="xs"
-            onClick={() => onAdd(type)}
-            disabled={pending}
-            className="justify-start rounded-xl px-[13px] py-[9px]"
-          >
-            {LABELS[type]}
-          </Button>
-        ))}
-        <p className="mt-1.5 rounded-2xl bg-surface-muted p-[13px] text-meta font-semibold leading-normal text-fg-soft">
-          Los bloques se muestran al alumno en este orden. La evaluación siempre debe ir al final
-          para cerrar el módulo.
-        </p>
-      </Card>
-
-      {/* Móvil: fila envolvente bajo la lista. */}
-      <div className="flex flex-wrap gap-2 lg:hidden">
-        {CREATABLE.map((type) => (
-          <Button
-            key={type}
-            variant="dashed"
-            size="xs"
-            onClick={() => onAdd(type)}
-            disabled={pending}
-            className="rounded-xl px-[13px] py-[9px]"
-          >
-            {SHORT_LABELS[type]}
-          </Button>
+      <div className="flex flex-col gap-1 rounded-2xl bg-surface-muted p-[13px]">
+        <p className="text-meta font-bold text-fg-subtle">Archivos: sube directo abajo</p>
+        {FILE_TYPES.map(({ type, label, icon: Icon }) => (
+          <span key={type} className="flex items-center gap-2 text-meta font-semibold text-fg-soft">
+            <Icon aria-hidden size={13} strokeWidth={2} />
+            {label}
+          </span>
         ))}
       </div>
-    </>
+
+      <p className="rounded-2xl bg-surface-muted p-[13px] text-meta font-semibold leading-normal text-fg-soft">
+        Los bloques se muestran al alumno en este orden. Para la evaluación del módulo usa el
+        botón “+ Evaluación” de arriba — siempre cierra el módulo, al final.
+      </p>
+    </Card>
   );
 }
 

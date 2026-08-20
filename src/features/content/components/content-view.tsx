@@ -41,7 +41,6 @@ import { useCreateModule } from '@/features/learning/hooks/use-learning';
 import { useCourses } from '@/features/courses/hooks/use-courses';
 import { cn } from '@/lib/utils';
 import {
-  useAddBlock,
   useAttachUpload,
   useContentBlocks,
   useModuleLessons,
@@ -87,7 +86,6 @@ export function ContentView() {
 
   const { data: blocks, isPending } = useContentBlocks(moduleId);
   const { data: moduleLessons } = useModuleLessons(moduleId);
-  const addBlock = useAddBlock(moduleId);
   const moveBlock = useMoveBlock(moduleId);
   const reorderBlock = useReorderBlock(moduleId);
   const removeBlock = useRemoveBlock(moduleId);
@@ -356,12 +354,9 @@ export function ContentView() {
           className="hidden lg:block"
         />
 
-        <div className="lg:hidden">
-          <AddBlockPanel onAdd={(type) => addBlock.mutate(type)} pending={addBlock.isPending} />
-        </div>
       </div>
 
-      <AddBlockPanel onAdd={(type) => addBlock.mutate(type)} pending={addBlock.isPending} />
+      <AddBlockPanel />
 
       <CreateModuleDialog
         open={createModuleOpen}
