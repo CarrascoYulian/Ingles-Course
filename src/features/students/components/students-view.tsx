@@ -35,7 +35,7 @@ import { InviteStudentDialog } from './invite-student-dialog';
 import { ManageModuleAccessDialog } from './manage-module-access-dialog';
 import { MessageStudentDialog } from './message-student-dialog';
 
-const LEVEL_FILTERS: Array<CefrLevel | 'Todos'> = ['Todos', ...CEFR_LEVELS.filter((l) => l !== 'C1')];
+const LEVEL_FILTERS: Array<CefrLevel | 'Todos'> = ['Todos', ...CEFR_LEVELS];
 
 export function StudentsView() {
   const { query, appliedQuery } = useAdminSearch();

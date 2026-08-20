@@ -38,7 +38,7 @@ export function EditStudentDialog({ open, student, onOpenChange, onSubmit, pendi
 
   useEffect(() => {
     if (open && student) {
-      form.reset({ fullName: student.name, level: student.level === 'C1' ? 'B2' : student.level, pin: '' });
+      form.reset({ fullName: student.name, level: student.level, pin: '' });
     }
   }, [open, student, form]);
 

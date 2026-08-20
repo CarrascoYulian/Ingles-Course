@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const CEFR_ENROLLMENT_LEVELS = ['A1', 'A2', 'B1', 'B2'] as const;
+export const CEFR_ENROLLMENT_LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1'] as const;
 
 /**
  * El alumno entra con matrícula + PIN de 4 dígitos, no con una contraseña

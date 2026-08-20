@@ -26,7 +26,7 @@ import {
   useUpdateCourse,
 } from '../hooks/use-courses';
 
-const LEVEL_FILTERS: Array<CefrLevel | 'Todos'> = ['Todos', ...CEFR_LEVELS.filter((l) => l !== 'C1')];
+const LEVEL_FILTERS: Array<CefrLevel | 'Todos'> = ['Todos', ...CEFR_LEVELS];
 
 export function CoursesView() {
   const router = useRouter();

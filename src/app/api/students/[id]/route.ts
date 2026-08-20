@@ -9,7 +9,7 @@ export const runtime = 'nodejs';
 
 const updateSchema = z.object({
   fullName: z.string().trim().min(1),
-  level: z.enum(['A1', 'A2', 'B1', 'B2']),
+  level: z.enum(['A1', 'A2', 'B1', 'B2', 'C1']),
   pin: z.string().regex(/^\d{4}$/).optional().or(z.literal('')),
 });
 

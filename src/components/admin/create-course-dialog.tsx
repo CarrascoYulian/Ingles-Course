@@ -18,8 +18,6 @@ import { Input } from '@/components/ui/input';
 import { createCourseSchema, type CreateCourseValues } from '@/features/courses/schemas';
 import { CEFR_LEVELS } from '@/types';
 
-const FORM_LEVELS = CEFR_LEVELS.filter((level) => level !== 'C1');
-
 export interface CreateCourseDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -88,7 +86,7 @@ export function CreateCourseDialog({
               name="level"
               render={({ field }) => (
                 <div role="radiogroup" aria-label="Nivel" className="mt-2 flex gap-2">
-                  {FORM_LEVELS.map((level) => (
+                  {CEFR_LEVELS.map((level) => (
                     <Chip
                       key={level}
                       role="radio"
