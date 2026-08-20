@@ -17,7 +17,12 @@ const TYPE_ICON: Record<BlockType, typeof VideoIcon> = {
 
 export interface LessonListProps {
   lessons: Lesson[];
+  /** Evaluación del módulo — no es una fila de `lessons` (ver `useModuleQuiz`),
+   * así que se recibe aparte para poder mostrarla igual como último ítem
+   * obligatorio del módulo. */
+  quiz?: { state: 'done' | 'available' | 'locked' } | null;
   onSelect?: (lesson: Lesson) => void;
+  onSelectQuiz?: () => void;
 }
 
 /**
@@ -27,7 +32,7 @@ export interface LessonListProps {
  * están al activarse: `disabled` las sacaría del orden de tabulación y el
  * alumno no tendría forma de saberlo con teclado o lector de pantalla.
  */
-export function LessonList({ lessons, onSelect }: LessonListProps) {
+export function LessonList({ lessons, quiz, onSelect, onSelectQuiz }: LessonListProps) {
   return (
     <ol className="flex flex-col gap-1">
       {lessons.map((lesson) => {
@@ -111,6 +116,64 @@ export function LessonList({ lessons, onSelect }: LessonListProps) {
           </li>
         );
       })}
+
+      {quiz && (
+        <li>
+          <button
+            type="button"
+            aria-disabled={quiz.state === 'locked' || undefined}
+            onClick={() => {
+              if (quiz.state === 'locked') {
+                toast('Termina el resto del módulo para desbloquear la evaluación');
+                return;
+              }
+              onSelectQuiz?.();
+            }}
+            className={cn(
+              'flex w-full items-center gap-3 rounded-2xl border-l-[3px] py-2 pl-2.5 pr-3 text-left',
+              'transition-[background-color,border-color] duration-[160ms] ease-[cubic-bezier(0.23,1,0.32,1)]',
+              quiz.state === 'available'
+                ? 'border-accent bg-accent-tint'
+                : 'border-transparent hover:bg-surface-muted',
+              quiz.state === 'locked' && 'cursor-not-allowed opacity-55 hover:bg-transparent',
+            )}
+          >
+            <span
+              aria-hidden
+              className="relative grid size-11 shrink-0 place-items-center overflow-hidden rounded-xl"
+              style={{
+                background:
+                  quiz.state === 'locked' ? undefined : `linear-gradient(135deg, ${avatarColorFor('quiz')}, ${avatarColorFor('quiz')}99)`,
+              }}
+            >
+              {quiz.state === 'locked' ? (
+                <span className="grid size-full place-items-center bg-line-soft">
+                  <Lock aria-hidden size={15} strokeWidth={2.2} className="text-fg-disabled" />
+                </span>
+              ) : quiz.state === 'done' ? (
+                <Check aria-hidden size={18} strokeWidth={3} className="text-white" />
+              ) : (
+                <ClipboardCheck aria-hidden size={15} strokeWidth={2.2} className="text-white" />
+              )}
+            </span>
+
+            <span className="min-w-0 flex-1">
+              <span
+                className={cn(
+                  'block truncate text-body-sm',
+                  quiz.state === 'available' ? 'font-bold text-fg-strong' : 'font-semibold',
+                  quiz.state === 'locked' ? 'text-fg-faint' : 'text-fg-strong',
+                )}
+              >
+                Evaluación del módulo
+              </span>
+              <span className="mt-0.5 block text-tiny font-bold text-fg-disabled">
+                {quiz.state === 'locked' ? 'Bloqueada' : quiz.state === 'done' ? 'Aprobada' : 'Obligatoria'}
+              </span>
+            </span>
+          </button>
+        </li>
+      )}
     </ol>
   );
 }

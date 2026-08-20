@@ -98,10 +98,32 @@ export function CourseView({ lessonOrder, currentUserId = null }: CourseViewProp
   // antes eso dejaba `currentLesson` en `undefined` y el reproductor
   // mostraba "Video no disponible" aunque el módulo estuviera completo.
   // Cae a la última lección real en vez de a nada.
-  const requestedLesson = lessons?.find((lesson) => lesson.order === lessonOrder);
-  const currentLesson =
-    requestedLesson ?? lessons?.find((lesson) => lesson.state === 'current') ?? lessons?.at(-1);
-  const { data: videoUrl } = useLessonVideoUrl(currentLesson?.mediaKey ?? null);
+  //
+  // `displayLessonId` FIJA qué lección se muestra, en vez de recalcularla en
+  // cada render desde `lesson.state === 'current'`. Antes, en `/curso` (sin
+  // `order` en la URL), terminar un video invalidaba `['lessons']`, el
+  // backend recalculaba `current` sobre la SIGUIENTE lección, y el
+  // reproductor cambiaba de contenido solo — sin que el alumno tocara
+  // "Siguiente lección". Ahora sólo se re-fija cuando cambia el módulo o
+  // cuando la URL trae un `order` explícito (navegación real del alumno).
+  const [displayLessonId, setDisplayLessonId] = useState<string | null>(null);
+  useEffect(() => {
+    setDisplayLessonId(null);
+  }, [effectiveModule?.id]);
+  useEffect(() => {
+    if (!lessons || lessons.length === 0) return;
+    if (lessonOrder !== undefined) {
+      const requested = lessons.find((lesson) => lesson.order === lessonOrder);
+      if (requested && requested.id !== displayLessonId) setDisplayLessonId(requested.id);
+      return;
+    }
+    if (displayLessonId && lessons.some((lesson) => lesson.id === displayLessonId)) return;
+    const fallback = lessons.find((lesson) => lesson.state === 'current') ?? lessons.at(-1);
+    if (fallback) setDisplayLessonId(fallback.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lessons, lessonOrder]);
+  const currentLesson = lessons?.find((lesson) => lesson.id === displayLessonId);
+  const { data: videoUrl, isPending: isVideoUrlPending } = useLessonVideoUrl(currentLesson?.mediaKey ?? null);
   const video = useVideoProgress(
     currentLesson?.id ?? '',
     currentLesson?.watchedPercent ?? 0,
@@ -109,26 +131,6 @@ export function CourseView({ lessonOrder, currentUserId = null }: CourseViewProp
     currentLesson?.type === 'Video',
   );
   const markViewed = useMarkLessonViewed();
-  // Un ítem sin reproductor (PDF/Audio/Ejercicio) no tiene "onEnded" que
-  // avisar — llegar a él YA es completarlo, así que se marca visto apenas
-  // se vuelve el actual. Si además era el último pendiente del módulo, abre
-  // el mismo modal que dispararía terminar un video (misma lógica que
-  // `handleVideoEnded`, calculada acá porque no hay evento del reproductor
-  // que la dispare). `Evaluación` queda fuera: su avance lo decide aprobar
-  // el quiz, no llegar al ítem.
-  useEffect(() => {
-    if (!currentLesson || !lessons) return;
-    if (currentLesson.type === 'Video' || currentLesson.type === 'Evaluación') return;
-    if (currentLesson.state === 'done') return;
-    markViewed.mutate(currentLesson.id);
-    const others = lessons.filter((lesson) => lesson.id !== currentLesson.id);
-    const wasLastPending = others.every((lesson) => lesson.state === 'done');
-    if (wasLastPending) setModuleCompleteOpen(true);
-    // Sólo debe reaccionar a CAMBIAR de lección, no a que `lessons`/
-    // `currentLesson.state` se actualicen tras el propio guardado — eso
-    // volvería a evaluar la condición con datos a medio refrescar.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentLesson?.id]);
   const { data: notes = [], isPending: notesPending } = useNotes(currentLesson?.id ?? '');
   const addNote = useAddNote(currentLesson?.id ?? '');
   const noteMarkers = notes.map((note) => (note.timestampSeconds / video.durationSeconds) * 100);
@@ -147,8 +149,21 @@ export function CourseView({ lessonOrder, currentUserId = null }: CourseViewProp
       (!commentsLastSeen || new Date(comment.createdAt) > new Date(commentsLastSeen)),
   );
 
-  const completed = lessons?.filter((lesson) => lesson.state === 'done').length ?? 0;
-  const total = lessons?.length ?? 0;
+  // La Evaluación de un módulo no es una fila de `lessons` (es un
+  // `module_quizzes` aparte, ver `useModuleQuiz`) — sin esto, ni aparecía en
+  // "Contenido del módulo" ni contaba como obligatoria para completarlo.
+  // Se habilita recién cuando el resto de las lecciones ya están hechas.
+  const allOtherLessonsDone = lessons ? lessons.every((lesson) => lesson.state === 'done') : false;
+  const quizState: 'done' | 'available' | 'locked' | null = moduleQuiz
+    ? hasPassedModuleQuiz
+      ? 'done'
+      : allOtherLessonsDone
+        ? 'available'
+        : 'locked'
+    : null;
+  const completed =
+    (lessons?.filter((lesson) => lesson.state === 'done').length ?? 0) + (quizState === 'done' ? 1 : 0);
+  const total = (lessons?.length ?? 0) + (moduleQuiz ? 1 : 0);
 
   if (isCoursesPending) {
     return (
@@ -277,12 +292,28 @@ export function CourseView({ lessonOrder, currentUserId = null }: CourseViewProp
         }
       : undefined;
 
+  // Un ítem sin reproductor (PDF/Audio/Ejercicio) no tiene "onEnded" que
+  // avisar que el alumno terminó — a diferencia del video, acá SÍ hace
+  // falta una acción explícita: hacer clic en "Siguiente lección" es esa
+  // acción, así que recién ahí se marca visto (antes se marcaba solo al
+  // llegar a la lección, sin que el alumno hiciera nada). `Evaluación`
+  // queda fuera: su avance lo decide aprobar el quiz, no llegar al ítem.
   const goToNext = () => {
     if (!video.canAdvance) {
       toast('Debes terminar el video para continuar');
       return;
     }
-    const nextLesson = currentLesson ? lessons?.[lessonPosition] : undefined;
+    if (!currentLesson || !lessons) return;
+    const isFileLesson = currentLesson.type !== 'Video' && currentLesson.type !== 'Evaluación';
+    if (isFileLesson && currentLesson.state !== 'done') {
+      markViewed.mutate(currentLesson.id);
+      const others = lessons.filter((lesson) => lesson.id !== currentLesson.id);
+      if (others.every((lesson) => lesson.state === 'done')) {
+        setModuleCompleteOpen(true);
+        return;
+      }
+    }
+    const nextLesson = lessons[lessonPosition];
     if (!nextLesson) {
       toast('Ya completaste todas las lecciones de este módulo');
       return;
@@ -321,6 +352,7 @@ export function CourseView({ lessonOrder, currentUserId = null }: CourseViewProp
               type={currentLesson.type}
               title={currentLesson.title}
               fileUrl={videoUrl}
+              fileUrlPending={isVideoUrlPending}
               onPrevious={goToPrevious}
               onNext={goToNext}
             />
@@ -446,6 +478,7 @@ export function CourseView({ lessonOrder, currentUserId = null }: CourseViewProp
             {lessons && lessons.length > 0 && (
               <LessonList
                 lessons={lessons}
+                quiz={quizState ? { state: quizState } : null}
                 onSelect={(lesson) => {
                   if (lesson.id === currentLesson?.id) return;
                   router.push(
@@ -456,6 +489,7 @@ export function CourseView({ lessonOrder, currentUserId = null }: CourseViewProp
                     ),
                   );
                 }}
+                onSelectQuiz={() => setQuizTakeOpen(true)}
               />
             )}
 
@@ -488,7 +522,11 @@ export function CourseView({ lessonOrder, currentUserId = null }: CourseViewProp
         moduleTitle={moduleLabel}
         isLastModule={isLastModule}
         onViewCertificate={
-          isLastModule
+          // Antes esto sólo miraba `isLastModule` — un módulo final con
+          // evaluación pendiente/reprobada mostraba igual "Ver certificado",
+          // que abría y al toque se cerraba solo diciendo "no completaste el
+          // curso" (mismo gate que sí respeta "Continuar" más abajo).
+          isLastModule && (!moduleQuiz || hasPassedModuleQuiz)
             ? () => {
                 setModuleCompleteOpen(false);
                 router.push(ROUTES.student.certificado(course.id));
