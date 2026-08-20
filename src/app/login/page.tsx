@@ -70,7 +70,7 @@ export default function LoginPage() {
         />
       </svg>
 
-      <div className="relative flex items-center justify-center overflow-y-auto px-5 py-[clamp(0.75rem,3vh,2.5rem)]">
+      <div className="relative flex min-h-0 items-center justify-center overflow-y-auto px-5 py-[clamp(0.75rem,3vh,2.5rem)]">
         <div className="relative z-10 w-full max-w-[420px]">
           <Card
             radius="2xl"
