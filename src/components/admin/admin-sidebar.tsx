@@ -24,7 +24,7 @@ export function AdminSidebar({ teacherName }: AdminSidebarProps) {
   const { data: unreadMessages = 0 } = useUnreadStaffMessageCount();
 
   return (
-    <aside className="hidden w-sidebar shrink-0 flex-col gap-[26px] bg-ink px-4 py-6 lg:flex">
+    <aside className="sticky top-0 hidden h-dvh w-sidebar shrink-0 flex-col gap-[26px] overflow-y-auto bg-ink px-4 py-6 lg:flex">
       <div className="flex items-center gap-2.5 px-2">
         <LogoMark size={32} />
         <span className="flex min-w-0 flex-col leading-[1.2]">
