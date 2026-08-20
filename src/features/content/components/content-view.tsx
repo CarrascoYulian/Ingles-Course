@@ -27,6 +27,7 @@ import { EditLessonDialog, type EditLessonValues } from '@/components/admin/edit
 import { LessonCommentsDialog } from '@/components/admin/lesson-comments-dialog';
 import { ModuleList } from '@/components/admin/module-list';
 import { PreviewFileDialog } from '@/components/admin/preview-file-dialog';
+import { QuizBlockRow } from '@/components/admin/quiz-block-row';
 import { QuizEditorDialog } from '@/components/admin/quiz-editor-dialog';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { Button } from '@/components/ui/button';
@@ -314,11 +315,18 @@ export function ContentView() {
                 />
                 );
               })}
+              {quizDraft && (
+                <QuizBlockRow
+                  draft={quizDraft}
+                  index={blocks?.length ?? 0}
+                  onEdit={() => setQuizDialogOpen(true)}
+                />
+              )}
             </ol>
           </SortableContext>
         </DndContext>
 
-        {blocks && blocks.length === 0 && !isPending && (
+        {blocks && blocks.length === 0 && !isPending && !quizDraft && (
           <EmptyState
             compact
             title="Sin bloques todavía"
