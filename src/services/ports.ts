@@ -11,9 +11,7 @@ import type {
   Badge,
   BlockType,
   CefrLevel,
-  ContentBlock,
   Course,
-  CourseResource,
   DashboardMetrics,
   LeaderboardEntry,
   Lesson,
@@ -85,22 +83,27 @@ export interface AttachUploadInput {
   durationSeconds?: number;
 }
 
+/**
+ * Editor de módulos. Opera sobre `Lesson` — la misma fila que lee
+ * `LearningPort.listLessons` del lado del alumno, en el mismo orden: ya no
+ * hay una tabla de "bloques" separada de las lecciones que ve el alumno.
+ */
 export interface ContentPort {
   getModule(moduleId: string): Promise<Module>;
   /** Todos los módulos de un curso, en orden — permite navegar entre varios. */
   listModules(courseId: string): Promise<Module[]>;
-  listBlocks(moduleId: string): Promise<ContentBlock[]>;
-  addBlock(moduleId: string, type: BlockType): Promise<ContentBlock>;
-  moveBlock(moduleId: string, blockId: string, direction: -1 | 1): Promise<ContentBlock[]>;
+  listBlocks(moduleId: string): Promise<Lesson[]>;
+  addBlock(moduleId: string, type: BlockType): Promise<Lesson>;
+  moveBlock(moduleId: string, blockId: string, direction: -1 | 1): Promise<Lesson[]>;
   removeBlock(blockId: string): Promise<void>;
   /**
    * Registra en la base de datos un archivo que ya terminó de subirse a
-   * Storage: crea el bloque con su `media_key`, quién lo subió y cuándo.
+   * Storage: crea el ítem con su `media_key`, quién lo subió y cuándo.
    */
-  attachUpload(input: AttachUploadInput): Promise<ContentBlock>;
+  attachUpload(input: AttachUploadInput): Promise<Lesson>;
   /** URL firmada para confirmar que el archivo existe y abrirlo. */
   getFileUrl(mediaKey: string): Promise<string | null>;
-  /** Título/descripción reales de la lección creada por un video subido. */
+  /** Título/descripción reales del ítem — para cualquier tipo, no sólo video. */
   updateLesson(lessonId: string, input: { title: string; description: string }): Promise<void>;
 }
 
@@ -168,17 +171,16 @@ export interface LearningPort {
   listLessons(moduleId: string): Promise<Lesson[]>;
   /** URL firmada del video real de una lección — `null` si no tiene o no existe. */
   getLessonVideoUrl(mediaKey: string): Promise<string | null>;
-  /**
-   * Sin filtros: todo el material de todos los cursos matriculados (lo usa
-   * la biblioteca en `/recursos`). Con `courseId`/`moduleId`: sólo el
-   * material real de esa lección — antes cualquier curso/módulo traía
-   * también los archivos subidos en otros cursos y otros módulos, porque
-   * el filtro sólo miraba "¿está matriculado en ALGÚN curso?".
-   */
-  listResources(filters?: { courseId?: string; moduleId?: string }): Promise<CourseResource[]>;
   listBadges(): Promise<Badge[]>;
   /** Persiste el avance de reproducción de una lección (0-100). */
   saveWatchedPercent(lessonId: string, percent: number): Promise<void>;
+  /**
+   * Marca un ítem sin reproductor (PDF/Audio/Ejercicio) como visto en cuanto
+   * el alumno llega a él — equivalente a `saveWatchedPercent(id, 100)`, sin
+   * exigir ninguna acción explícita. La `Evaluación` queda fuera de esto:
+   * su avance lo decide aprobar el quiz, no llegar al ítem.
+   */
+  markLessonViewed(lessonId: string): Promise<void>;
   /**
    * Progreso agregado del alumno autenticado en UN curso concreto — nunca el
    * de otro usuario. Antes no recibía `courseId` y tomaba la matrícula MÁS

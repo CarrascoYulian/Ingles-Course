@@ -49,6 +49,18 @@ const serverSchema = z.object({
   DEMO_ADMIN_PASSWORD: z.string().min(1).optional(),
   DEMO_STUDENT_EMAIL: z.string().email().optional(),
   DEMO_STUDENT_PASSWORD: z.string().min(1).optional(),
+  /**
+   * Cloudflare R2 (compatible con S3): almacena los binarios grandes (video,
+   * imagen, audio, PDF, documentos) que suben docentes y alumnos. Postgres
+   * sigue guardando sólo la ruta (`media_key`), nunca el binario ni una URL
+   * firmada. Opcionales para no romper el arranque en desarrollo sin R2
+   * configurado — `src/lib/storage.ts` degrada devolviendo `null` cuando
+   * faltan.
+   */
+  R2_ACCOUNT_ID: z.string().min(1).optional(),
+  R2_ACCESS_KEY_ID: z.string().min(1).optional(),
+  R2_SECRET_ACCESS_KEY: z.string().min(1).optional(),
+  R2_BUCKET_NAME: z.string().min(1).optional(),
 });
 
 // Next inline-a `process.env.NEXT_PUBLIC_*` en el bundle del cliente sólo si

@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { Eyebrow } from '@/components/shared/section-title';
 import { Chip, ChipRow } from '@/components/ui/chip';
 import { CoursePickerCard } from '@/components/student/course-picker-card';
+import { LessonFileView } from '@/components/student/lesson-file-view';
 import { LessonList } from '@/components/student/lesson-list';
 import { LessonTabs } from '@/components/student/lesson-tabs';
 import { ModuleCompleteModal } from '@/components/student/module-complete-modal';
@@ -31,14 +32,13 @@ import {
   useDeleteComment,
   useLessonVideoUrl,
   useMarkCommentsSeen,
+  useMarkLessonViewed,
   useModuleQuiz,
   useMyCourses,
   useModuleLessons,
   useMyProgress,
   useMyQuizAttempts,
   useNotes,
-  useOpenResource,
-  useResources,
 } from '../hooks/use-learning';
 import { useVideoProgress } from '../hooks/use-video-progress';
 
@@ -80,8 +80,6 @@ export function CourseView({ lessonOrder, currentUserId = null }: CourseViewProp
   const effectiveModule = (manualModuleId && allModules?.find((m) => m.id === manualModuleId)) || module;
   const { data: lessons, isPending } = useModuleLessons(effectiveModule?.id ?? '');
   const { data: progress, isPending: isProgressPending } = useMyProgress(selectedCourseId);
-  const { data: resources } = useResources({ courseId: course?.id, moduleId: effectiveModule?.id });
-  const openResource = useOpenResource();
   const [seekRequest, setSeekRequest] = useState<{ seconds: number; nonce: number } | null>(null);
   const [moduleCompleteOpen, setModuleCompleteOpen] = useState(false);
   const [quizTakeOpen, setQuizTakeOpen] = useState(false);
@@ -108,8 +106,29 @@ export function CourseView({ lessonOrder, currentUserId = null }: CourseViewProp
     currentLesson?.id ?? '',
     currentLesson?.watchedPercent ?? 0,
     currentLesson?.durationSeconds || undefined,
-    currentLesson?.mediaKey != null,
+    currentLesson?.type === 'Video',
   );
+  const markViewed = useMarkLessonViewed();
+  // Un ítem sin reproductor (PDF/Audio/Ejercicio) no tiene "onEnded" que
+  // avisar — llegar a él YA es completarlo, así que se marca visto apenas
+  // se vuelve el actual. Si además era el último pendiente del módulo, abre
+  // el mismo modal que dispararía terminar un video (misma lógica que
+  // `handleVideoEnded`, calculada acá porque no hay evento del reproductor
+  // que la dispare). `Evaluación` queda fuera: su avance lo decide aprobar
+  // el quiz, no llegar al ítem.
+  useEffect(() => {
+    if (!currentLesson || !lessons) return;
+    if (currentLesson.type === 'Video' || currentLesson.type === 'Evaluación') return;
+    if (currentLesson.state === 'done') return;
+    markViewed.mutate(currentLesson.id);
+    const others = lessons.filter((lesson) => lesson.id !== currentLesson.id);
+    const wasLastPending = others.every((lesson) => lesson.state === 'done');
+    if (wasLastPending) setModuleCompleteOpen(true);
+    // Sólo debe reaccionar a CAMBIAR de lección, no a que `lessons`/
+    // `currentLesson.state` se actualicen tras el propio guardado — eso
+    // volvería a evaluar la condición con datos a medio refrescar.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentLesson?.id]);
   const { data: notes = [], isPending: notesPending } = useNotes(currentLesson?.id ?? '');
   const addNote = useAddNote(currentLesson?.id ?? '');
   const noteMarkers = notes.map((note) => (note.timestampSeconds / video.durationSeconds) * 100);
@@ -249,52 +268,63 @@ export function CourseView({ lessonOrder, currentUserId = null }: CourseViewProp
     router.push(ROUTES.student.curso);
   };
 
+  const goToPrevious =
+    currentLesson && lessonPosition > 1
+      ? () => {
+          const prevLesson = lessons?.[lessonPosition - 2];
+          if (!prevLesson) return;
+          router.push(ROUTES.student.leccion(course.level.toLowerCase(), effectiveModule.id, prevLesson.order));
+        }
+      : undefined;
+
+  const goToNext = () => {
+    if (!video.canAdvance) {
+      toast('Debes terminar el video para continuar');
+      return;
+    }
+    const nextLesson = currentLesson ? lessons?.[lessonPosition] : undefined;
+    if (!nextLesson) {
+      toast('Ya completaste todas las lecciones de este módulo');
+      return;
+    }
+    router.push(ROUTES.student.leccion(course.level.toLowerCase(), effectiveModule.id, nextLesson.order));
+  };
+
   return (
     <div className="flex flex-col gap-4">
       {courseSwitcher}
       <div className="flex flex-col gap-4 lg:flex-row lg:gap-5 lg:px-[30px] lg:py-6">
         <div className="flex min-w-0 flex-1 flex-col gap-4">
-          <VideoPlayer
-            contextLabel={`Lección ${lessonPosition} de ${total} · ${moduleLabel}`}
-            contextLabelShort={`Lección ${lessonPosition} · ${moduleLabel}`}
-            watched={video.watched}
-            maxWatched={video.maxWatched}
-            playing={video.playing}
-            timeLabel={video.timeLabel}
-            canAdvance={video.canAdvance}
-            onToggle={video.toggle}
-            src={videoUrl}
-            onProgress={video.onProgress}
-            onEnded={handleVideoEnded}
-            markers={noteMarkers}
-            seekRequest={seekRequest}
-            hasUnseenComments={hasUnseenComments}
-            onPrevious={
-              currentLesson && lessonPosition > 1
-                ? () => {
-                    const prevLesson = lessons?.[lessonPosition - 2];
-                    if (!prevLesson) return;
-                    router.push(
-                      ROUTES.student.leccion(course.level.toLowerCase(), effectiveModule.id, prevLesson.order),
-                    );
-                  }
-                : undefined
-            }
-            onNext={() => {
-              if (!video.canAdvance) {
-                toast('Debes terminar el video para continuar');
-                return;
-              }
-              const nextLesson = currentLesson ? lessons?.[lessonPosition] : undefined;
-              if (!nextLesson) {
-                toast('Ya completaste todas las lecciones de este módulo');
-                return;
-              }
-              router.push(
-                ROUTES.student.leccion(course.level.toLowerCase(), effectiveModule.id, nextLesson.order),
-              );
-            }}
-          />
+          {currentLesson?.type === 'Video' || !currentLesson ? (
+            <VideoPlayer
+              contextLabel={`Lección ${lessonPosition} de ${total} · ${moduleLabel}`}
+              contextLabelShort={`Lección ${lessonPosition} · ${moduleLabel}`}
+              watched={video.watched}
+              maxWatched={video.maxWatched}
+              playing={video.playing}
+              timeLabel={video.timeLabel}
+              canAdvance={video.canAdvance}
+              onToggle={video.toggle}
+              src={videoUrl}
+              onProgress={video.onProgress}
+              onEnded={handleVideoEnded}
+              markers={noteMarkers}
+              seekRequest={seekRequest}
+              hasUnseenComments={hasUnseenComments}
+              onPrevious={goToPrevious}
+              onNext={goToNext}
+            />
+          ) : (
+            <LessonFileView
+              contextLabel={`Lección ${lessonPosition} de ${total} · ${moduleLabel}`}
+              contextLabelShort={`Lección ${lessonPosition} · ${moduleLabel}`}
+              type={currentLesson.type}
+              title={currentLesson.title}
+              fileUrl={videoUrl}
+              onPrevious={goToPrevious}
+              onNext={goToNext}
+            />
+          )}
 
           <div className="px-5 lg:px-0">
             <Card
@@ -330,8 +360,6 @@ export function CourseView({ lessonOrder, currentUserId = null }: CourseViewProp
               <div className="mt-3.5 lg:mt-[18px]">
                 <LessonTabs
                   description={currentLesson?.description ?? null}
-                  files={resources ?? []}
-                  onOpenFile={(mediaKey) => openResource.mutate(mediaKey)}
                   notes={notes}
                   notesPending={notesPending}
                   currentTimeSeconds={video.elapsedSeconds}

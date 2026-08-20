@@ -20,7 +20,6 @@ export const ROUTES = {
     curso: '/curso',
     leccion: (level: string, moduleSlug: string, lessonOrder: number) =>
       `/curso/${level.toLowerCase()}/${moduleSlug}/leccion-${lessonOrder}`,
-    recursos: '/recursos',
     logros: '/logros',
     mensajes: '/mensajes',
     certificado: (courseId: string) => `/curso/certificado/${courseId}`,
@@ -42,7 +41,7 @@ export const LANDING_BY_ROLE: Record<UserRole, string> = {
 };
 
 /** Prefijos que exigen sesión iniciada. */
-export const PROTECTED_PREFIXES = ['/admin', '/curso', '/recursos', '/logros', '/practica', '/mensajes'];
+export const PROTECTED_PREFIXES = ['/admin', '/curso', '/logros', '/practica', '/mensajes'];
 
 /** Prefijos reservados a personal docente (admin + instructor). */
 export const STAFF_PREFIXES = ['/admin'];

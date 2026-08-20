@@ -16,7 +16,7 @@ const WEEKS = 8;
  *
  * Antes devolvía siempre `DEMO_METRICS`, incluso con Supabase configurado.
  * Ahora, fuera del modo demo, agrega datos reales de `profiles`,
- * `enrollments`, `courses`, `modules`, `content_blocks` y `lesson_progress`.
+ * `enrollments`, `courses`, `modules`, `lessons` y `lesson_progress`.
  *
  * No hay tabla de snapshots históricos, así que las variaciones ("+12,4 %")
  * del diseño original no se pueden calcular honestamente todavía — se
@@ -48,7 +48,7 @@ export async function GET() {
       supabase.from('courses').select('*', { count: 'exact', head: true }),
       supabase.from('modules').select('*', { count: 'exact', head: true }),
       supabase
-        .from('content_blocks')
+        .from('lessons')
         .select('*', { count: 'exact', head: true })
         .eq('type', 'Video'),
       supabase.from('courses').select('*', { count: 'exact', head: true }).eq('published', false),

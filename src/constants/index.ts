@@ -19,7 +19,6 @@ export const QUERY_KEYS = {
   dashboard: ['dashboard'] as const,
   report: (range: string) => ['report', range] as const,
   lessons: (moduleId: string) => ['lessons', moduleId] as const,
-  resources: ['resources'] as const,
   badges: ['badges'] as const,
   practice: ['practice'] as const,
   storageUsage: ['storage-usage'] as const,

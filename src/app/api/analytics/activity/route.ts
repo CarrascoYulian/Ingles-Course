@@ -46,7 +46,7 @@ export async function GET() {
 
   const events: ActivityEvent[] = (data ?? []).map((row) => ({
     id: row.id,
-    tone: row.tone,
+    tone: row.tone as ActivityEvent['tone'],
     segments: row.segments as ActivityEvent['segments'],
     timeAgo: timeAgo(row.created_at),
   }));

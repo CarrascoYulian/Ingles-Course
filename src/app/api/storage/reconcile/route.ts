@@ -17,7 +17,7 @@ const ORPHAN_MIN_AGE_MS = 48 * 60 * 60 * 1000;
  *
  * Compara el bucket `course-files` contra los `media_key` que Postgres dice
  * que existen y borra sólo los objetos que:
- *   1. no están referenciados por ningún content_block/lesson/resource vivo, y
+ *   1. no están referenciados por ninguna lección viva, y
  *   2. tienen más de 48 h desde su creación (margen para no borrar algo que
  *      se está subiendo en ese instante).
  *
@@ -61,22 +61,11 @@ export async function GET(request: Request) {
 
 type AdminClient = NonNullable<ReturnType<typeof getSupabaseAdminClient>>;
 
-/**
- * Une los `media_key` de las tres tablas que pueden apuntar al mismo objeto
- * (`content_blocks`, `lessons`, `course_resources`) — normalmente
- * duplicados entre sí, pero unir las tres es más seguro que confiar en que
- * esa duplicación nunca se rompa.
- */
+/** Todos los `media_key` de `lessons` — la única tabla que puede apuntar a un objeto real. */
 async function collectReferencedKeys(admin: AdminClient): Promise<Set<string>> {
-  const [blocks, lessons, resources] = await Promise.all([
-    admin.from('content_blocks').select('media_key').not('media_key', 'is', null),
-    admin.from('lessons').select('media_key').not('media_key', 'is', null),
-    admin.from('course_resources').select('media_key').not('media_key', 'is', null),
-  ]);
+  const { data } = await admin.from('lessons').select('media_key').not('media_key', 'is', null);
 
   const keys = new Set<string>();
-  for (const row of blocks.data ?? []) if (row.media_key) keys.add(row.media_key);
-  for (const row of lessons.data ?? []) if (row.media_key) keys.add(row.media_key);
-  for (const row of resources.data ?? []) if (row.media_key) keys.add(row.media_key);
+  for (const row of data ?? []) if (row.media_key) keys.add(row.media_key);
   return keys;
 }

@@ -1,7 +1,6 @@
 import {
   BarChart3,
   BookOpen,
-  FileText,
   LayoutGrid,
   Mail,
   PlaySquare,
@@ -54,7 +53,6 @@ export const ADMIN_NAV: readonly NavItem[] = [
 export const STUDENT_NAV: readonly NavItem[] = [
   { href: ROUTES.student.curso, label: 'Mi curso', shortLabel: 'Mi curso', icon: PlaySquare },
   { href: ROUTES.practice.root, label: 'BerthoGo', shortLabel: 'BerthoGo', icon: Star },
-  { href: ROUTES.student.recursos, label: 'Recursos', shortLabel: 'Recursos', icon: FileText },
   { href: ROUTES.student.logros, label: 'Logros', shortLabel: 'Logros', icon: Trophy },
   { href: ROUTES.student.mensajes, label: 'Mensajes', shortLabel: 'Mensajes', icon: Mail },
 ] as const;

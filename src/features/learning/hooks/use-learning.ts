@@ -1,6 +1,6 @@
 'use client';
 
-import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 import { QUERY_KEYS } from '@/constants';
@@ -56,71 +56,6 @@ export function useLessonVideoUrl(mediaKey: string | null) {
     queryFn: () => backend.learning.getLessonVideoUrl(mediaKey!),
     enabled: mediaKey !== null,
     staleTime: 30 * 60 * 1000,
-  });
-}
-
-/**
- * Sin argumentos: biblioteca completa (`/recursos`). Con `courseId`/
- * `moduleId`: sólo el material de esa lección concreta — antes la pestaña
- * "Archivos" de cualquier lección mostraba TODO lo subido en TODOS los
- * cursos matriculados, sin distinguir de cuál curso o módulo venía.
- */
-export function useResources(filters?: { courseId?: string; moduleId?: string }) {
-  return useQuery({
-    queryKey: filters?.courseId || filters?.moduleId
-      ? ['resources', filters.courseId ?? null, filters.moduleId ?? null]
-      : QUERY_KEYS.resources,
-    queryFn: () => backend.learning.listResources(filters),
-    staleTime: 10 * 60 * 1000,
-  });
-}
-
-/**
- * Recursos de la biblioteca (`/recursos`), segmentados por curso matriculado.
- *
- * Antes esta pantalla pedía la biblioteca completa sin `courseId`, así que
- * un alumno con material en dos cursos veía todo mezclado en una sola lista
- * — y el filtro por curso, si existiera, dependería de que el alumno lo
- * eligiera a mano. Acá no hay elección manual: se resuelve automáticamente
- * a partir de la matrícula real (`useMyCourses`) y se pide una lista de
- * recursos por curso, ya acotada en el servidor.
- */
-export function useResourcesByCourse() {
-  const { data: courses, isPending: isCoursesPending } = useMyCourses();
-
-  const queries = useQueries({
-    queries: (courses ?? []).map((course) => ({
-      queryKey: ['resources', course.id, null],
-      queryFn: () => backend.learning.listResources({ courseId: course.id }),
-      staleTime: 10 * 60 * 1000,
-      enabled: courses !== undefined,
-    })),
-  });
-
-  const groups = (courses ?? []).map((course, index) => ({
-    course,
-    resources: queries[index]?.data ?? [],
-    isPending: queries[index]?.isPending ?? true,
-  }));
-
-  return {
-    groups,
-    isPending: isCoursesPending || groups.some((group) => group.isPending),
-  };
-}
-
-/** Abre el archivo real de un recurso — antes "Descargar" sólo mostraba un toast falso. */
-export function useOpenResource() {
-  return useMutation({
-    mutationFn: (mediaKey: string) => backend.content.getFileUrl(mediaKey),
-    onSuccess: (url) => {
-      if (!url) {
-        toast.error('El archivo no existe o ya no está disponible.');
-        return;
-      }
-      window.open(url, '_blank', 'noopener,noreferrer');
-    },
-    onError: () => toast.error('No se pudo abrir el archivo.'),
   });
 }
 
@@ -190,6 +125,25 @@ export function useSaveWatchedPercent() {
     // "Tu progreso" (ProgressCard) y el estado done/current de la lista de
     // lecciones se quedaban con el valor de antes de ver el video hasta
     // recargar la página entera.
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-progress'] });
+      queryClient.invalidateQueries({ queryKey: ['lessons'] });
+      queryClient.invalidateQueries({ queryKey: ['my-courses'] });
+    },
+  });
+}
+
+/**
+ * Marca un ítem sin reproductor (PDF/Audio/Ejercicio) como visto en cuanto
+ * el alumno llega a él — no hay nada que "reproducir", así que no exige
+ * ninguna acción explícita, igual que una lección sin video nunca bloqueaba
+ * el avance (`canAdvanceLesson`). Sin toast: es un efecto de fondo.
+ */
+export function useMarkLessonViewed() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (lessonId: string) => backend.learning.markLessonViewed(lessonId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-progress'] });
       queryClient.invalidateQueries({ queryKey: ['lessons'] });

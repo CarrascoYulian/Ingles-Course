@@ -10,9 +10,7 @@
 import type {
   ActivityEvent,
   Badge,
-  ContentBlock,
   Course,
-  CourseResource,
   DashboardMetrics,
   LeaderboardEntry,
   Lesson,
@@ -119,65 +117,6 @@ export const DEMO_QUIZ_DRAFT: QuizDraft = {
   ],
 };
 
-const DEMO_UPLOAD_DATE = '2026-07-01T12:00:00.000Z';
-
-export const DEMO_BLOCKS: ContentBlock[] = [
-  {
-    id: '1',
-    moduleId: 'mod-4',
-    type: 'Video',
-    title: 'Present Perfect vs. Past Simple',
-    meta: '14 min · 1080p',
-    position: 0,
-    mediaKey: 'cursos/2/modulos/mod-4/present-perfect.mp4',
-    uploadedBy: DEMO_TEACHER.id,
-    createdAt: DEMO_UPLOAD_DATE,
-  },
-  {
-    id: '2',
-    moduleId: 'mod-4',
-    type: 'PDF',
-    title: 'Guía de tiempos perfectos',
-    meta: '820 KB',
-    position: 1,
-    mediaKey: 'cursos/2/modulos/mod-4/guia-tiempos-perfectos.pdf',
-    uploadedBy: DEMO_TEACHER.id,
-    createdAt: DEMO_UPLOAD_DATE,
-  },
-  {
-    id: '3',
-    moduleId: 'mod-4',
-    type: 'Ejercicio',
-    title: 'Completar 12 oraciones',
-    meta: '10 preguntas',
-    position: 2,
-    mediaKey: null,
-    uploadedBy: null,
-    createdAt: DEMO_UPLOAD_DATE,
-  },
-  {
-    id: '4',
-    moduleId: 'mod-4',
-    type: 'Audio',
-    title: 'Listening · At the market',
-    meta: '4,2 MB',
-    position: 3,
-    mediaKey: 'cursos/2/modulos/mod-4/listening-at-the-market.mp3',
-    uploadedBy: DEMO_TEACHER.id,
-    createdAt: DEMO_UPLOAD_DATE,
-  },
-  {
-    id: '5',
-    moduleId: 'mod-4',
-    type: 'Evaluación',
-    title: 'Examen del módulo 4',
-    meta: '20 preguntas · 70 % para aprobar',
-    position: 4,
-    mediaKey: null,
-    uploadedBy: null,
-    createdAt: DEMO_UPLOAD_DATE,
-  },
-];
 
 export const DEMO_STUDENTS: StudentSummary[] = [
   {
@@ -248,23 +187,20 @@ export const DEMO_STUDENTS: StudentSummary[] = [
   },
 ];
 
+// Ítems mezclados a propósito (video + PDF + audio + evaluación) en la misma
+// secuencia — es justo lo que el editor real produce ahora que `lessons` es
+// la única tabla: el orden del docente es el orden que recorre el alumno,
+// sin una lista de "Recursos" aparte.
 export const DEMO_LESSONS: Lesson[] = [
-  { id: 'l1', moduleId: 'mod-4', order: 1, title: 'Repaso: Past Simple', duration: '9 min', durationSeconds: 540, state: 'done', watchedPercent: 100, mediaKey: null, description: null },
-  { id: 'l2', moduleId: 'mod-4', order: 2, title: 'Present Perfect: forma', duration: '12 min', durationSeconds: 720, state: 'done', watchedPercent: 100, mediaKey: null, description: null },
-  { id: 'l3', moduleId: 'mod-4', order: 3, title: 'Participios irregulares', duration: '11 min', durationSeconds: 660, state: 'done', watchedPercent: 100, mediaKey: null, description: null },
-  { id: 'l4', moduleId: 'mod-4', order: 4, title: 'Ever, never, just, yet', duration: '10 min', durationSeconds: 600, state: 'done', watchedPercent: 100, mediaKey: null, description: null },
-  { id: 'l5', moduleId: 'mod-4', order: 5, title: 'Present Perfect vs. Past Simple', duration: '14 min', durationSeconds: 840, state: 'current', watchedPercent: 38, mediaKey: null, description: null },
-  { id: 'l6', moduleId: 'mod-4', order: 6, title: 'Práctica guiada de diálogo', duration: '13 min', durationSeconds: 780, state: 'locked', watchedPercent: 0, mediaKey: null, description: null },
-  { id: 'l7', moduleId: 'mod-4', order: 7, title: 'Listening: at the market', duration: '8 min', durationSeconds: 480, state: 'locked', watchedPercent: 0, mediaKey: null, description: null },
-  { id: 'l8', moduleId: 'mod-4', order: 8, title: 'Evaluación del módulo', duration: '20 min', durationSeconds: 1200, state: 'locked', watchedPercent: 0, mediaKey: null, description: null },
-  { id: 'l9', moduleId: 'mod-4', order: 9, title: 'Cierre y recursos extra', duration: '6 min', durationSeconds: 360, state: 'locked', watchedPercent: 0, mediaKey: null, description: null },
-];
-
-export const DEMO_RESOURCES: CourseResource[] = [
-  { id: 'r1', type: 'PDF', title: 'Lista de verbos irregulares', meta: 'Módulos 1-4 · 1,2 MB', mediaKey: 'recursos/verbos-irregulares.pdf' },
-  { id: 'r2', type: 'MP3', title: 'Pack de listening B1', meta: '12 audios · 38 MB', mediaKey: 'recursos/listening-b1.zip' },
-  { id: 'r3', type: 'DOC', title: 'Plantilla de diario en inglés', meta: 'Uso diario · 90 KB', mediaKey: 'recursos/diario.docx' },
-  { id: 'r4', type: 'PDF', title: 'Guía de pronunciación', meta: 'Transcripción fonética · 640 KB', mediaKey: 'recursos/pronunciacion.pdf' },
+  { id: 'l1', moduleId: 'mod-4', order: 1, type: 'Video', title: 'Repaso: Past Simple', meta: '9 min · 1080p', duration: '9 min', durationSeconds: 540, state: 'done', watchedPercent: 100, mediaKey: null, description: null, uploadedBy: DEMO_TEACHER.id },
+  { id: 'l2', moduleId: 'mod-4', order: 2, type: 'Video', title: 'Present Perfect: forma', meta: '12 min · 1080p', duration: '12 min', durationSeconds: 720, state: 'done', watchedPercent: 100, mediaKey: null, description: null, uploadedBy: DEMO_TEACHER.id },
+  { id: 'l3', moduleId: 'mod-4', order: 3, type: 'PDF', title: 'Guía de tiempos perfectos', meta: '820 KB', duration: '820 KB', durationSeconds: 0, state: 'done', watchedPercent: 100, mediaKey: null, description: null, uploadedBy: DEMO_TEACHER.id },
+  { id: 'l4', moduleId: 'mod-4', order: 4, type: 'Video', title: 'Ever, never, just, yet', meta: '10 min · 1080p', duration: '10 min', durationSeconds: 600, state: 'done', watchedPercent: 100, mediaKey: null, description: null, uploadedBy: DEMO_TEACHER.id },
+  { id: 'l5', moduleId: 'mod-4', order: 5, type: 'Video', title: 'Present Perfect vs. Past Simple', meta: '14 min · 1080p', duration: '14 min', durationSeconds: 840, state: 'current', watchedPercent: 38, mediaKey: null, description: null, uploadedBy: DEMO_TEACHER.id },
+  { id: 'l6', moduleId: 'mod-4', order: 6, type: 'Video', title: 'Práctica guiada de diálogo', meta: '13 min · 1080p', duration: '13 min', durationSeconds: 780, state: 'locked', watchedPercent: 0, mediaKey: null, description: null, uploadedBy: DEMO_TEACHER.id },
+  { id: 'l7', moduleId: 'mod-4', order: 7, type: 'Audio', title: 'Listening: at the market', meta: '4,2 MB', duration: '4,2 MB', durationSeconds: 0, state: 'locked', watchedPercent: 0, mediaKey: null, description: null, uploadedBy: DEMO_TEACHER.id },
+  { id: 'l8', moduleId: 'mod-4', order: 8, type: 'Evaluación', title: 'Evaluación del módulo', meta: '20 preguntas · 70 % para aprobar', duration: '20 preguntas', durationSeconds: 0, state: 'locked', watchedPercent: 0, mediaKey: null, description: null, uploadedBy: null },
+  { id: 'l9', moduleId: 'mod-4', order: 9, type: 'Video', title: 'Cierre y recursos extra', meta: '6 min · 1080p', duration: '6 min', durationSeconds: 360, state: 'locked', watchedPercent: 0, mediaKey: null, description: null, uploadedBy: DEMO_TEACHER.id },
 ];
 
 export const DEMO_BADGES: Badge[] = [

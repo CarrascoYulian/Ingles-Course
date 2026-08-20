@@ -9,7 +9,7 @@ re-explorarlo desde cero. Complementa (no reemplaza) `README.md` y
 Plataforma de cursos de inglés: panel docente (admin/instructor), vista del
 alumno y un modo de práctica gamificado estilo Duolingo (XP, corazones,
 racha). Next.js 15 (App Router) + React 19 + TypeScript + Tailwind v4 +
-Supabase (Postgres, Auth, Storage).
+Supabase (Postgres, Auth) + Cloudflare R2 (binarios grandes).
 
 ## Infraestructura real (no asumir, verificar si algo no cuadra)
 
@@ -19,10 +19,31 @@ Supabase (Postgres, Auth, Storage).
   viejo `ingles-con-metodo` (`uowupbmydcmhqkayzfwy`) a esta cuenta nueva
   (`berthocommunity@gmail.com`) — si algo de infraestructura no cuadra con
   este id, verificar de nuevo con el MCP de Supabase antes de asumir.
-  - **Plan Free.** Esto importa mucho más de lo que parece:
-    - Cuota total de Storage: **1 GB** (no 200 GB — un mock viejo del diseño decía eso y quedó hardcodeado un tiempo, ver `STORAGE_PLAN_LIMIT_BYTES` en `src/lib/storage.ts`).
-    - **Límite global de archivo: 50 MB**, sin importar lo que diga `file_size_limit` en `storage.buckets` (la migración `0003_storage.sql` pide 2 GB a nivel de bucket, pero la plataforma lo recorta a 50 MB en Free). Cualquier video de más de 50 MB probablemente falla al subir — ver `docs/guia-subida-de-videos.md`.
-    - Verificar con el MCP de Supabase (`get_organization` sobre el org id `vrekndkatftvqesdfruk`) antes de asumir que esto cambió.
+  - **Plan Free.** Su límite de Storage (1 GB total, 50 MB por archivo —
+    ver `storage.buckets` en `0003_storage.sql`) ya NO aplica a los
+    binarios grandes desde que se migraron a R2 (ver abajo); sigue siendo
+    el plan de Postgres/Auth. Verificar con el MCP de Supabase
+    (`get_organization` sobre el org id `vrekndkatftvqesdfruk`) antes de
+    asumir que esto cambió.
+- **Cloudflare R2** (compatible con S3): almacena los binarios grandes
+  (video, imagen, audio, PDF, documentos) que suben docentes y alumnos —
+  migrado desde Supabase Storage el 2026-08-19 porque el límite de 50
+  MB/archivo del plan Free de Supabase lo hacía inviable para video real
+  (ver `docs/guia-subida-de-videos.md`). Postgres sigue siendo la única
+  base de datos: guarda solo la ruta (`media_key`), nunca el binario ni
+  una URL. Credenciales en `R2_ACCOUNT_ID` / `R2_ACCESS_KEY_ID` /
+  `R2_SECRET_ACCESS_KEY` / `R2_BUCKET_NAME` (ver `.env.example`);
+  implementación en `src/lib/storage.ts` vía `@aws-sdk/client-s3` +
+  `@aws-sdk/s3-request-presigner`. Bucket privado, URLs firmadas — R2 no
+  tiene RLS propia, así que la autorización de lectura/escritura la decide
+  `guard()` en el Route Handler (`content:edit` para subir, `course:read`
+  para leer), no una política a nivel de objeto como antes en Supabase.
+  Cuota gratuita: 10 GB de almacenamiento, sin cobro de egress
+  (`STORAGE_PLAN_LIMIT_BYTES` en `src/lib/storage.ts`).
+  - La migración `supabase/migrations/0003_storage.sql` (bucket
+    `course-files` + políticas RLS de `storage.objects`) queda como
+    histórico — no se edita ni se borra, pero ya no se usa para binarios
+    nuevos.
 - **Vercel:** proyecto `berthocommunity` (id `prj_R3IAEGlk5Lsj92zmSVlcDqNpVl9a`, team
   `bertho-community-team1` / `team_PdSs2OVZpugZsloTLvynHuh9` — antes
   `ingles-course` / `carrasco-team1`, migrado a la cuenta `berthocommunity@gmail.com`).
@@ -86,12 +107,15 @@ porque no hay sesión de usuario en una invocación programada.
 ## Storage: contrato importante
 
 Postgres guarda **sólo la ruta** del objeto (`media_key`), nunca URLs — las
-URLs firmadas expiran. `content_blocks.media_key`, `lessons.media_key` y
-`course_resources.media_key` normalmente apuntan al mismo objeto físico
-(ver `attachUpload` en `supabase/backend.ts`, que crea las tres filas a la
-vez). Borrar un `content_block` borra también el objeto real en Storage
-(issue #37); un cron semanal (`/api/storage/reconcile`, issue #38) limpia
-huérfanos de más de 48h que se hayan colado.
+URLs firmadas expiran. El binario en sí vive en **Cloudflare R2**, no en
+Postgres/Supabase (ver infraestructura arriba). `content_blocks` y
+`course_resources` ya no existen (migración `0035_unify_lessons.sql`):
+`lessons` es la única tabla de contenido de un módulo — cualquier tipo
+(Video/PDF/Ejercicio/Audio/Evaluación), un solo `media_key` por fila, el
+mismo orden que arma el docente en el editor es el que recorre el alumno.
+Borrar una lección borra también el objeto real en R2 (issue #37); un cron
+semanal (`/api/storage/reconcile`, issue #38) limpia huérfanos de más de
+48h que se hayan colado.
 
 ## Testing
 

@@ -6,12 +6,12 @@ import { getPlaybackUrl, mediaExists } from '@/lib/storage';
 export const runtime = 'nodejs';
 
 /**
- * Devuelve la URL de reproducción/descarga de un objeto de Supabase Storage.
+ * Devuelve la URL de reproducción/descarga de un objeto de Cloudflare R2.
  *
  * La URL se firma en el servidor y caduca en una hora: nunca se guarda en
- * Postgres (una URL persistida acaba rota o convertida en acceso permanente),
- * y se firma con el cliente del USUARIO — no con service role — para que sea
- * RLS, no este endpoint, quien decida si puede leer ese objeto.
+ * Postgres (una URL persistida acaba rota o convertida en acceso permanente).
+ * R2 no tiene RLS propia como Supabase Storage — la autorización la decide
+ * `guard('course:read')` arriba, no una política a nivel de objeto.
  */
 export async function GET(request: Request) {
   const result = await guard('course:read');

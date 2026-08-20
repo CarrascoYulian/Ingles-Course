@@ -1,11 +1,19 @@
 'use client';
 
-import { Check, Lock, Play } from 'lucide-react';
+import { Check, ClipboardCheck, FileAudio, FileText, ListChecks, Lock, Play, Video as VideoIcon } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { avatarColorFor } from '@/constants/palettes';
 import { cn } from '@/lib/utils';
-import type { Lesson } from '@/types';
+import type { BlockType, Lesson } from '@/types';
+
+const TYPE_ICON: Record<BlockType, typeof VideoIcon> = {
+  Video: VideoIcon,
+  PDF: FileText,
+  Audio: FileAudio,
+  Ejercicio: ListChecks,
+  Evaluación: ClipboardCheck,
+};
 
 export interface LessonListProps {
   lessons: Lesson[];
@@ -66,7 +74,7 @@ export function LessonList({ lessons, onSelect }: LessonListProps) {
                   </span>
                 ) : isDone ? (
                   <Check aria-hidden size={18} strokeWidth={3} className="text-white" />
-                ) : (
+                ) : lesson.type === 'Video' ? (
                   <Play
                     aria-hidden
                     size={16}
@@ -74,6 +82,11 @@ export function LessonList({ lessons, onSelect }: LessonListProps) {
                     fill="white"
                     className="translate-x-[1px]"
                   />
+                ) : (
+                  (() => {
+                    const TypeIcon = TYPE_ICON[lesson.type];
+                    return <TypeIcon aria-hidden size={15} strokeWidth={2.2} className="text-white" />;
+                  })()
                 )}
                 <span className="absolute bottom-0 left-0 right-0 bg-black/45 py-[1px] text-center text-[8px] font-extrabold leading-tight text-white">
                   {isLocked ? '—' : lesson.duration}

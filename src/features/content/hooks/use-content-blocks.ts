@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { QUERY_KEYS } from '@/constants';
 import { backend } from '@/services';
 import type { AttachUploadInput } from '@/services';
-import type { BlockType, ContentBlock } from '@/types';
+import type { BlockType, Lesson } from '@/types';
 
 export function useModules(courseId: string) {
   return useQuery({
@@ -26,20 +26,6 @@ export function useContentBlocks(moduleId: string) {
   });
 }
 
-/**
- * `content_blocks` (este panel) y `lessons` (lo que ve el alumno) no
- * comparten llave foránea — se relacionan sólo porque comparten el mismo
- * `media_key` al subirse. Se listan aquí para poder editar el título y la
- * descripción reales de la lección desde el bloque de video correspondiente.
- */
-export function useModuleLessons(moduleId: string) {
-  return useQuery({
-    queryKey: ['module-lessons-admin', moduleId],
-    queryFn: () => backend.learning.listLessons(moduleId),
-    enabled: moduleId !== '',
-  });
-}
-
 export function useUpdateLesson(moduleId: string) {
   const queryClient = useQueryClient();
 
@@ -47,11 +33,9 @@ export function useUpdateLesson(moduleId: string) {
     mutationFn: ({ lessonId, title, description }: { lessonId: string; title: string; description: string }) =>
       backend.content.updateLesson(lessonId, { title, description }),
     onSuccess: () => {
-      // El título editado aquí también reescribe `content_blocks.title` (ver
-      // `updateLesson`) — hay que refrescar la lista de bloques del
-      // constructor y la de lecciones que ve el alumno, no sólo la caché
-      // interna del admin, o cada una se queda mostrando el valor viejo.
-      queryClient.invalidateQueries({ queryKey: ['module-lessons-admin', moduleId] });
+      // Un solo `update` en `lessons` (misma fila que ve el editor y el
+      // alumno) — hay que refrescar ambas listas, no sólo la caché interna
+      // del admin, o cada una se queda mostrando el valor viejo.
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.blocks(moduleId) });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.lessons(moduleId) });
       toast('Lección actualizada');
@@ -87,16 +71,16 @@ export function useMoveBlock(moduleId: string) {
 
     onMutate: async ({ blockId, direction }) => {
       await queryClient.cancelQueries({ queryKey: key });
-      const previous = queryClient.getQueryData<ContentBlock[]>(key);
+      const previous = queryClient.getQueryData<Lesson[]>(key);
 
-      queryClient.setQueryData<ContentBlock[]>(key, (blocks) => {
+      queryClient.setQueryData<Lesson[]>(key, (blocks) => {
         if (!blocks) return blocks;
         const from = blocks.findIndex((b) => b.id === blockId);
         const to = from + direction;
         if (from < 0 || to < 0 || to >= blocks.length) return blocks;
         const next = [...blocks];
         [next[from], next[to]] = [next[to]!, next[from]!];
-        return next.map((block, index) => ({ ...block, position: index }));
+        return next.map((block, index) => ({ ...block, order: index }));
       });
 
       return { previous };
@@ -133,15 +117,15 @@ export function useReorderBlock(moduleId: string) {
 
     onMutate: async ({ from, to }) => {
       await queryClient.cancelQueries({ queryKey: key });
-      const previous = queryClient.getQueryData<ContentBlock[]>(key);
+      const previous = queryClient.getQueryData<Lesson[]>(key);
 
-      queryClient.setQueryData<ContentBlock[]>(key, (blocks) => {
+      queryClient.setQueryData<Lesson[]>(key, (blocks) => {
         if (!blocks) return blocks;
         const next = [...blocks];
         const [moved] = next.splice(from, 1);
         if (!moved) return blocks;
         next.splice(to, 0, moved);
-        return next.map((block, index) => ({ ...block, position: index }));
+        return next.map((block, index) => ({ ...block, order: index }));
       });
 
       return { previous };
@@ -168,12 +152,7 @@ export function useAttachUpload(moduleId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.blocks(moduleId) });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.storageUsage });
-      // `onEditLesson` busca la lección por `mediaKey` en esta lista — sin
-      // invalidarla, un video recién subido no aparece ahí hasta recargar la
-      // página, y "Editar título y descripción" falla con un error que
-      // suena a que la lección no se creó (sí se creó, sólo no se había
-      // vuelto a pedir esta lista).
-      queryClient.invalidateQueries({ queryKey: ['module-lessons-admin', moduleId] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.lessons(moduleId) });
     },
     onError: () => toast.error('El archivo se subió, pero no se pudo registrar en la base de datos.'),
   });

@@ -22,7 +22,7 @@ const ALLOWED_EXACT = [
 ];
 
 /**
- * Firma una URL de subida directa a Supabase Storage.
+ * Firma una URL de subida directa a Cloudflare R2.
  *
  * El binario nunca pasa por este servidor: sólo se emite el permiso. Así no
  * hay límite de tamaño de body, ni memoria retenida, ni coste de salida.
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
     ALLOWED_EXACT.includes(contentType);
   if (!allowed) return badRequest(`Tipo de archivo no permitido: ${contentType}`);
 
-  const ticket = await createUploadTicket({ courseId, moduleId, fileName });
+  const ticket = await createUploadTicket({ courseId, moduleId, fileName, contentType });
 
   if (!ticket) {
     return NextResponse.json(

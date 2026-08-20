@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.15"
   }
   public: {
     Tables: {
@@ -19,19 +19,19 @@ export type Database = {
           created_at: string
           id: string
           segments: Json
-          tone: "success" | "info" | "warning" | "danger"
+          tone: string
         }
         Insert: {
           created_at?: string
           id?: string
           segments: Json
-          tone: "success" | "info" | "warning" | "danger"
+          tone: string
         }
         Update: {
           created_at?: string
           id?: string
           segments?: Json
-          tone?: "success" | "info" | "warning" | "danger"
+          tone?: string
         }
         Relationships: []
       }
@@ -55,57 +55,6 @@ export type Database = {
           requirement?: string
         }
         Relationships: []
-      }
-      content_blocks: {
-        Row: {
-          created_at: string
-          id: string
-          media_key: string | null
-          meta: string
-          module_id: string
-          position: number
-          title: string
-          type: Database["public"]["Enums"]["block_type"]
-          uploaded_by: string | null
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          media_key?: string | null
-          meta?: string
-          module_id: string
-          position?: number
-          title: string
-          type: Database["public"]["Enums"]["block_type"]
-          uploaded_by?: string | null
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          media_key?: string | null
-          meta?: string
-          module_id?: string
-          position?: number
-          title?: string
-          type?: Database["public"]["Enums"]["block_type"]
-          uploaded_by?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "content_blocks_module_id_fkey"
-            columns: ["module_id"]
-            isOneToOne: false
-            referencedRelation: "modules"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "content_blocks_uploaded_by_fkey"
-            columns: ["uploaded_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       course_ratings: {
         Row: {
@@ -148,57 +97,6 @@ export type Database = {
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      course_resources: {
-        Row: {
-          course_id: string
-          created_at: string
-          id: string
-          media_key: string | null
-          meta: string
-          module_id: string | null
-          position: number
-          title: string
-          type: "PDF" | "MP3" | "DOC"
-        }
-        Insert: {
-          course_id: string
-          created_at?: string
-          id?: string
-          media_key?: string | null
-          meta?: string
-          module_id?: string | null
-          position?: number
-          title: string
-          type: "PDF" | "MP3" | "DOC"
-        }
-        Update: {
-          course_id?: string
-          created_at?: string
-          id?: string
-          media_key?: string | null
-          meta?: string
-          module_id?: string | null
-          position?: number
-          title?: string
-          type?: "PDF" | "MP3" | "DOC"
-        }
-        Relationships: [
-          {
-            foreignKeyName: "course_resources_course_id_fkey"
-            columns: ["course_id"]
-            isOneToOne: false
-            referencedRelation: "courses"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "course_resources_module_id_fkey"
-            columns: ["module_id"]
-            isOneToOne: false
-            referencedRelation: "modules"
             referencedColumns: ["id"]
           },
         ]
@@ -537,9 +435,12 @@ export type Database = {
           duration_seconds: number | null
           id: string
           media_key: string | null
+          meta: string
           module_id: string
           position: number
           title: string
+          type: Database["public"]["Enums"]["block_type"]
+          uploaded_by: string | null
         }
         Insert: {
           description?: string | null
@@ -547,9 +448,12 @@ export type Database = {
           duration_seconds?: number | null
           id?: string
           media_key?: string | null
+          meta?: string
           module_id: string
           position: number
           title: string
+          type?: Database["public"]["Enums"]["block_type"]
+          uploaded_by?: string | null
         }
         Update: {
           description?: string | null
@@ -557,9 +461,12 @@ export type Database = {
           duration_seconds?: number | null
           id?: string
           media_key?: string | null
+          meta?: string
           module_id?: string
           position?: number
           title?: string
+          type?: Database["public"]["Enums"]["block_type"]
+          uploaded_by?: string | null
         }
         Relationships: [
           {
@@ -567,6 +474,13 @@ export type Database = {
             columns: ["module_id"]
             isOneToOne: false
             referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lessons_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1007,28 +921,28 @@ export type Database = {
       }
       storage_reconcile_runs: {
         Row: {
-          id: string
-          ran_at: string
-          scanned_count: number
           deleted_count: number
           deleted_keys: Json
           error: string | null
+          id: string
+          ran_at: string
+          scanned_count: number
         }
         Insert: {
+          deleted_count: number
+          deleted_keys?: Json
+          error?: string | null
           id?: string
           ran_at?: string
           scanned_count: number
-          deleted_count: number
-          deleted_keys: Json
-          error?: string | null
         }
         Update: {
-          id?: string
-          ran_at?: string
-          scanned_count?: number
           deleted_count?: number
           deleted_keys?: Json
           error?: string | null
+          id?: string
+          ran_at?: string
+          scanned_count?: number
         }
         Relationships: []
       }
@@ -1093,12 +1007,12 @@ export type Database = {
       is_admin: { Args: never; Returns: boolean }
       is_staff: { Args: never; Returns: boolean }
       next_enrollment_code: { Args: never; Returns: string }
-      swap_content_block_position: {
-        Args: { block_a_id: string; block_b_id: string }
-        Returns: undefined
-      }
       swap_course_position: {
         Args: { course_a_id: string; course_b_id: string }
+        Returns: undefined
+      }
+      swap_lesson_position: {
+        Args: { lesson_a_id: string; lesson_b_id: string }
         Returns: undefined
       }
     }

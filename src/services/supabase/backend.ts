@@ -3,7 +3,7 @@ import { isStaff } from '@/lib/auth/rbac';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { DEMO_QUESTION } from '../demo/data';
 import type { AttachUploadInput, Backend } from '../ports';
-import { toContentBlock, toCourse, toLesson, toModule, toStudentSummary } from './mappers';
+import { toCourse, toLesson, toModule, toStudentSummary } from './mappers';
 import type { Course, PracticeSession, ReportRange, UserRole } from '@/types';
 import type { Database } from '@/types';
 
@@ -66,7 +66,7 @@ async function collectCourseMediaKeys(courseId: string): Promise<string[]> {
   if (moduleIds.length === 0) return [];
 
   const { data } = await db()
-    .from('content_blocks')
+    .from('lessons')
     .select('media_key')
     .in('module_id', moduleIds)
     .not('media_key', 'is', null);
@@ -108,31 +108,9 @@ async function logActivity(tone: ActivityTone, segments: ActivitySegment[]): Pro
  */
 async function nextBlockPosition(moduleId: string): Promise<number> {
   const { data } = await db()
-    .from('content_blocks')
-    .select('position')
-    .eq('module_id', moduleId)
-    .order('position', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  return (data?.position ?? -1) + 1;
-}
-
-async function nextLessonPosition(moduleId: string): Promise<number> {
-  const { data } = await db()
     .from('lessons')
     .select('position')
     .eq('module_id', moduleId)
-    .order('position', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  return (data?.position ?? -1) + 1;
-}
-
-async function nextResourcePosition(courseId: string): Promise<number> {
-  const { data } = await db()
-    .from('course_resources')
-    .select('position')
-    .eq('course_id', courseId)
     .order('position', { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -212,8 +190,8 @@ export const supabaseBackend: Backend = {
 
     async remove(id) {
       // Igual que en `removeBlock`: hay que leer las claves antes de borrar,
-      // porque el cascade de Postgres se lleva `modules` → `content_blocks`
-      // en el mismo statement y después ya no queda nada que consultar.
+      // porque el cascade de Postgres se lleva `modules` → `lessons` en el
+      // mismo statement y después ya no queda nada que consultar.
       const mediaKeys = await collectCourseMediaKeys(id);
 
       const { error } = await db().from('courses').delete().eq('id', id);
@@ -230,9 +208,9 @@ export const supabaseBackend: Backend = {
 
       const a = courses[from]!;
       const b = courses[to]!;
-      // RPC atómico — mismo patrón que `swap_content_block_position`: dos
-      // updates independientes no son atómicos y podían dejar dos cursos
-      // con la misma posición si uno fallaba a mitad de camino.
+      // RPC atómico — mismo patrón que `swap_lesson_position`: dos updates
+      // independientes no son atómicos y podían dejar dos cursos con la
+      // misma posición si uno fallaba a mitad de camino.
       const { error } = await db().rpc('swap_course_position', {
         course_a_id: a.id,
         course_b_id: b.id,
@@ -259,22 +237,15 @@ export const supabaseBackend: Backend = {
     },
 
     async listBlocks(moduleId) {
-      const rows = unwrap(
-        await db()
-          .from('content_blocks')
-          .select('*')
-          .eq('module_id', moduleId)
-          .order('position', { ascending: true }),
-      );
-      return rows.map(toContentBlock);
+      return supabaseBackend.learning.listLessons(moduleId);
     },
 
     async addBlock(moduleId, type) {
       const position = await nextBlockPosition(moduleId);
 
-      const row = unwrap<Row<'content_blocks'>>(
+      const row = unwrap<Row<'lessons'>>(
         await db()
-          .from('content_blocks')
+          .from('lessons')
           .insert({
             module_id: moduleId,
             type,
@@ -287,7 +258,7 @@ export const supabaseBackend: Backend = {
           .select()
           .single(),
       );
-      return toContentBlock(row);
+      return toLesson(row, undefined, true);
     },
 
     async moveBlock(moduleId, blockId, direction) {
@@ -299,10 +270,10 @@ export const supabaseBackend: Backend = {
       const a = blocks[from]!;
       const b = blocks[to]!;
       // RPC atómico en vez de dos updates independientes: si uno fallara a
-      // mitad de camino, dos bloques podían terminar con la misma `position`.
-      const { error } = await db().rpc('swap_content_block_position', {
-        block_a_id: a.id,
-        block_b_id: b.id,
+      // mitad de camino, dos ítems podían terminar con la misma `position`.
+      const { error } = await db().rpc('swap_lesson_position', {
+        lesson_a_id: a.id,
+        lesson_b_id: b.id,
       });
       if (error) throw new Error(error.message);
       return supabaseBackend.content.listBlocks(moduleId);
@@ -312,12 +283,12 @@ export const supabaseBackend: Backend = {
       // Se lee el `media_key` antes de borrar la fila: una vez borrada, ya
       // no hay forma de saber qué objeto de Storage le correspondía.
       const { data: block } = await db()
-        .from('content_blocks')
+        .from('lessons')
         .select('media_key')
         .eq('id', blockId)
         .maybeSingle();
 
-      const { error } = await db().from('content_blocks').delete().eq('id', blockId);
+      const { error } = await db().from('lessons').delete().eq('id', blockId);
       if (error) throw new Error(error.message);
 
       if (block?.media_key) await removeStorageObjects([block.media_key]);
@@ -331,64 +302,33 @@ export const supabaseBackend: Backend = {
         data: { user },
       } = await db().auth.getUser();
 
-      const row = unwrap<Row<'content_blocks'>>(
+      const title = input.fileName.replace(/\.[^.]+$/, '');
+      const durationSeconds =
+        type === 'Video' && input.durationSeconds ? Math.round(input.durationSeconds) : 0;
+
+      const row = unwrap<Row<'lessons'>>(
         await db()
-          .from('content_blocks')
+          .from('lessons')
           .insert({
             module_id: input.moduleId,
             type,
-            title: input.fileName,
+            title,
             meta: input.sizeLabel,
             position,
             media_key: input.mediaKey,
             uploaded_by: user?.id ?? null,
+            // `duration_minutes` sigue existiendo por compatibilidad; la
+            // fuente real de verdad ahora es `duration_seconds`, sin redondear
+            // hacia arriba a un mínimo inventado.
+            duration_minutes: Math.round(durationSeconds / 60),
+            duration_seconds: type === 'Video' ? durationSeconds : null,
+            description: null,
           })
           .select()
           .single(),
       );
 
-      // `content_blocks` sólo alimenta este panel de administración — el
-      // reproductor del alumno lee `lessons` y "Recursos" lee
-      // `course_resources`, dos tablas completamente separadas. Sin este
-      // paso, un archivo subido aquí nunca llegaba a verse del lado del
-      // alumno aunque ya estuviera matriculado.
-      const title = input.fileName.replace(/\.[^.]+$/, '');
-      if (type === 'Video') {
-        const lessonPosition = await nextLessonPosition(input.moduleId);
-        const durationSeconds = input.durationSeconds ? Math.round(input.durationSeconds) : 0;
-        await db()
-          .from('lessons')
-          .insert({
-            module_id: input.moduleId,
-            position: lessonPosition,
-            title,
-            media_key: input.mediaKey,
-            // `duration_minutes` sigue existiendo por compatibilidad; la
-            // fuente real de verdad ahora es `duration_seconds`, sin redondear
-            // hacia arriba a un mínimo inventado.
-            duration_minutes: Math.round(durationSeconds / 60),
-            duration_seconds: durationSeconds,
-            description: null,
-          });
-      } else {
-        const moduleRow = unwrap<Pick<Row<'modules'>, 'course_id'>>(
-          await db().from('modules').select('course_id').eq('id', input.moduleId).single(),
-        );
-        const resourcePosition = await nextResourcePosition(moduleRow.course_id);
-        await db()
-          .from('course_resources')
-          .insert({
-            course_id: moduleRow.course_id,
-            module_id: input.moduleId,
-            type: type === 'Audio' ? 'MP3' : 'PDF',
-            title,
-            meta: input.sizeLabel,
-            media_key: input.mediaKey,
-            position: resourcePosition,
-          });
-      }
-
-      return toContentBlock(row);
+      return toLesson(row, undefined, true);
     },
 
     async getFileUrl(mediaKey) {
@@ -399,21 +339,11 @@ export const supabaseBackend: Backend = {
     },
 
     async updateLesson(lessonId, input) {
-      const { data: lesson, error } = await db()
+      const { error } = await db()
         .from('lessons')
         .update({ title: input.title, description: input.description || null })
-        .eq('id', lessonId)
-        .select('media_key')
-        .single();
+        .eq('id', lessonId);
       if (error) throw new Error(error.message);
-
-      // `content_blocks` (la fila del constructor) y `lessons` (lo que ve el
-      // alumno) son tablas separadas sin llave foránea — sin este segundo
-      // update, el título quedaba "actualizado" para el alumno pero seguía
-      // mostrando el nombre del archivo original en el panel del docente.
-      if (lesson.media_key) {
-        await db().from('content_blocks').update({ title: input.title }).eq('media_key', lesson.media_key);
-      }
     },
   },
 
@@ -843,16 +773,6 @@ export const supabaseBackend: Backend = {
       return url;
     },
 
-    async listResources(filters) {
-      const params = new URLSearchParams();
-      if (filters?.courseId) params.set('courseId', filters.courseId);
-      if (filters?.moduleId) params.set('moduleId', filters.moduleId);
-      const query = params.toString();
-      const response = await fetch(`/api/resources${query ? `?${query}` : ''}`);
-      if (!response.ok) throw new Error('No se pudieron cargar los recursos');
-      return response.json();
-    },
-
     async listBadges() {
       const response = await fetch('/api/badges');
       if (!response.ok) throw new Error('No se pudieron cargar las insignias');
@@ -872,6 +792,14 @@ export const supabaseBackend: Backend = {
           { onConflict: 'student_id,lesson_id' },
         );
       if (error) throw new Error(error.message);
+    },
+
+    // Un ítem sin reproductor (PDF/Audio/Ejercicio) no tiene "porcentaje
+    // visto" real — llegar a él ya es "verlo entero". Reutiliza el mismo
+    // upsert que el video para no duplicar la lógica que dispara
+    // `recalc_enrollment_progress()`.
+    async markLessonViewed(lessonId) {
+      await supabaseBackend.learning.saveWatchedPercent(lessonId, 100);
     },
 
     async getMyProgress(courseId) {

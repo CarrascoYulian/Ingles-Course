@@ -5,11 +5,10 @@ import { useState } from 'react';
 
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { SquareBadge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import type { CourseResource, LessonComment, LessonNote } from '@/types';
+import type { LessonComment, LessonNote } from '@/types';
 
 /** Pestañas tipo cápsula, sólo para este panel — el `Tabs` compartido
  * sigue siendo subrayado por defecto para cualquier otro consumidor. */
@@ -38,9 +37,6 @@ function formatTimestamp(seconds: number): string {
 
 export interface LessonTabsProps {
   description: string | null;
-  /** Recursos reales del curso (course_resources) — antes era una lista fija falsa. */
-  files: CourseResource[];
-  onOpenFile: (mediaKey: string) => void;
   notes: LessonNote[];
   notesPending?: boolean;
   /** Segundo actual del video — la nota se guarda ahí, no en un valor inventado. */
@@ -65,8 +61,6 @@ export interface LessonTabsProps {
 /** Paneles de la lección: descripción, archivos, notas y comentarios. */
 export function LessonTabs({
   description,
-  files,
-  onOpenFile,
   notes,
   notesPending,
   currentTimeSeconds,
@@ -142,9 +136,6 @@ export function LessonTabs({
         <TabsTrigger value="desc" className={PILL_TRIGGER}>
           Descripción
         </TabsTrigger>
-        <TabsTrigger value="files" className={PILL_TRIGGER}>
-          Archivos
-        </TabsTrigger>
         <TabsTrigger value="notes" className={PILL_TRIGGER}>
           <span className="md:hidden">Notas</span>
           <span className="hidden md:inline">Mis notas</span>
@@ -183,40 +174,6 @@ export function LessonTabs({
             )}
           </div>
         </div>
-      </TabsContent>
-
-      <TabsContent value="files">
-        {files.length === 0 && (
-          <p className="text-body-sm font-medium text-fg-faint">
-            Tu docente todavía no ha subido archivos para este curso.
-          </p>
-        )}
-        <ul className="flex flex-col gap-[9px]">
-          {files.map((file) => (
-            <li
-              key={file.id}
-              className="flex items-center gap-3 rounded-3xl border border-line px-3.5 py-[13px]"
-            >
-              <SquareBadge size={38} className="bg-surface-sunken text-fg-subtle">
-                {file.type}
-              </SquareBadge>
-              <span className="min-w-0 flex-1 truncate text-body-sm font-bold text-fg">
-                {file.title}
-              </span>
-              <span className="hidden text-tiny font-semibold text-fg-ghost sm:inline">
-                {file.meta}
-              </span>
-              <Button
-                variant="quiet"
-                size="xs"
-                onClick={() => file.mediaKey && onOpenFile(file.mediaKey)}
-                className="text-brand hover:bg-brand-soft"
-              >
-                Descargar
-              </Button>
-            </li>
-          ))}
-        </ul>
       </TabsContent>
 
       <TabsContent value="notes">

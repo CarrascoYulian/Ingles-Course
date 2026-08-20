@@ -47,41 +47,37 @@ export interface Module {
   requiresModuleId: string | null;
 }
 
-export interface ContentBlock {
-  id: string;
-  moduleId: string;
-  type: BlockType;
-  title: string;
-  /** Texto ya formateado para la UI: "14 min · 1080p", "820 KB"… */
-  meta: string;
-  position: number;
-  /**
-   * Ruta del objeto en Supabase Storage (bucket `course-files`). La base de
-   * datos NO guarda binarios, sólo esta referencia; la URL se firma en el
-   * servidor bajo demanda.
-   */
-  mediaKey: string | null;
-  /** Quién lo subió y cuándo — null en bloques creados sin archivo (p. ej. "Ejercicio"). */
-  uploadedBy: string | null;
-  createdAt: string;
-}
-
+/**
+ * Ítem de contenido de un módulo — construido por el docente en el editor y
+ * recorrido por el alumno en ese mismo orden, sin importar el tipo. Antes
+ * `ContentBlock` (editor) y `Lesson` (progreso del alumno) eran dos tablas
+ * separadas sin FK, unidas sólo por `mediaKey`; ahora son la misma fila.
+ */
 export interface Lesson {
   id: string;
   moduleId: string;
   order: number;
+  type: BlockType;
   title: string;
-  /** Duración legible: "14 min" o "0:06" si dura menos de un minuto. */
+  /** Texto ya formateado para la UI: "14 min · 1080p", "820 KB"… */
+  meta: string;
+  /** Duración legible: "14 min" o "0:06" si dura menos de un minuto — sólo tiene sentido para `type: 'Video'`. */
   duration: string;
   /** Duración real en segundos — nunca redondeada hacia arriba. */
   durationSeconds: number;
   state: LessonState;
   /** 0-100. Avance real de reproducción guardado para el usuario actual. */
   watchedPercent: number;
-  /** Ruta del video real en Supabase Storage — `null` si aún no se adjuntó ninguno. */
+  /**
+   * Ruta del objeto en Supabase Storage (bucket `course-files`). La base de
+   * datos NO guarda binarios, sólo esta referencia; la URL se firma en el
+   * servidor bajo demanda. `null` si aún no se adjuntó ningún archivo.
+   */
   mediaKey: string | null;
   /** Escrita por el docente — `null` si todavía no le puso ninguna. */
   description: string | null;
+  /** Quién subió el archivo y cuándo — `null` en ítems creados sin archivo (p. ej. "Ejercicio"). */
+  uploadedBy: string | null;
 }
 
 export interface LessonNote {
@@ -204,14 +200,6 @@ export interface StudentSummary {
   lessons: number;
   active: boolean;
   avatarColor: string;
-}
-
-export interface CourseResource {
-  id: string;
-  type: 'PDF' | 'MP3' | 'DOC';
-  title: string;
-  meta: string;
-  mediaKey: string | null;
 }
 
 export interface Badge {

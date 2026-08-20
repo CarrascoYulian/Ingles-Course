@@ -1,123 +1,150 @@
 import 'server-only';
 
-import { getSupabaseAdminClient, getSupabaseServerClient } from '@/lib/supabase/server';
+import {
+  DeleteObjectsCommand,
+  HeadObjectCommand,
+  ListObjectsV2Command,
+  PutObjectCommand,
+  GetObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+
+import { getServerEnv } from '@/lib/env';
 
 /**
- * Supabase Storage.
+ * Cloudflare R2 (compatible con la API de S3).
  *
  * Contrato con la base de datos: Postgres guarda ÚNICAMENTE la ruta del
- * objeto (`media_key`). Nunca la URL — las URLs firmadas caducan y una URL
+ * objeto (`media_key`). Nunca la URL — las URLs firmadas expiran y una URL
  * persistida se convierte en un enlace roto o en una fuga de acceso.
  *
- * El bucket es PRIVADO (`course-files`, creado en
- * supabase/migrations/0003_storage.sql): nada se sirve por URL pública sin
- * firmar. Las políticas RLS de `storage.objects` (misma migración) sólo
- * dejan escribir a `admin`/`instructor`; leer está abierto a cualquier
- * usuario autenticado, igual que el resto del contenido publicado.
+ * El bucket es PRIVADO: nada se sirve por URL pública sin firmar. A
+ * diferencia de Supabase Storage, R2 no tiene RLS propia — la autorización
+ * de lectura/escritura la decide `guard()` en el Route Handler antes de
+ * llegar aquí (`content:edit` para subir, `course:read` para leer), no una
+ * política a nivel de objeto.
+ *
+ * Sólo los binarios grandes (video, imagen, audio, PDF, documentos) que
+ * suben docentes y alumnos viven acá — todo lo demás (perfiles, cursos,
+ * progreso, comentarios) sigue en Supabase Postgres.
  */
-
-export const STORAGE_BUCKET = 'course-files';
 
 /**
- * Límite del plan contratado en Supabase, en bytes. La API de Supabase no
- * expone la cuota del plan — hay que fijarla a mano y ajustarla si cambia
- * el plan (panel de Supabase → Settings → Billing).
- *
- * El proyecto real está en el plan **Free**: la cuota de Storage es 1 GB,
- * no los 200 GB del mock original del diseño (verificado contra
- * https://supabase.com/docs/guides/platform/manage-your-usage/storage-size).
- * Subir a Pro cambia esto a 100 GB — actualizar este valor si eso pasa.
+ * Cuota gratuita de R2: 10 GB de almacenamiento. R2 no cobra egress (a
+ * diferencia de S3), así que a diferencia del límite de Supabase esto sólo
+ * importa para el widget de uso — no hay un límite de tamaño por archivo
+ * impuesto por la plataforma como el de 50 MB del plan Free de Supabase.
  */
-export const STORAGE_PLAN_LIMIT_BYTES = 1 * 1024 ** 3; // 1 GB — cuota real del plan Free.
+export const STORAGE_PLAN_LIMIT_BYTES = 10 * 1024 ** 3; // 10 GB — cuota gratuita de R2.
 
 /** 65-89 %: la barra pasa de azul a ámbar — hay que empezar a prestar atención. */
 export const STORAGE_WARNING_THRESHOLD_PERCENT = 65;
 /** 90 %+: la barra pasa a rojo y es lo que dispara la alerta en Actividad reciente. */
 export const STORAGE_CRITICAL_THRESHOLD_PERCENT = 90;
 
-/** Las subidas se firman por 15 min: suficiente para 2 GB en una conexión normal. */
+/** Las subidas se firman por 15 min: suficiente para un video pesado en una conexión normal. */
 const UPLOAD_TTL_SECONDS = 15 * 60;
 /** Duración por defecto de las URLs de reproducción/descarga: 1 h. */
 const PLAYBACK_TTL_SECONDS = 60 * 60;
 
+/** Batch máximo que acepta `DeleteObjectsCommand` por llamada. */
+const DELETE_BATCH_SIZE = 1000;
+const LIST_PAGE_SIZE = 1000;
+
+let cachedClient: S3Client | null | undefined;
+
+/** `undefined` = todavía no se resolvió; `null` = falta configuración. */
+function getR2Client(): { client: S3Client; bucket: string } | null {
+  if (cachedClient === undefined) {
+    const { R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY } = getServerEnv();
+    if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY) {
+      cachedClient = null;
+    } else {
+      cachedClient = new S3Client({
+        region: 'auto',
+        endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+        credentials: { accessKeyId: R2_ACCESS_KEY_ID, secretAccessKey: R2_SECRET_ACCESS_KEY },
+      });
+    }
+  }
+
+  if (!cachedClient) return null;
+
+  const { R2_BUCKET_NAME } = getServerEnv();
+  if (!R2_BUCKET_NAME) return null;
+
+  return { client: cachedClient, bucket: R2_BUCKET_NAME };
+}
+
 export interface UploadTicket {
-  /** URL firmada a la que el navegador hace el PUT/POST directo. */
+  /** URL firmada a la que el navegador hace el PUT directo. */
   signedUrl: string;
-  /** Token que exige `uploadToSignedUrl` en el cliente, junto con la URL. */
-  token: string;
   /** Ruta del objeto dentro del bucket — esto es lo que se guarda en Postgres. */
   mediaKey: string;
   bucket: string;
 }
 
 /**
- * Ticket de subida directa navegador → Supabase Storage. El binario nunca
- * atraviesa el servidor de Next, así que no hay límite de body ni coste de
- * ancho de banda de salida.
+ * Ticket de subida directa navegador → R2. El binario nunca atraviesa el
+ * servidor de Next, así que no hay límite de body ni coste de ancho de
+ * banda de salida.
  *
- * Se firma con el cliente de service role porque generar la URL de subida
- * requiere permisos que la política RLS del usuario normal no necesita
- * tener: el usuario ya fue autorizado por `guard('content:edit')` antes de
- * llegar aquí, en el Route Handler.
+ * A diferencia de Supabase Storage (subida en dos pasos con token), una URL
+ * firmada de S3/R2 para `PutObject` ya lleva la autorización embebida: el
+ * cliente sólo necesita hacer un `PUT` normal contra ella.
  */
 export async function createUploadTicket(params: {
   courseId: string;
   moduleId: string;
   fileName: string;
+  contentType: string;
 }): Promise<UploadTicket | null> {
-  const admin = getSupabaseAdminClient();
-  if (!admin) return null;
+  const r2 = getR2Client();
+  if (!r2) return null;
 
   const mediaKey = buildMediaKey(params);
-  const { data, error } = await admin.storage
-    .from(STORAGE_BUCKET)
-    .createSignedUploadUrl(mediaKey);
+  const command = new PutObjectCommand({
+    Bucket: r2.bucket,
+    Key: mediaKey,
+    ContentType: params.contentType,
+  });
+  const signedUrl = await getSignedUrl(r2.client, command, { expiresIn: UPLOAD_TTL_SECONDS });
 
-  if (error || !data) return null;
-
-  return { signedUrl: data.signedUrl, token: data.token, mediaKey, bucket: STORAGE_BUCKET };
+  return { signedUrl, mediaKey, bucket: r2.bucket };
 }
 
-/**
- * URL firmada de lectura. Se genera con el cliente del usuario (no el de
- * service role): así RLS decide si puede leer ese objeto, en vez de que el
- * servidor firme ciegamente cualquier ruta que le pidan.
- */
+/** URL firmada de lectura, válida por una hora. */
 export async function getPlaybackUrl(mediaKey: string): Promise<string | null> {
   if (!mediaKey) return null;
 
-  const supabase = await getSupabaseServerClient();
-  if (!supabase) return null;
+  const r2 = getR2Client();
+  if (!r2) return null;
 
-  const { data, error } = await supabase.storage
-    .from(STORAGE_BUCKET)
-    .createSignedUrl(mediaKey, PLAYBACK_TTL_SECONDS);
-
-  if (error || !data) return null;
-  return data.signedUrl;
+  const command = new GetObjectCommand({ Bucket: r2.bucket, Key: mediaKey });
+  try {
+    return await getSignedUrl(r2.client, command, { expiresIn: PLAYBACK_TTL_SECONDS });
+  } catch {
+    return null;
+  }
 }
 
 /** Confirma que el objeto realmente existe en el bucket (no sólo que hay una fila en la BD). */
 export async function mediaExists(mediaKey: string): Promise<boolean> {
-  const supabase = await getSupabaseServerClient();
-  if (!supabase) return false;
+  const r2 = getR2Client();
+  if (!r2) return false;
 
-  const segments = mediaKey.split('/');
-  const fileName = segments.pop();
-  const folder = segments.join('/');
-  if (!fileName) return false;
-
-  const { data, error } = await supabase.storage
-    .from(STORAGE_BUCKET)
-    .list(folder, { search: fileName, limit: 1 });
-
-  if (error) return false;
-  return (data ?? []).some((entry) => entry.name === fileName);
+  try {
+    await r2.client.send(new HeadObjectCommand({ Bucket: r2.bucket, Key: mediaKey }));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**
  * Ruta jerárquica y estable: permite borrar un curso entero por prefijo y
- * hace legible el bucket desde el panel de Supabase.
+ * hace legible el bucket desde el dashboard de Cloudflare.
  */
 function buildMediaKey({
   courseId,
@@ -141,8 +168,6 @@ function normalizeFileName(fileName: string): string {
     .toLowerCase();
 }
 
-export { UPLOAD_TTL_SECONDS };
-
 export interface StorageObjectInfo {
   /** Ruta completa del objeto dentro del bucket — mismo formato que `media_key`. */
   key: string;
@@ -150,62 +175,71 @@ export interface StorageObjectInfo {
   createdAt: string;
 }
 
-const LIST_PAGE_SIZE = 1000;
-
 /**
- * Recorre el bucket recursivamente y devuelve TODOS los objetos reales
- * (nunca "carpetas"). `storage.list()` de Supabase sólo lista un nivel a la
- * vez — igual que un `ls` sin `-R` — así que hay que bajar manualmente por
- * la jerarquía `cursos/<id>/modulos/<id>/<archivo>` que arma `buildMediaKey`.
+ * Lista TODOS los objetos reales del bucket. A diferencia de la API de
+ * Supabase Storage, `ListObjectsV2` de S3/R2 ya devuelve las claves
+ * recursivas de forma plana (sin "carpetas" que bajar a mano) — sólo hace
+ * falta paginar con `ContinuationToken`.
  *
- * Usado por el job de reconciliación (Fase 2) y el widget de uso de Storage
- * (Fase 3): ambos necesitan la lista completa de objetos reales del bucket,
- * no lo que Postgres cree que hay.
+ * Usado por el job de reconciliación y el widget de uso de Storage: ambos
+ * necesitan la lista completa de objetos reales del bucket, no lo que
+ * Postgres cree que hay.
  */
 export async function listAllStorageObjects(): Promise<StorageObjectInfo[]> {
-  const admin = getSupabaseAdminClient();
-  if (!admin) return [];
+  const r2 = getR2Client();
+  if (!r2) return [];
 
   const objects: StorageObjectInfo[] = [];
+  let continuationToken: string | undefined;
 
-  async function walk(prefix: string): Promise<void> {
-    let offset = 0;
-    for (;;) {
-      const { data, error } = await admin!.storage
-        .from(STORAGE_BUCKET)
-        .list(prefix, { limit: LIST_PAGE_SIZE, offset, sortBy: { column: 'name', order: 'asc' } });
-      if (error || !data) return;
+  do {
+    const response = await r2.client.send(
+      new ListObjectsV2Command({
+        Bucket: r2.bucket,
+        MaxKeys: LIST_PAGE_SIZE,
+        ContinuationToken: continuationToken,
+      }),
+    );
 
-      for (const entry of data) {
-        const fullPath = prefix ? `${prefix}/${entry.name}` : entry.name;
-        // Supabase Storage no tiene carpetas reales: `id === null` es la
-        // convención con la que el cliente marca un prefijo agrupador.
-        if (entry.id === null) {
-          await walk(fullPath);
-        } else {
-          objects.push({
-            key: fullPath,
-            size: entry.metadata?.size ?? 0,
-            createdAt: entry.created_at ?? new Date(0).toISOString(),
-          });
-        }
-      }
-
-      if (data.length < LIST_PAGE_SIZE) return;
-      offset += LIST_PAGE_SIZE;
+    for (const entry of response.Contents ?? []) {
+      if (!entry.Key) continue;
+      objects.push({
+        key: entry.Key,
+        size: entry.Size ?? 0,
+        createdAt: entry.LastModified?.toISOString() ?? new Date(0).toISOString(),
+      });
     }
-  }
 
-  await walk('');
+    continuationToken = response.IsTruncated ? response.NextContinuationToken : undefined;
+  } while (continuationToken);
+
   return objects;
 }
 
-/** Borra objetos por clave en lotes — la API de Storage acepta un array por llamada. */
+/** Borra objetos por clave en lotes de hasta 1000 — el máximo que acepta `DeleteObjectsCommand`. */
 export async function removeStorageObjects(keys: string[]): Promise<{ removed: string[]; error: string | null }> {
-  const admin = getSupabaseAdminClient();
-  if (!admin || keys.length === 0) return { removed: [], error: null };
+  const r2 = getR2Client();
+  if (!r2 || keys.length === 0) return { removed: [], error: null };
 
-  const { data, error } = await admin.storage.from(STORAGE_BUCKET).remove(keys);
-  if (error) return { removed: [], error: error.message };
-  return { removed: (data ?? []).map((entry) => entry.name), error: null };
+  const removed: string[] = [];
+  for (let i = 0; i < keys.length; i += DELETE_BATCH_SIZE) {
+    const batch = keys.slice(i, i + DELETE_BATCH_SIZE);
+    try {
+      const response = await r2.client.send(
+        new DeleteObjectsCommand({
+          Bucket: r2.bucket,
+          Delete: { Objects: batch.map((key) => ({ Key: key })) },
+        }),
+      );
+      for (const deleted of response.Deleted ?? []) {
+        if (deleted.Key) removed.push(deleted.Key);
+      }
+      const firstError = response.Errors?.[0];
+      if (firstError) return { removed, error: firstError.Message ?? 'Error al borrar objetos' };
+    } catch (error) {
+      return { removed, error: error instanceof Error ? error.message : 'Error al borrar objetos' };
+    }
+  }
+
+  return { removed, error: null };
 }

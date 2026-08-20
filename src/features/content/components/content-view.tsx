@@ -17,7 +17,6 @@ import {
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
-import { toast } from 'sonner';
 
 import { AddBlockPanel } from '@/components/admin/add-block-panel';
 import { useAdminHeader, useAdminRole } from '@/components/admin/admin-shell';
@@ -43,7 +42,6 @@ import { cn } from '@/lib/utils';
 import {
   useAttachUpload,
   useContentBlocks,
-  useModuleLessons,
   useModules,
   useMoveBlock,
   useOpenFile,
@@ -85,7 +83,6 @@ export function ContentView() {
     : 'Cargando curso…';
 
   const { data: blocks, isPending } = useContentBlocks(moduleId);
-  const { data: moduleLessons } = useModuleLessons(moduleId);
   const moveBlock = useMoveBlock(moduleId);
   const reorderBlock = useReorderBlock(moduleId);
   const removeBlock = useRemoveBlock(moduleId);
@@ -312,24 +309,8 @@ export function ContentView() {
                       ? () => openPreview({ title: block.title, mediaKey: block.mediaKey! })
                       : undefined
                   }
-                  onEditLesson={
-                    block.type === 'Video' && block.mediaKey
-                      ? () => {
-                          const lesson = moduleLessons?.find((l) => l.mediaKey === block.mediaKey);
-                          if (lesson) setEditingLessonId(lesson.id);
-                          else toast.error('Todavía no se generó la lección de este video. Recarga la página.');
-                        }
-                      : undefined
-                  }
-                  onComments={
-                    block.type === 'Video' && block.mediaKey
-                      ? () => {
-                          const lesson = moduleLessons?.find((l) => l.mediaKey === block.mediaKey);
-                          if (lesson) setCommentsLessonId(lesson.id);
-                          else toast.error('Todavía no se generó la lección de este video. Recarga la página.');
-                        }
-                      : undefined
-                  }
+                  onEditLesson={block.mediaKey ? () => setEditingLessonId(block.id) : undefined}
+                  onComments={block.mediaKey ? () => setCommentsLessonId(block.id) : undefined}
                 />
                 );
               })}
@@ -394,8 +375,8 @@ export function ContentView() {
         initialValues={
           editingLessonId
             ? (() => {
-                const lesson = moduleLessons?.find((l) => l.id === editingLessonId);
-                return lesson ? { title: lesson.title, description: lesson.description ?? '' } : null;
+                const block = blocks?.find((b) => b.id === editingLessonId);
+                return block ? { title: block.title, description: block.description ?? '' } : null;
               })()
             : null
         }
@@ -409,9 +390,7 @@ export function ContentView() {
         open={commentsLessonId !== null}
         onOpenChange={(open) => !open && setCommentsLessonId(null)}
         lessonId={commentsLessonId}
-        lessonTitle={
-          moduleLessons?.find((l) => l.id === commentsLessonId)?.title ?? 'esta lección'
-        }
+        lessonTitle={blocks?.find((b) => b.id === commentsLessonId)?.title ?? 'esta lección'}
       />
 
       <QuizEditorDialog

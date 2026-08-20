@@ -23,10 +23,10 @@ import { Button } from '@/components/ui/button';
 import { BLOCK_BADGE } from '@/constants/palettes';
 import { useBlockThumbnailUrl } from '@/features/content/hooks/use-content-blocks';
 import { cn } from '@/lib/utils';
-import type { BlockType, ContentBlock } from '@/types';
+import type { BlockType, Lesson } from '@/types';
 
 export interface ContentBlockRowProps {
-  block: ContentBlock;
+  block: Lesson;
   index: number;
   total: number;
   onMove: (direction: -1 | 1) => void;
@@ -37,9 +37,9 @@ export interface ContentBlockRowProps {
   openFilePending?: boolean;
   /** Vista previa inline (PDF/video/audio) sin salir del constructor. */
   onPreview?: () => void;
-  /** Sólo para bloques de video: editar título/descripción de la lección real. */
+  /** Sólo si el ítem ya tiene un archivo real: editar título/descripción. */
   onEditLesson?: () => void;
-  /** Sólo para bloques de video: ver/borrar los comentarios reales de la lección. */
+  /** Sólo si el ítem ya tiene un archivo real: ver/borrar sus comentarios. */
   onComments?: () => void;
 }
 

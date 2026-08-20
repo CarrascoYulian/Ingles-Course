@@ -3,7 +3,6 @@ import type { AttachUploadInput, Backend } from '../ports';
 import {
   DEMO_ACTIVITY,
   DEMO_BADGES,
-  DEMO_BLOCKS,
   DEMO_COURSES,
   DEMO_LEADERBOARD,
   DEMO_LESSONS,
@@ -14,7 +13,6 @@ import {
   DEMO_QUIZ_DRAFT,
   DEMO_QUIZ_ID,
   DEMO_REPORT_BARS,
-  DEMO_RESOURCES,
   DEMO_STUDENT,
   DEMO_STUDENTS,
   DEMO_TEACHER,
@@ -22,11 +20,9 @@ import {
 import type {
   Badge,
   BlockType,
-  ContentBlock,
   Course,
   CourseRating,
   CourseRatingsSummary,
-  CourseResource,
   CourseThread,
   CourseThreadReply,
   Lesson,
@@ -83,7 +79,7 @@ export function getDemoQuizDraft(moduleId: string): QuizDraft | null {
 
 interface DemoStore {
   courses: Course[];
-  blocks: ContentBlock[];
+  lessons: Lesson[];
   students: StudentSummary[];
   session: PracticeSession;
   /** `"${studentId}:${courseId}"` → ids de módulo otorgados. El fixture sólo
@@ -94,7 +90,7 @@ interface DemoStore {
 
 const store: DemoStore = {
   courses: structuredClone(DEMO_COURSES),
-  blocks: structuredClone(DEMO_BLOCKS),
+  lessons: structuredClone(DEMO_LESSONS),
   students: structuredClone(DEMO_STUDENTS),
   moduleAccess: new Map(),
   session: {
@@ -188,69 +184,83 @@ export const demoBackend: Backend = {
 
     listBlocks: (moduleId) =>
       latency(
-        store.blocks
-          .filter((b) => b.moduleId === moduleId)
-          .map((b, index) => ({ ...b, position: index })),
+        store.lessons
+          .filter((l) => l.moduleId === moduleId)
+          .map((l, index) => ({ ...l, order: index + 1 })),
       ),
 
     addBlock: (moduleId, type) => {
       const defaults = NEW_BLOCK_DEFAULTS[type];
-      const block: ContentBlock = {
+      const lesson: Lesson = {
         id: newId(),
         moduleId,
+        order: store.lessons.length + 1,
         type,
         title: defaults.title,
         meta: defaults.meta,
-        position: store.blocks.length,
+        duration: '',
+        durationSeconds: 0,
+        state: 'locked',
+        watchedPercent: 0,
         mediaKey: null,
+        description: null,
         uploadedBy: null,
-        createdAt: new Date().toISOString(),
       };
-      store.blocks = [...store.blocks, block];
-      return latency(block);
+      store.lessons = [...store.lessons, lesson];
+      return latency(lesson);
     },
 
     moveBlock: (moduleId, blockId, direction) => {
-      const list = [...store.blocks];
-      const from = list.findIndex((b) => b.id === blockId);
+      const list = [...store.lessons];
+      const from = list.findIndex((l) => l.id === blockId);
       const to = from + direction;
       if (from >= 0 && to >= 0 && to < list.length) {
         [list[from], list[to]] = [list[to]!, list[from]!];
-        store.blocks = list;
+        store.lessons = list;
       }
       return latency(
-        store.blocks
-          .filter((b) => b.moduleId === moduleId)
-          .map((b, index) => ({ ...b, position: index })),
+        store.lessons
+          .filter((l) => l.moduleId === moduleId)
+          .map((l, index) => ({ ...l, order: index + 1 })),
       );
     },
 
     removeBlock: (blockId) => {
-      store.blocks = store.blocks.filter((b) => b.id !== blockId);
+      store.lessons = store.lessons.filter((l) => l.id !== blockId);
       return latency(undefined);
     },
 
     attachUpload: (input: AttachUploadInput) => {
-      const block: ContentBlock = {
+      const type = inferBlockType(input.contentType);
+      const lesson: Lesson = {
         id: newId(),
         moduleId: input.moduleId,
-        type: inferBlockType(input.contentType),
+        order: store.lessons.length + 1,
+        type,
         title: input.fileName,
         meta: input.sizeLabel,
-        position: store.blocks.length,
+        duration: type === 'Video' ? '0:00' : input.sizeLabel,
+        durationSeconds: input.durationSeconds ? Math.round(input.durationSeconds) : 0,
+        state: 'locked',
+        watchedPercent: 0,
         mediaKey: input.mediaKey,
+        description: null,
         uploadedBy: DEMO_TEACHER.id,
-        createdAt: new Date().toISOString(),
       };
-      store.blocks = [...store.blocks, block];
-      return latency(block);
+      store.lessons = [...store.lessons, lesson];
+      return latency(lesson);
     },
 
     // En modo demo el archivo vive de verdad en /public/demo-uploads (ver
     // upload.ts): no hay Storage real que firmar, así que se devuelve la
     // ruta servida por Next tal cual.
     getFileUrl: (mediaKey: string) => latency(`/demo-uploads/${mediaKey}`),
-    updateLesson: () => latency(undefined),
+    updateLesson: (lessonId, input) => {
+      store.lessons = store.lessons.map((l) =>
+        l.id === lessonId ? { ...l, title: input.title, description: input.description || null } : l,
+      );
+      return latency(undefined);
+    },
   },
 
   students: {
@@ -358,16 +368,14 @@ export const demoBackend: Backend = {
     getMyCourses: () => latency(store.courses.filter((c) => c.id === DEMO_MODULE.courseId)),
     getCurrentModule: (courseId) =>
       latency(courseId === DEMO_MODULE.courseId ? DEMO_MODULE : null),
-    listLessons: (): Promise<Lesson[]> => latency(DEMO_LESSONS),
+    listLessons: (): Promise<Lesson[]> => latency(store.lessons),
     // El modo demo no tiene Storage real: ninguna lección de referencia
     // tiene `mediaKey`, así que esta ruta nunca llega a llamarse en la
     // práctica — se deja implementada por completar el contrato.
     getLessonVideoUrl: () => latency(null),
-    // Fixture único en memoria: no hay varios cursos/módulos entre los que
-    // distinguir, así que los filtros no tienen nada real que acotar aquí.
-    listResources: (): Promise<CourseResource[]> => latency(DEMO_RESOURCES),
     listBadges: (): Promise<Badge[]> => latency(DEMO_BADGES),
     saveWatchedPercent: () => latency(undefined, 0),
+    markLessonViewed: () => latency(undefined, 0),
     // Fixture único en memoria: no hay varios cursos entre los que
     // distinguir, así que `courseId` no tiene nada real que acotar aquí.
     getMyProgress: () =>

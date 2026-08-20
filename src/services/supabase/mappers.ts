@@ -1,5 +1,5 @@
 import { avatarColorFor } from '@/constants/palettes';
-import type { ContentBlock, Course, Lesson, Module, StudentSummary } from '@/types';
+import type { Course, Lesson, Module, StudentSummary } from '@/types';
 import type { Database } from '@/types';
 
 type Row<T extends keyof Database['public']['Tables']> =
@@ -36,20 +36,6 @@ export function toModule(row: Row<'modules'>): Module {
   };
 }
 
-export function toContentBlock(row: Row<'content_blocks'>): ContentBlock {
-  return {
-    id: row.id,
-    moduleId: row.module_id,
-    type: row.type,
-    title: row.title,
-    meta: row.meta,
-    position: row.position,
-    mediaKey: row.media_key,
-    uploadedBy: row.uploaded_by,
-    createdAt: row.created_at,
-  };
-}
-
 export function toLesson(
   row: Row<'lessons'>,
   progress: { watchedPercent: number; completed: boolean } | undefined,
@@ -76,13 +62,16 @@ export function toLesson(
     id: row.id,
     moduleId: row.module_id,
     order: row.position,
+    type: row.type,
     title: row.title,
+    meta: row.meta,
     duration,
     durationSeconds,
     state,
     watchedPercent: Math.round(progress?.watchedPercent ?? 0),
     mediaKey: row.media_key,
     description: row.description,
+    uploadedBy: row.uploaded_by,
   };
 }
 
