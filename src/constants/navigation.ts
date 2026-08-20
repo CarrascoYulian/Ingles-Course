@@ -1,6 +1,7 @@
 import {
   BarChart3,
   BookOpen,
+  ClipboardList,
   LayoutGrid,
   Mail,
   PlaySquare,
@@ -47,12 +48,19 @@ export const ADMIN_NAV: readonly NavItem[] = [
     shortLabel: 'Reportes',
     icon: BarChart3,
   },
+  {
+    href: ROUTES.admin.tareas,
+    label: 'Tareas',
+    shortLabel: 'Tareas',
+    icon: ClipboardList,
+  },
 ] as const;
 
 /** Plataforma del alumno. */
 export const STUDENT_NAV: readonly NavItem[] = [
   { href: ROUTES.student.curso, label: 'Mi curso', shortLabel: 'Mi curso', icon: PlaySquare },
   { href: ROUTES.practice.root, label: 'BerthoGo', shortLabel: 'BerthoGo', icon: Star },
+  { href: ROUTES.student.tareas, label: 'Tareas', shortLabel: 'Tareas', icon: ClipboardList },
   { href: ROUTES.student.logros, label: 'Logros', shortLabel: 'Logros', icon: Trophy },
   { href: ROUTES.student.mensajes, label: 'Mensajes', shortLabel: 'Mensajes', icon: Mail },
 ] as const;
@@ -64,4 +72,5 @@ export const ADMIN_PAGE_META: Record<string, { title: string; action?: string }>
   [ROUTES.admin.contenido]: { title: 'Constructor de contenido' },
   [ROUTES.admin.estudiantes]: { title: 'Estudiantes', action: 'Nuevo estudiante' },
   [ROUTES.admin.reportes]: { title: 'Reportes', action: 'Exportar CSV' },
+  [ROUTES.admin.tareas]: { title: 'Tareas' },
 };

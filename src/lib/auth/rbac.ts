@@ -22,6 +22,9 @@ export const PERMISSIONS = {
   'report:export': ['admin'],
   'practice:play': ['student', 'admin', 'instructor'],
   'quiz:take': ['student'],
+  'assignment:edit': ['admin', 'instructor'],
+  'assignment:submit': ['student'],
+  'assignment:grade': ['admin', 'instructor'],
 } as const satisfies Record<string, readonly UserRole[]>;
 
 export type Permission = keyof typeof PERMISSIONS;

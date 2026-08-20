@@ -1,9 +1,10 @@
 import { inferBlockType } from '@/features/content/infer-block-type';
+import { canStudentDelete, canStudentSubmit } from '@/features/assignments/submission-rules';
 import { isStaff } from '@/lib/auth/rbac';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { DEMO_QUESTION } from '../demo/data';
-import type { AttachUploadInput, Backend } from '../ports';
-import { toCourse, toLesson, toModule, toStudentSummary } from './mappers';
+import type { AttachUploadInput, Backend, CreateAssignmentInput } from '../ports';
+import { toAssignment, toAssignmentSubmission, toCourse, toLesson, toModule, toStudentSummary } from './mappers';
 import type { Course, PracticeSession, ReportRange, UserRole } from '@/types';
 import type { Database } from '@/types';
 
@@ -1282,6 +1283,84 @@ export const supabaseBackend: Backend = {
         );
       if (error) throw new Error(error.message);
     },
+
+    async listMyAssignments(courseId) {
+      const modules = unwrap(
+        await db().from('modules').select('id').eq('course_id', courseId),
+      );
+      if (modules.length === 0) return [];
+
+      const rows = unwrap<Row<'assignments'>[]>(
+        await db()
+          .from('assignments')
+          .select('*')
+          .in('module_id', modules.map((m) => m.id))
+          .order('due_at'),
+      );
+      return rows.map(toAssignment);
+    },
+
+    async getMySubmission(assignmentId) {
+      const {
+        data: { user },
+      } = await db().auth.getUser();
+      if (!user) return null;
+
+      const { data: row, error } = await db()
+        .from('assignment_submissions')
+        .select('*')
+        .eq('assignment_id', assignmentId)
+        .eq('student_id', user.id)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      return row ? toAssignmentSubmission(row) : null;
+    },
+
+    async submitAssignment(assignmentId, input) {
+      const {
+        data: { user },
+      } = await db().auth.getUser();
+      if (!user) throw new Error('No autenticado');
+
+      // Chequeo previo por un mensaje claro — RLS igual lo rechazaría, pero
+      // con un error genérico de Postgres en vez de este texto.
+      const assignment = unwrap<Pick<Row<'assignments'>, 'due_at'>>(
+        await db().from('assignments').select('due_at').eq('id', assignmentId).single(),
+      );
+      if (!canStudentSubmit({ dueAt: assignment.due_at, gradedAt: null }, new Date())) {
+        throw new Error('La fecha límite de esta tarea ya venció');
+      }
+
+      const row = unwrap<Row<'assignment_submissions'>>(
+        await db()
+          .from('assignment_submissions')
+          .insert({
+            assignment_id: assignmentId,
+            student_id: user.id,
+            kind: input.kind,
+            media_key: input.mediaKey,
+            file_name: input.fileName,
+          })
+          .select('*')
+          .single(),
+      );
+      return toAssignmentSubmission(row);
+    },
+
+    async deleteMySubmission(submissionId) {
+      const submission = unwrap<Row<'assignment_submissions'>>(
+        await db().from('assignment_submissions').select('*').eq('id', submissionId).single(),
+      );
+      const assignment = unwrap<Pick<Row<'assignments'>, 'due_at'>>(
+        await db().from('assignments').select('due_at').eq('id', submission.assignment_id).single(),
+      );
+      if (!canStudentDelete({ dueAt: assignment.due_at, gradedAt: submission.graded_at }, new Date())) {
+        throw new Error('Esta entrega ya no se puede borrar (venció o fue calificada)');
+      }
+
+      const { error } = await db().from('assignment_submissions').delete().eq('id', submissionId);
+      if (error) throw new Error(error.message);
+    },
   },
 
   practice: {
@@ -1426,6 +1505,104 @@ export const supabaseBackend: Backend = {
     async removeQuiz(moduleId) {
       const { error } = await db().from('quizzes').delete().eq('module_id', moduleId);
       if (error) throw new Error(error.message);
+    },
+  },
+
+  assignments: {
+    async listAssignments(moduleId) {
+      const rows = unwrap<Row<'assignments'>[]>(
+        await db().from('assignments').select('*').eq('module_id', moduleId).order('due_at'),
+      );
+      return rows.map(toAssignment);
+    },
+
+    async createAssignment(input: CreateAssignmentInput) {
+      const {
+        data: { user },
+      } = await db().auth.getUser();
+      if (!user) throw new Error('No autenticado');
+
+      const row = unwrap<Row<'assignments'>>(
+        await db()
+          .from('assignments')
+          .insert({
+            module_id: input.moduleId,
+            title: input.title,
+            instructions: input.instructions,
+            due_at: input.dueAt,
+            media_key: input.attachment?.mediaKey ?? null,
+            file_name: input.attachment?.fileName ?? null,
+            created_by: user.id,
+          })
+          .select('*')
+          .single(),
+      );
+      return toAssignment(row);
+    },
+
+    async updateAssignment(id, input) {
+      const row = unwrap<Row<'assignments'>>(
+        await db()
+          .from('assignments')
+          .update({
+            title: input.title,
+            instructions: input.instructions,
+            due_at: input.dueAt,
+            ...(input.attachment
+              ? { media_key: input.attachment.mediaKey, file_name: input.attachment.fileName }
+              : {}),
+          })
+          .eq('id', id)
+          .select('*')
+          .single(),
+      );
+      return toAssignment(row);
+    },
+
+    async removeAssignment(id) {
+      const { error } = await db().from('assignments').delete().eq('id', id);
+      if (error) throw new Error(error.message);
+    },
+
+    async listSubmissionsForAssignment(assignmentId) {
+      const rows = unwrap<Row<'assignment_submissions'>[]>(
+        await db()
+          .from('assignment_submissions')
+          .select('*')
+          .eq('assignment_id', assignmentId)
+          .order('submitted_at', { ascending: false }),
+      );
+      if (rows.length === 0) return [];
+
+      const studentIds = [...new Set(rows.map((r) => r.student_id))];
+      const profiles = unwrap<Pick<Row<'profiles'>, 'id' | 'full_name'>[]>(
+        await db().from('profiles').select('id, full_name').in('id', studentIds),
+      );
+      const nameById = new Map(profiles.map((p) => [p.id, p.full_name]));
+
+      return rows.map((row) => toAssignmentSubmission(row, nameById.get(row.student_id)));
+    },
+
+    async gradeSubmission(submissionId, grade, feedback) {
+      const {
+        data: { user },
+      } = await db().auth.getUser();
+      if (!user) throw new Error('No autenticado');
+
+      const row = unwrap<Row<'assignment_submissions'>>(
+        await db()
+          .from('assignment_submissions')
+          .update({
+            grade,
+            feedback: feedback || null,
+            graded_at: new Date().toISOString(),
+            graded_by: user.id,
+          })
+          .eq('id', submissionId)
+          .select('*')
+          .single(),
+      );
+      return toAssignmentSubmission(row);
     },
   },
 };

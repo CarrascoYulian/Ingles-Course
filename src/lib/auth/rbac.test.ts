@@ -43,6 +43,24 @@ describe('can', () => {
     expect(can('admin', 'quiz:take')).toBe(false);
     expect(can('instructor', 'quiz:take')).toBe(false);
   });
+
+  it('sólo el staff crea/edita tareas — el alumno no', () => {
+    expect(can('admin', 'assignment:edit')).toBe(true);
+    expect(can('instructor', 'assignment:edit')).toBe(true);
+    expect(can('student', 'assignment:edit')).toBe(false);
+  });
+
+  it('sólo el alumno entrega una tarea', () => {
+    expect(can('student', 'assignment:submit')).toBe(true);
+    expect(can('admin', 'assignment:submit')).toBe(false);
+    expect(can('instructor', 'assignment:submit')).toBe(false);
+  });
+
+  it('sólo el staff califica una tarea', () => {
+    expect(can('admin', 'assignment:grade')).toBe(true);
+    expect(can('instructor', 'assignment:grade')).toBe(true);
+    expect(can('student', 'assignment:grade')).toBe(false);
+  });
 });
 
 describe('isStaff', () => {

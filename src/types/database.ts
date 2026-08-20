@@ -35,6 +35,121 @@ export type Database = {
         }
         Relationships: []
       }
+      assignment_submissions: {
+        Row: {
+          assignment_id: string
+          feedback: string | null
+          file_name: string
+          grade: number | null
+          graded_at: string | null
+          graded_by: string | null
+          id: string
+          kind: string
+          media_key: string
+          student_id: string
+          submitted_at: string
+        }
+        Insert: {
+          assignment_id: string
+          feedback?: string | null
+          file_name: string
+          grade?: number | null
+          graded_at?: string | null
+          graded_by?: string | null
+          id?: string
+          kind: string
+          media_key: string
+          student_id: string
+          submitted_at?: string
+        }
+        Update: {
+          assignment_id?: string
+          feedback?: string | null
+          file_name?: string
+          grade?: number | null
+          graded_at?: string | null
+          graded_by?: string | null
+          id?: string
+          kind?: string
+          media_key?: string
+          student_id?: string
+          submitted_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assignment_submissions_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assignment_submissions_graded_by_fkey"
+            columns: ["graded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assignment_submissions_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assignments: {
+        Row: {
+          created_at: string
+          created_by: string
+          due_at: string
+          file_name: string | null
+          id: string
+          instructions: string
+          media_key: string | null
+          module_id: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          due_at: string
+          file_name?: string | null
+          id?: string
+          instructions?: string
+          media_key?: string | null
+          module_id: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          due_at?: string
+          file_name?: string | null
+          id?: string
+          instructions?: string
+          media_key?: string | null
+          module_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assignments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assignments_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       badges: {
         Row: {
           id: string
@@ -1029,7 +1144,7 @@ export type Database = {
 
 type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+type DefaultSchema = DatabaseWithoutInternals["public"]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends

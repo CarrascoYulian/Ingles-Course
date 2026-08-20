@@ -8,6 +8,8 @@
 
 import type {
   ActivityEvent,
+  Assignment,
+  AssignmentSubmission,
   Badge,
   BlockType,
   CefrLevel,
@@ -230,6 +232,17 @@ export interface LearningPort {
   getMyCourseRating(courseId: string): Promise<CourseRating | null>;
   /** Crea o actualiza (una calificación por alumno por curso). */
   submitCourseRating(courseId: string, stars: number, review: string): Promise<void>;
+  /** Tareas de todos los módulos a los que el alumno tiene acceso en ese curso. */
+  listMyAssignments(courseId: string): Promise<Assignment[]>;
+  /** `null` = el alumno autenticado todavía no entregó esa tarea. */
+  getMySubmission(assignmentId: string): Promise<AssignmentSubmission | null>;
+  /** El archivo ya debe haber pasado por `uploadFile()`/`/api/uploads` antes de llamar esto. */
+  submitAssignment(
+    assignmentId: string,
+    input: { kind: 'file' | 'audio'; mediaKey: string; fileName: string },
+  ): Promise<AssignmentSubmission>;
+  /** Borra la propia entrega para poder resubir — rechazado si ya venció o fue calificada. */
+  deleteMySubmission(submissionId: string): Promise<void>;
 }
 
 export interface QuizPort {
@@ -239,6 +252,34 @@ export interface QuizPort {
   saveQuizDraft(moduleId: string, draft: QuizDraft): Promise<void>;
   /** Borra el quiz del módulo entero, con sus preguntas, opciones e intentos. */
   removeQuiz(moduleId: string): Promise<void>;
+}
+
+export interface CreateAssignmentInput {
+  moduleId: string;
+  title: string;
+  instructions: string;
+  dueAt: string;
+  attachment?: { mediaKey: string; fileName: string; contentType: string };
+}
+
+/**
+ * Autoría docente — análogo a `QuizPort`, separado de `LearningPort` por la
+ * misma razón: acá el docente ve las entregas de TODOS los alumnos, algo
+ * que el propio `LearningPort` (lado alumno) nunca expone.
+ */
+export interface AssignmentPort {
+  listAssignments(moduleId: string): Promise<Assignment[]>;
+  createAssignment(input: CreateAssignmentInput): Promise<Assignment>;
+  updateAssignment(id: string, input: Omit<CreateAssignmentInput, 'moduleId'>): Promise<Assignment>;
+  /** Borra la tarea y, en cascada, todas sus entregas. */
+  removeAssignment(id: string): Promise<void>;
+  /**
+   * Tabla por alumno de la vista docente: un alumno por fila, con su
+   * entrega si existe (los que no entregaron también aparecen, para poder
+   * marcarlos "pendiente"/"vencido").
+   */
+  listSubmissionsForAssignment(assignmentId: string): Promise<AssignmentSubmission[]>;
+  gradeSubmission(submissionId: string, grade: number, feedback: string): Promise<AssignmentSubmission>;
 }
 
 export interface PracticePort {
@@ -263,4 +304,5 @@ export interface Backend {
   practice: PracticePort;
   storage: StoragePort;
   quiz: QuizPort;
+  assignments: AssignmentPort;
 }

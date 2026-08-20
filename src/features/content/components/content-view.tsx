@@ -14,6 +14,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
+import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -173,7 +174,15 @@ export function ContentView() {
   // técnicos no puede hacer eso, así que ahora hay un formulario real aquí.
   if (!activeModule) {
     return (
-      <div className="px-5 py-8 lg:px-[30px] lg:py-12">
+      <div className="flex flex-col gap-2.5 pt-4 lg:pt-6">
+        <Link
+          href={ROUTES.admin.cursos}
+          className="mx-5 flex w-fit items-center gap-1.5 rounded-full px-3 py-1.5 text-tiny font-bold text-fg-dim transition-colors hover:bg-surface-sunken hover:text-fg lg:mx-[30px]"
+        >
+          <ArrowLeft aria-hidden size={14} strokeWidth={2.4} />
+          Cursos y módulos
+        </Link>
+        <div className="px-5 pb-8 lg:px-[30px] lg:pb-12">
         <EmptyState
           title="Todavía no existe ningún módulo"
           description={`Crea el primer módulo de “${course?.name ?? 'este curso'}” para poder empezar a añadir contenido.`}
@@ -194,6 +203,7 @@ export function ContentView() {
             })
           }
         />
+        </div>
       </div>
     );
   }
@@ -208,14 +218,23 @@ export function ContentView() {
   const hasModuleRail = Boolean(modules && modules.length > 1);
 
   return (
-    <div
-      className={cn(
-        'grid items-start gap-4 px-5 py-4 lg:gap-[18px] lg:px-[30px] lg:py-6',
-        hasModuleRail
-          ? 'lg:grid-cols-[var(--spacing-rail)_1fr_300px]'
-          : 'lg:grid-cols-[1fr_300px]',
-      )}
-    >
+    <div className="flex flex-col gap-2.5 pt-4 lg:pt-6">
+      <Link
+        href={ROUTES.admin.cursos}
+        className="mx-5 flex w-fit items-center gap-1.5 rounded-full px-3 py-1.5 text-tiny font-bold text-fg-dim transition-colors hover:bg-surface-sunken hover:text-fg lg:mx-[30px]"
+      >
+        <ArrowLeft aria-hidden size={14} strokeWidth={2.4} />
+        Cursos y módulos
+      </Link>
+
+      <div
+        className={cn(
+          'grid items-start gap-4 px-5 pb-4 lg:gap-[18px] lg:px-[30px] lg:pb-6',
+          hasModuleRail
+            ? 'lg:grid-cols-[var(--spacing-rail)_1fr_300px]'
+            : 'lg:grid-cols-[1fr_300px]',
+        )}
+      >
       {hasModuleRail && (
         <div className="hidden lg:block">
           <ModuleList
@@ -419,6 +438,7 @@ export function ContentView() {
           })
         }
       />
+      </div>
     </div>
   );
 }

@@ -99,6 +99,8 @@ export async function createUploadTicket(params: {
   moduleId: string;
   fileName: string;
   contentType: string;
+  /** Presente sólo cuando quien sube es un alumno entregando una tarea. */
+  studentId?: string;
 }): Promise<UploadTicket | null> {
   const r2 = getR2Client();
   if (!r2) return null;
@@ -145,18 +147,27 @@ export async function mediaExists(mediaKey: string): Promise<boolean> {
 /**
  * Ruta jerárquica y estable: permite borrar un curso entero por prefijo y
  * hace legible el bucket desde el dashboard de Cloudflare.
+ *
+ * Cuando `studentId` está presente (entrega de tarea), el key queda
+ * namespaced bajo `entregas/{studentId}/` — dos alumnos nunca pueden
+ * pisarse el mismo archivo aunque suban el mismo nombre a la vez, y el
+ * prefijo permite en el futuro restringir/limpiar por dueño.
  */
 function buildMediaKey({
   courseId,
   moduleId,
   fileName,
+  studentId,
 }: {
   courseId: string;
   moduleId: string;
   fileName: string;
+  studentId?: string;
 }): string {
   const safeName = normalizeFileName(fileName);
-  return `cursos/${courseId}/modulos/${moduleId}/${crypto.randomUUID()}-${safeName}`;
+  const base = `cursos/${courseId}/modulos/${moduleId}`;
+  const prefix = studentId ? `${base}/entregas/${studentId}` : base;
+  return `${prefix}/${crypto.randomUUID()}-${safeName}`;
 }
 
 /** Quita acentos y caracteres no seguros para una ruta de objeto. */

@@ -1,7 +1,9 @@
 import { inferBlockType } from '@/features/content/infer-block-type';
-import type { AttachUploadInput, Backend } from '../ports';
+import { canStudentDelete, canStudentSubmit } from '@/features/assignments/submission-rules';
+import type { AttachUploadInput, Backend, CreateAssignmentInput } from '../ports';
 import {
   DEMO_ACTIVITY,
+  DEMO_ASSIGNMENT,
   DEMO_BADGES,
   DEMO_COURSES,
   DEMO_LEADERBOARD,
@@ -18,6 +20,8 @@ import {
   DEMO_TEACHER,
 } from './data';
 import type {
+  Assignment,
+  AssignmentSubmission,
   Badge,
   BlockType,
   Course,
@@ -44,6 +48,8 @@ const demoRatings = new Map<string, CourseRating>();
 // `null` = el quiz de referencia se borró desde el panel; `undefined` nunca
 // se usa como estado real, sólo como valor inicial antes de leerlo.
 let demoQuizDraft: QuizDraft | null = structuredClone(DEMO_QUIZ_DRAFT);
+let demoAssignments: Assignment[] = [structuredClone(DEMO_ASSIGNMENT)];
+let demoSubmissions: AssignmentSubmission[] = [];
 
 /**
  * El propio `Backend` no expone un método de "enviar intento": la
@@ -506,6 +512,52 @@ export const demoBackend: Backend = {
       demoRatings.set(courseId, { stars, review: review || null });
       return latency(undefined);
     },
+    listMyAssignments: (courseId: string) =>
+      latency(courseId === DEMO_MODULE.courseId ? structuredClone(demoAssignments) : []),
+    getMySubmission: (assignmentId: string) =>
+      latency(
+        demoSubmissions.find((s) => s.assignmentId === assignmentId && s.studentId === DEMO_STUDENT.id) ??
+          null,
+      ),
+    submitAssignment: (assignmentId: string, input) => {
+      const assignment = demoAssignments.find((a) => a.id === assignmentId);
+      if (!assignment) throw new Error(`Tarea ${assignmentId} no encontrada`);
+      const existing = demoSubmissions.find(
+        (s) => s.assignmentId === assignmentId && s.studentId === DEMO_STUDENT.id,
+      );
+      if (existing) throw new Error('Ya existe una entrega — hay que borrarla antes de resubir');
+      if (!canStudentSubmit({ dueAt: assignment.dueAt, gradedAt: null }, new Date())) {
+        throw new Error('La fecha límite de esta tarea ya venció');
+      }
+      const submission: AssignmentSubmission = {
+        id: crypto.randomUUID(),
+        assignmentId,
+        studentId: DEMO_STUDENT.id,
+        studentName: DEMO_STUDENT.fullName,
+        kind: input.kind,
+        mediaKey: input.mediaKey,
+        fileName: input.fileName,
+        submittedAt: new Date().toISOString(),
+        grade: null,
+        feedback: null,
+        gradedAt: null,
+      };
+      demoSubmissions = [...demoSubmissions, submission];
+      return latency(submission);
+    },
+    deleteMySubmission: (submissionId: string) => {
+      const submission = demoSubmissions.find((s) => s.id === submissionId);
+      if (!submission) return latency(undefined);
+      const assignment = demoAssignments.find((a) => a.id === submission.assignmentId);
+      if (
+        assignment &&
+        !canStudentDelete({ dueAt: assignment.dueAt, gradedAt: submission.gradedAt }, new Date())
+      ) {
+        throw new Error('Esta entrega ya no se puede borrar (venció o fue calificada)');
+      }
+      demoSubmissions = demoSubmissions.filter((s) => s.id !== submissionId);
+      return latency(undefined);
+    },
   },
 
   practice: {
@@ -556,6 +608,59 @@ export const demoBackend: Backend = {
     removeQuiz: (moduleId: string) => {
       if (moduleId === DEMO_MODULE.id) demoQuizDraft = null;
       return latency(undefined);
+    },
+  },
+
+  assignments: {
+    listAssignments: (moduleId: string) =>
+      latency(demoAssignments.filter((a) => a.moduleId === moduleId)),
+    createAssignment: (input: CreateAssignmentInput) => {
+      const assignment: Assignment = {
+        id: crypto.randomUUID(),
+        moduleId: input.moduleId,
+        title: input.title,
+        instructions: input.instructions,
+        mediaKey: input.attachment?.mediaKey ?? null,
+        fileName: input.attachment?.fileName ?? null,
+        dueAt: input.dueAt,
+        createdAt: new Date().toISOString(),
+      };
+      demoAssignments = [...demoAssignments, assignment];
+      return latency(assignment);
+    },
+    updateAssignment: (id: string, input) => {
+      demoAssignments = demoAssignments.map((a) =>
+        a.id === id
+          ? {
+              ...a,
+              title: input.title,
+              instructions: input.instructions,
+              dueAt: input.dueAt,
+              mediaKey: input.attachment?.mediaKey ?? a.mediaKey,
+              fileName: input.attachment?.fileName ?? a.fileName,
+            }
+          : a,
+      );
+      const updated = demoAssignments.find((a) => a.id === id);
+      if (!updated) throw new Error(`Tarea ${id} no encontrada`);
+      return latency(updated);
+    },
+    removeAssignment: (id: string) => {
+      demoAssignments = demoAssignments.filter((a) => a.id !== id);
+      demoSubmissions = demoSubmissions.filter((s) => s.assignmentId !== id);
+      return latency(undefined);
+    },
+    listSubmissionsForAssignment: (assignmentId: string) =>
+      latency(demoSubmissions.filter((s) => s.assignmentId === assignmentId)),
+    gradeSubmission: (submissionId: string, grade: number, feedback: string) => {
+      demoSubmissions = demoSubmissions.map((s) =>
+        s.id === submissionId
+          ? { ...s, grade, feedback, gradedAt: new Date().toISOString() }
+          : s,
+      );
+      const graded = demoSubmissions.find((s) => s.id === submissionId);
+      if (!graded) throw new Error(`Entrega ${submissionId} no encontrada`);
+      return latency(graded);
     },
   },
 };

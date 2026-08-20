@@ -1,5 +1,5 @@
 import { avatarColorFor } from '@/constants/palettes';
-import type { Course, Lesson, Module, StudentSummary } from '@/types';
+import type { Assignment, AssignmentSubmission, Course, Lesson, Module, StudentSummary } from '@/types';
 import type { Database } from '@/types';
 
 type Row<T extends keyof Database['public']['Tables']> =
@@ -72,6 +72,39 @@ export function toLesson(
     mediaKey: row.media_key,
     description: row.description,
     uploadedBy: row.uploaded_by,
+  };
+}
+
+export function toAssignment(row: Row<'assignments'>): Assignment {
+  return {
+    id: row.id,
+    moduleId: row.module_id,
+    title: row.title,
+    instructions: row.instructions,
+    mediaKey: row.media_key,
+    fileName: row.file_name,
+    dueAt: row.due_at,
+    createdAt: row.created_at,
+  };
+}
+
+/** `studentName` sólo se pasa cuando el llamante ya resolvió el perfil (vista docente). */
+export function toAssignmentSubmission(
+  row: Row<'assignment_submissions'>,
+  studentName?: string,
+): AssignmentSubmission {
+  return {
+    id: row.id,
+    assignmentId: row.assignment_id,
+    studentId: row.student_id,
+    studentName,
+    kind: row.kind as AssignmentSubmission['kind'],
+    mediaKey: row.media_key,
+    fileName: row.file_name,
+    submittedAt: row.submitted_at,
+    grade: row.grade,
+    feedback: row.feedback,
+    gradedAt: row.graded_at,
   };
 }
 

@@ -144,6 +144,43 @@ export interface QuizDraft {
   questions: QuizQuestionDraft[];
 }
 
+/** Estado visible de una tarea, combinando fecha límite + calificación. */
+export type AssignmentStatus = 'pending' | 'submitted' | 'graded' | 'overdue';
+
+/**
+ * La consigna de una tarea — separada de `Lesson`: no participa de la
+ * secuencia de contenido del módulo, vive en su propia sección "Tareas".
+ */
+export interface Assignment {
+  id: string;
+  moduleId: string;
+  title: string;
+  instructions: string;
+  /** Adjunto opcional del docente (ej. una plantilla o material de referencia). */
+  mediaKey: string | null;
+  fileName: string | null;
+  dueAt: string;
+  createdAt: string;
+}
+
+/**
+ * Entrega de un alumno. `studentName` sólo viene poblado en las lecturas del
+ * docente (tabla por alumno); el propio alumno ya sabe quién es.
+ */
+export interface AssignmentSubmission {
+  id: string;
+  assignmentId: string;
+  studentId: string;
+  studentName?: string;
+  kind: 'file' | 'audio';
+  mediaKey: string;
+  fileName: string;
+  submittedAt: string;
+  grade: number | null;
+  feedback: string | null;
+  gradedAt: string | null;
+}
+
 /** Tema del foro DEL CURSO — separado de `LessonComment`, que es por lección. */
 export interface CourseThread {
   id: string;

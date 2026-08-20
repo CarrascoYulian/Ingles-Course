@@ -22,4 +22,8 @@ export const QUERY_KEYS = {
   badges: ['badges'] as const,
   practice: ['practice'] as const,
   storageUsage: ['storage-usage'] as const,
+  assignments: (moduleId: string) => ['assignments', moduleId] as const,
+  assignmentSubmissions: (assignmentId: string) => ['assignment-submissions', assignmentId] as const,
+  myAssignments: (courseId: string) => ['my-assignments', courseId] as const,
+  mySubmission: (assignmentId: string) => ['my-submission', assignmentId] as const,
 } as const;

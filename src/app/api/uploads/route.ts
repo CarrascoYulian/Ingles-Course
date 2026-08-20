@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { badRequest, guard, isDenied } from '../_lib/guard';
+import { can } from '@/lib/auth/rbac';
 import { createUploadTicket } from '@/lib/storage';
 
 export const runtime = 'nodejs';
@@ -28,7 +29,7 @@ const ALLOWED_EXACT = [
  * hay límite de tamaño de body, ni memoria retenida, ni coste de salida.
  */
 export async function POST(request: Request) {
-  const result = await guard('content:edit');
+  const result = await guard(['content:edit', 'assignment:submit']);
   if (isDenied(result)) return result.response;
 
   const parsed = requestSchema.safeParse(await request.json().catch(() => null));
@@ -41,7 +42,13 @@ export async function POST(request: Request) {
     ALLOWED_EXACT.includes(contentType);
   if (!allowed) return badRequest(`Tipo de archivo no permitido: ${contentType}`);
 
-  const ticket = await createUploadTicket({ courseId, moduleId, fileName, contentType });
+  // El namespacing por alumno sólo se aplica cuando quien sube es un
+  // estudiante entregando una tarea — nunca se confía en un `studentId` del
+  // body, siempre es el perfil ya autenticado por `guard()`.
+  const isStudentSubmission = !can(result.profile.role, 'content:edit');
+  const studentId = isStudentSubmission ? result.profile.id : undefined;
+
+  const ticket = await createUploadTicket({ courseId, moduleId, fileName, contentType, studentId });
 
   if (!ticket) {
     return NextResponse.json(

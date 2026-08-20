@@ -9,6 +9,7 @@
 
 import type {
   ActivityEvent,
+  Assignment,
   Badge,
   Course,
   DashboardMetrics,
@@ -117,6 +118,18 @@ export const DEMO_QUIZ_DRAFT: QuizDraft = {
   ],
 };
 
+/** Única tarea de referencia en modo demo — ligada a `DEMO_MODULE`. */
+export const DEMO_ASSIGNMENT: Assignment = {
+  id: 'assignment-mod-4',
+  moduleId: DEMO_MODULE.id,
+  title: 'Redacción: un día en Present Perfect',
+  instructions:
+    'Escribe un párrafo de al menos 8 oraciones contando qué has hecho esta semana, usando Present Perfect. Sube el archivo o graba un audio leyéndolo en voz alta.',
+  mediaKey: null,
+  fileName: null,
+  dueAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+  createdAt: new Date().toISOString(),
+};
 
 export const DEMO_STUDENTS: StudentSummary[] = [
   {
