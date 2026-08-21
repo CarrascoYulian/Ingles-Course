@@ -259,7 +259,12 @@ export interface CreateAssignmentInput {
   title: string;
   instructions: string;
   dueAt: string;
-  attachment?: { mediaKey: string; fileName: string; contentType: string };
+  /**
+   * `undefined` = no tocar el adjunto existente (sólo relevante en
+   * `updateAssignment`; en `createAssignment` equivale a "sin adjunto").
+   * `null` = quitar explícitamente el adjunto. Objeto = reemplazarlo.
+   */
+  attachment?: { mediaKey: string; fileName: string; contentType: string } | null;
 }
 
 /**
@@ -274,11 +279,15 @@ export interface AssignmentPort {
   /** Borra la tarea y, en cascada, todas sus entregas. */
   removeAssignment(id: string): Promise<void>;
   /**
-   * Tabla por alumno de la vista docente: un alumno por fila, con su
-   * entrega si existe (los que no entregaron también aparecen, para poder
-   * marcarlos "pendiente"/"vencido").
+   * TODAS las entregas de TODAS las tareas de un módulo, en una sola
+   * consulta — la vista docente filtra client-side por `assignmentId` para
+   * mostrar tanto los contadores de cada fila (siempre correctos, no sólo
+   * los de la tarea expandida) como la tabla por alumno al expandir una.
+   * Antes se pedía por tarea sólo bajo demanda (`listSubmissionsForAssignment`),
+   * así que toda fila colapsada mostraba "0 entregas" aunque tuviera
+   * entregas reales.
    */
-  listSubmissionsForAssignment(assignmentId: string): Promise<AssignmentSubmission[]>;
+  listSubmissionsForModule(moduleId: string): Promise<AssignmentSubmission[]>;
   gradeSubmission(submissionId: string, grade: number, feedback: string): Promise<AssignmentSubmission>;
 }
 

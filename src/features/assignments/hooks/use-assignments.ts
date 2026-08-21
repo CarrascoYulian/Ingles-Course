@@ -53,23 +53,28 @@ export function useRemoveAssignment(moduleId: string) {
   });
 }
 
-/** Autoría docente — tabla por alumno de una tarea concreta. */
-export function useAssignmentSubmissions(assignmentId: string) {
+/**
+ * Autoría docente — TODAS las entregas de TODAS las tareas del módulo, en
+ * una sola consulta. La vista filtra client-side por `assignmentId` para
+ * que los contadores de cada fila sean siempre correctos, no sólo los de
+ * la tarea que esté expandida.
+ */
+export function useModuleSubmissions(moduleId: string) {
   return useQuery({
-    queryKey: QUERY_KEYS.assignmentSubmissions(assignmentId),
-    queryFn: () => backend.assignments.listSubmissionsForAssignment(assignmentId),
-    enabled: assignmentId !== '',
+    queryKey: QUERY_KEYS.moduleSubmissions(moduleId),
+    queryFn: () => backend.assignments.listSubmissionsForModule(moduleId),
+    enabled: moduleId !== '',
   });
 }
 
-export function useGradeSubmission(assignmentId: string) {
+export function useGradeSubmission(moduleId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ submissionId, grade, feedback }: { submissionId: string; grade: number; feedback: string }) =>
       backend.assignments.gradeSubmission(submissionId, grade, feedback),
     onSuccess: () => {
       toast.success('Calificación guardada');
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.assignmentSubmissions(assignmentId) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.moduleSubmissions(moduleId) });
     },
     onError: () => toast.error('No se pudo guardar la calificación'),
   });

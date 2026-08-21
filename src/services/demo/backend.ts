@@ -629,6 +629,11 @@ export const demoBackend: Backend = {
       return latency(assignment);
     },
     updateAssignment: (id: string, input) => {
+      // `attachment === undefined` = no tocar el adjunto existente;
+      // `null` = quitarlo explícitamente; objeto = reemplazarlo. Antes
+      // `input.attachment?.mediaKey ?? a.mediaKey` no podía distinguir
+      // "no tocar" de "quitar" — al hacer clic en "Quitar" el adjunto viejo
+      // quedaba intacto.
       demoAssignments = demoAssignments.map((a) =>
         a.id === id
           ? {
@@ -636,8 +641,9 @@ export const demoBackend: Backend = {
               title: input.title,
               instructions: input.instructions,
               dueAt: input.dueAt,
-              mediaKey: input.attachment?.mediaKey ?? a.mediaKey,
-              fileName: input.attachment?.fileName ?? a.fileName,
+              ...(input.attachment !== undefined
+                ? { mediaKey: input.attachment?.mediaKey ?? null, fileName: input.attachment?.fileName ?? null }
+                : {}),
             }
           : a,
       );
@@ -650,8 +656,12 @@ export const demoBackend: Backend = {
       demoSubmissions = demoSubmissions.filter((s) => s.assignmentId !== id);
       return latency(undefined);
     },
-    listSubmissionsForAssignment: (assignmentId: string) =>
-      latency(demoSubmissions.filter((s) => s.assignmentId === assignmentId)),
+    listSubmissionsForModule: (moduleId: string) => {
+      const assignmentIds = new Set(
+        demoAssignments.filter((a) => a.moduleId === moduleId).map((a) => a.id),
+      );
+      return latency(demoSubmissions.filter((s) => assignmentIds.has(s.assignmentId)));
+    },
     gradeSubmission: (submissionId: string, grade: number, feedback: string) => {
       demoSubmissions = demoSubmissions.map((s) =>
         s.id === submissionId

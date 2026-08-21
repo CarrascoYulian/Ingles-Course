@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { badRequest, guard, isDenied } from '../_lib/guard';
 import { can } from '@/lib/auth/rbac';
 import { createUploadTicket } from '@/lib/storage';
+import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
 
@@ -47,6 +48,25 @@ export async function POST(request: Request) {
   // body, siempre es el perfil ya autenticado por `guard()`.
   const isStudentSubmission = !can(result.profile.role, 'content:edit');
   const studentId = isStudentSubmission ? result.profile.id : undefined;
+
+  // El docente ya está autorizado por `content:edit` a subir a cualquier
+  // módulo. El alumno NO: sin este chequeo, `courseId`/`moduleId` del body
+  // se confiaban ciegamente y un alumno podía obtener un ticket de subida
+  // firmado para el módulo de otro curso, aunque no tuviera acceso otorgado.
+  if (isStudentSubmission) {
+    const client = await getSupabaseServerClient();
+    if (client) {
+      const { data: access } = await client
+        .from('module_access')
+        .select('id')
+        .eq('student_id', studentId!)
+        .eq('module_id', moduleId)
+        .maybeSingle();
+      if (!access) {
+        return NextResponse.json({ error: 'No tenés acceso a ese módulo' }, { status: 403 });
+      }
+    }
+  }
 
   const ticket = await createUploadTicket({ courseId, moduleId, fileName, contentType, studentId });
 

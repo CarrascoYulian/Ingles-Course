@@ -14,6 +14,8 @@ export const ROUTES = {
     estudiantes: '/admin/estudiantes',
     reportes: '/admin/reportes',
     tareas: '/admin/tareas',
+    /** Tareas de un curso concreto — mismo patrón que `contenidoDeCurso`. */
+    tareasDeCurso: (courseId: string) => `/admin/tareas?courseId=${courseId}`,
   },
 
   student: {

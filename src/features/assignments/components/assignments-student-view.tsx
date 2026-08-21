@@ -45,20 +45,36 @@ export function AssignmentsStudentView() {
   const fileUrlMutation = useMutation({
     mutationFn: (mediaKey: string) => backend.content.getFileUrl(mediaKey),
   });
+  // `fileUrlMutation` es una sola instancia compartida entre el adjunto del
+  // docente y la propia entrega: sin este ref, abrir la tarea A (lenta) y
+  // luego la B antes de que A resuelva podía pisar la URL de B con la de A.
+  const attachmentRequestRef = useRef<string | null>(null);
+  const submissionRequestRef = useRef<string | null>(null);
 
   const openAssignment = (assignment: Assignment) => {
     setSelectedAssignment(assignment);
     setAttachmentUrl(null);
     setSubmissionUrl(null);
+    attachmentRequestRef.current = assignment.id;
     if (assignment.mediaKey) {
-      fileUrlMutation.mutate(assignment.mediaKey, { onSuccess: (url) => setAttachmentUrl(url) });
+      fileUrlMutation.mutate(assignment.mediaKey, {
+        onSuccess: (url) => {
+          if (attachmentRequestRef.current === assignment.id) setAttachmentUrl(url);
+        },
+      });
     }
   };
 
   useEffect(() => {
     if (submission) {
-      fileUrlMutation.mutate(submission.mediaKey, { onSuccess: (url) => setSubmissionUrl(url) });
+      submissionRequestRef.current = submission.id;
+      fileUrlMutation.mutate(submission.mediaKey, {
+        onSuccess: (url) => {
+          if (submissionRequestRef.current === submission.id) setSubmissionUrl(url);
+        },
+      });
     } else {
+      submissionRequestRef.current = null;
       setSubmissionUrl(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

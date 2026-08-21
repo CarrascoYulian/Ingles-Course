@@ -23,7 +23,7 @@ export const QUERY_KEYS = {
   practice: ['practice'] as const,
   storageUsage: ['storage-usage'] as const,
   assignments: (moduleId: string) => ['assignments', moduleId] as const,
-  assignmentSubmissions: (assignmentId: string) => ['assignment-submissions', assignmentId] as const,
+  moduleSubmissions: (moduleId: string) => ['module-submissions', moduleId] as const,
   myAssignments: (courseId: string) => ['my-assignments', courseId] as const,
   mySubmission: (assignmentId: string) => ['my-submission', assignmentId] as const,
 } as const;

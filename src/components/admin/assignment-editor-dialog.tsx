@@ -86,7 +86,11 @@ export function AssignmentEditorDialog({
       title,
       instructions,
       dueAt: dueAtIso,
-      attachment: attachment ?? undefined,
+      // Siempre explícito (objeto o `null`, nunca `undefined`): este editor
+      // conoce el estado deseado completo, así que "quitar adjunto" viaja
+      // como `null` — si se mandara `undefined` sería indistinguible de "no
+      // tocar" y el backend dejaría el adjunto viejo intacto.
+      attachment,
     });
   };
 

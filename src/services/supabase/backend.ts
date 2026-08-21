@@ -1541,6 +1541,11 @@ export const supabaseBackend: Backend = {
     },
 
     async updateAssignment(id, input) {
+      // `attachment === undefined` = no tocar el adjunto existente;
+      // `null` = quitarlo explícitamente; objeto = reemplazarlo. Antes
+      // `input.attachment ? {...} : {}` trataba `null` igual que
+      // `undefined` — clic en "Quitar" no persistía, el `media_key` viejo
+      // seguía sirviéndose a los alumnos.
       const row = unwrap<Row<'assignments'>>(
         await db()
           .from('assignments')
@@ -1548,8 +1553,11 @@ export const supabaseBackend: Backend = {
             title: input.title,
             instructions: input.instructions,
             due_at: input.dueAt,
-            ...(input.attachment
-              ? { media_key: input.attachment.mediaKey, file_name: input.attachment.fileName }
+            ...(input.attachment !== undefined
+              ? {
+                  media_key: input.attachment?.mediaKey ?? null,
+                  file_name: input.attachment?.fileName ?? null,
+                }
               : {}),
           })
           .eq('id', id)
@@ -1564,12 +1572,17 @@ export const supabaseBackend: Backend = {
       if (error) throw new Error(error.message);
     },
 
-    async listSubmissionsForAssignment(assignmentId) {
+    async listSubmissionsForModule(moduleId) {
+      const assignments = unwrap<Pick<Row<'assignments'>, 'id'>[]>(
+        await db().from('assignments').select('id').eq('module_id', moduleId),
+      );
+      if (assignments.length === 0) return [];
+
       const rows = unwrap<Row<'assignment_submissions'>[]>(
         await db()
           .from('assignment_submissions')
           .select('*')
-          .eq('assignment_id', assignmentId)
+          .in('assignment_id', assignments.map((a) => a.id))
           .order('submitted_at', { ascending: false }),
       );
       if (rows.length === 0) return [];

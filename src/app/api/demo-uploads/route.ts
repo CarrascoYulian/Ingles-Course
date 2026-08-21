@@ -24,7 +24,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Sólo disponible en modo demo' }, { status: 404 });
   }
 
-  const result = await guard('content:edit');
+  // Mismo par de permisos que `/api/uploads` real: docente sube contenido,
+  // alumno entrega una tarea — antes esta ruta sólo aceptaba `content:edit`
+  // y un alumno de demo no podía probar el flujo de entrega en absoluto.
+  const result = await guard(['content:edit', 'assignment:submit']);
   if (isDenied(result)) return result.response;
 
   const formData = await request.formData().catch(() => null);
