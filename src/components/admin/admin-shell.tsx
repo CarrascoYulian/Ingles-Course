@@ -92,7 +92,7 @@ export function AdminShell({ teacherName, role, children }: AdminShellProps) {
       <div className="flex min-h-dvh bg-surface-muted">
         <AdminSidebar teacherName={teacherName} />
 
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex min-w-0 flex-1 flex-col overflow-x-clip">
           {/* AdminTopbar lee el buscador desde la URL (useSearchParams), lo
               que exige un límite de Suspense — si no, Next fuerza el
               renderizado dinámico de cada página del panel al prerenderizar. */}

@@ -248,7 +248,7 @@ export function ContentView() {
         </div>
       )}
 
-      <div className="flex flex-col gap-2.5">
+      <div className="flex min-w-0 flex-col gap-2.5">
         {hasModuleRail && (
           <ChipRow label="Unidades del curso" className="pb-0.5 lg:hidden">
             {modules!.map((m) => (
@@ -261,7 +261,7 @@ export function ContentView() {
 
         <Card
           radius="md"
-          className="hidden flex-wrap items-center justify-between gap-x-4 gap-y-2 px-[18px] py-3.5 lg:flex"
+          className="hidden min-w-0 flex-wrap items-center justify-between gap-x-4 gap-y-2 px-[18px] py-3.5 lg:flex"
         >
           <div className="min-w-[220px] flex-1">
             <h2 className="truncate text-body-lg font-bold text-fg">{activeModule.title}</h2>
