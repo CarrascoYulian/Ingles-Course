@@ -87,7 +87,7 @@ export function ModuleList({ modules, activeModuleId, onSelect, onCreate }: Modu
         className="mt-1 justify-start gap-1.5 rounded-xl px-2.5 py-2 text-fg-dim"
       >
         <Plus aria-hidden size={15} strokeWidth={2.4} />
-        Nuevo módulo
+        Nueva unidad
       </Button>
     </Card>
   );

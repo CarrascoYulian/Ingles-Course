@@ -33,12 +33,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ mod
   const admin = getSupabaseAdminClient();
   if (!admin) {
     const attempt = scoreAndRecordDemoAttempt(moduleId, parsed.data.answers);
-    if (!attempt) return NextResponse.json({ error: 'Este módulo no tiene evaluación' }, { status: 404 });
+    if (!attempt) return NextResponse.json({ error: 'Esta unidad no tiene evaluación' }, { status: 404 });
     return NextResponse.json(attempt);
   }
 
   const { data: moduleRow } = await admin.from('modules').select('id, course_id').eq('id', moduleId).maybeSingle();
-  if (!moduleRow) return NextResponse.json({ error: 'Módulo no encontrado' }, { status: 404 });
+  if (!moduleRow) return NextResponse.json({ error: 'Unidad no encontrada' }, { status: 404 });
 
   const { data: enrollment } = await admin
     .from('enrollments')
@@ -53,7 +53,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ mod
     .select('id, passing_score')
     .eq('module_id', moduleId)
     .maybeSingle();
-  if (!quiz) return NextResponse.json({ error: 'Este módulo no tiene evaluación' }, { status: 404 });
+  if (!quiz) return NextResponse.json({ error: 'Esta unidad no tiene evaluación' }, { status: 404 });
 
   const { data: questions } = await admin
     .from('quiz_questions')

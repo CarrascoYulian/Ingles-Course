@@ -32,7 +32,7 @@ export const ADMIN_NAV: readonly NavItem[] = [
   },
   {
     href: ROUTES.admin.cursos,
-    label: 'Cursos y módulos',
+    label: 'Cursos y unidades',
     shortLabel: 'Cursos',
     icon: BookOpen,
   },
@@ -48,12 +48,6 @@ export const ADMIN_NAV: readonly NavItem[] = [
     shortLabel: 'Reportes',
     icon: BarChart3,
   },
-  {
-    href: ROUTES.admin.tareas,
-    label: 'Tareas',
-    shortLabel: 'Tareas',
-    icon: ClipboardList,
-  },
 ] as const;
 
 /** Plataforma del alumno. */
@@ -68,9 +62,8 @@ export const STUDENT_NAV: readonly NavItem[] = [
 /** Copys de cabecera del panel docente, indexados por ruta. */
 export const ADMIN_PAGE_META: Record<string, { title: string; action?: string }> = {
   [ROUTES.admin.dashboard]: { title: 'Resumen general', action: 'Nuevo curso' },
-  [ROUTES.admin.cursos]: { title: 'Cursos y módulos', action: 'Nuevo curso' },
+  [ROUTES.admin.cursos]: { title: 'Cursos y unidades', action: 'Nuevo curso' },
   [ROUTES.admin.contenido]: { title: 'Constructor de contenido' },
   [ROUTES.admin.estudiantes]: { title: 'Estudiantes', action: 'Nuevo estudiante' },
   [ROUTES.admin.reportes]: { title: 'Reportes', action: 'Exportar CSV' },
-  [ROUTES.admin.tareas]: { title: 'Tareas' },
 };

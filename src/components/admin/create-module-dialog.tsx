@@ -61,9 +61,9 @@ export function CreateModuleDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent width={460}>
-        <DialogTitle>Crear un módulo</DialogTitle>
+        <DialogTitle>Crear una unidad</DialogTitle>
         <DialogDescription>
-          El módulo se crea vacío; luego podrás añadirle bloques desde este mismo panel.
+          La unidad se crea vacía; luego podrás añadirle bloques desde este mismo panel.
         </DialogDescription>
 
         {!fixedCourseId && courses && courses.length === 0 ? (
@@ -71,7 +71,7 @@ export function CreateModuleDialog({
             <EmptyState
               compact
               title="Primero crea un curso"
-              description="Un módulo siempre pertenece a un curso — crea el curso desde la sección “Cursos” antes de continuar."
+              description="Una unidad siempre pertenece a un curso — crea el curso desde la sección “Cursos” antes de continuar."
             />
           </div>
         ) : (
@@ -107,7 +107,7 @@ export function CreateModuleDialog({
             )}
 
             <Field
-              label="Título del módulo"
+              label="Título de la unidad"
               error={form.formState.errors.title?.message}
               className={fixedCourseId ? 'mt-5' : 'mt-[18px]'}
             >
@@ -126,7 +126,7 @@ export function CreateModuleDialog({
                 Cancelar
               </Button>
               <Button type="submit" size="md" className="font-extrabold" disabled={pending}>
-                {pending ? 'Creando…' : 'Crear módulo'}
+                {pending ? 'Creando…' : 'Crear unidad'}
               </Button>
             </DialogFooter>
           </form>

@@ -93,7 +93,7 @@ export function QuizEditorDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent width={560}>
-        <DialogTitle>Evaluación del módulo</DialogTitle>
+        <DialogTitle>Evaluación de la unidad</DialogTitle>
         <DialogDescription>{moduleTitle}</DialogDescription>
 
         <div className="mt-4 max-h-[55vh] overflow-y-auto pr-1">

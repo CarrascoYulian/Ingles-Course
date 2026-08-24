@@ -1,20 +1,25 @@
 'use client';
 
-import { useState } from 'react';
+import { Search } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import { useAdminHeader } from '@/components/admin/admin-shell';
+import { StudentPerformanceRow } from '@/components/admin/student-performance-row';
 import { BarChart } from '@/components/dashboard/bar-chart';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Chip, ChipRow } from '@/components/ui/chip';
+import { EmptyState } from '@/components/ui/empty-state';
+import { Input } from '@/components/ui/input';
 import { SectionTitle } from '@/components/shared/section-title';
 import { LoadingRegion, Skeleton } from '@/components/ui/skeleton';
-import type { ReportRange } from '@/types';
-import { useReport } from '../hooks/use-analytics';
+import { CEFR_LEVELS, type CefrLevel, type ReportRange } from '@/types';
+import { useReport, useStudentPerformance } from '../hooks/use-analytics';
 
 const RANGES: ReportRange[] = ['7 días', '30 días', 'Trimestre', 'Año'];
 const PERIOD_LABELS = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7'];
+const LEVEL_FILTERS: Array<CefrLevel | 'Todos'> = ['Todos', ...CEFR_LEVELS];
 
 /**
  * Antes esto sólo mostraba un toast de éxito falso — no generaba ningún
@@ -45,6 +50,23 @@ async function exportStudentsCsv(): Promise<void> {
 export function ReportsView() {
   const [range, setRange] = useState<ReportRange>('30 días');
   const { data: report, isPending } = useReport(range);
+
+  // Búsqueda/filtro propios de esta sección — a propósito NO se usa
+  // `useAdminSearch` (esa es la del topbar, sólo wireada para
+  // /admin/estudiantes y /admin/cursos).
+  const [performanceQuery, setPerformanceQuery] = useState('');
+  const [performanceLevel, setPerformanceLevel] = useState<CefrLevel | 'Todos'>('Todos');
+  const [performancePage, setPerformancePage] = useState(1);
+  useEffect(() => setPerformancePage(1), [performanceQuery, performanceLevel]);
+
+  const performance = useStudentPerformance({
+    query: performanceQuery,
+    level: performanceLevel,
+    page: performancePage,
+  });
+  const performanceTotalPages = performance.data
+    ? Math.max(1, Math.ceil(performance.data.total / performance.data.pageSize))
+    : 1;
 
   useAdminHeader(`Rango: ${range} · exportable a CSV`, exportStudentsCsv);
 
@@ -130,6 +152,86 @@ export function ReportsView() {
           </Button>
         </>
       )}
+
+      <Card padding="md" radius="xl">
+        <SectionTitle
+          title="Rendimiento por alumno"
+          description="Calificaciones acumuladas de evaluaciones por unidad — sólo aquí, no en el dashboard general"
+        />
+
+        <div className="mt-3.5 flex flex-col gap-2.5 sm:flex-row sm:items-center">
+          <Input
+            icon={<Search size={15} strokeWidth={2} />}
+            placeholder="Buscar por nombre o matrícula"
+            aria-label="Buscar alumno"
+            value={performanceQuery}
+            onChange={(event) => setPerformanceQuery(event.target.value)}
+            className="sm:max-w-[260px]"
+          />
+          <ChipRow label="Filtrar por nivel" className="flex-wrap">
+            {LEVEL_FILTERS.map((option) => (
+              <Chip
+                key={option}
+                active={performanceLevel === option}
+                onClick={() => setPerformanceLevel(option)}
+              >
+                {option}
+              </Chip>
+            ))}
+          </ChipRow>
+        </div>
+
+        {performance.isPending && (
+          <div className="mt-3 flex flex-col gap-2">
+            <LoadingRegion label="Cargando el rendimiento por alumno" />
+            {Array.from({ length: 4 }, (_, i) => (
+              <Skeleton key={i} className="h-[62px] rounded-3xl" />
+            ))}
+          </div>
+        )}
+
+        {performance.data && performance.data.items.length > 0 && (
+          <ul className="mt-3 flex flex-col gap-2">
+            {performance.data.items.map((student) => (
+              <StudentPerformanceRow key={student.id} student={student} />
+            ))}
+          </ul>
+        )}
+
+        {performance.data && performance.data.items.length === 0 && (
+          <EmptyState
+            title="Sin resultados para tu búsqueda"
+            description="Prueba con otro nombre, la matrícula completa o quita el filtro de nivel."
+            className="mt-3"
+          />
+        )}
+
+        {performance.data && performance.data.total > performance.data.pageSize && (
+          <div className="mt-3 flex items-center justify-between gap-2 border-t border-line pt-3">
+            <p className="text-tiny font-bold text-fg-ghost">
+              Página {performancePage} de {performanceTotalPages} · {performance.data.total} alumnos
+            </p>
+            <div className="flex gap-1.5">
+              <Button
+                variant="ghost"
+                size="xs"
+                disabled={performancePage <= 1}
+                onClick={() => setPerformancePage((p) => Math.max(1, p - 1))}
+              >
+                Anterior
+              </Button>
+              <Button
+                variant="ghost"
+                size="xs"
+                disabled={performancePage >= performanceTotalPages}
+                onClick={() => setPerformancePage((p) => Math.min(performanceTotalPages, p + 1))}
+              >
+                Siguiente
+              </Button>
+            </div>
+          </div>
+        )}
+      </Card>
     </div>
   );
 }

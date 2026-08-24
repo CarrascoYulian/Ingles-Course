@@ -60,7 +60,7 @@ export function CreateCourseDialog({
       <DialogContent width={460}>
         <DialogTitle>Crear un curso nuevo</DialogTitle>
         <DialogDescription>
-          Se guardará como borrador; podrás publicarlo cuando tenga módulos.
+          Se guardará como borrador; podrás publicarlo cuando tenga unidades.
         </DialogDescription>
 
         <form onSubmit={submit} noValidate>

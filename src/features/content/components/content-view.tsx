@@ -40,6 +40,7 @@ import { ROUTES } from '@/constants/routes';
 import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 import { useCreateModule } from '@/features/learning/hooks/use-learning';
 import { useCourses } from '@/features/courses/hooks/use-courses';
+import { ModuleAssignmentsPanel } from '@/features/assignments/components/module-assignments-panel';
 import { cn } from '@/lib/utils';
 import {
   useAttachUpload,
@@ -81,7 +82,7 @@ export function ContentView() {
   const moduleId = activeModule?.id ?? '';
 
   const contextLine = course
-    ? `${course.name} · Nivel ${course.level}${activeModule?.requiresModuleId ? ' · requiere completar el módulo anterior' : ''}`
+    ? `${course.name} · Nivel ${course.level}${activeModule?.requiresModuleId ? ' · requiere completar la unidad anterior' : ''}`
     : 'Cargando curso…';
 
   const { data: blocks, isPending } = useContentBlocks(moduleId);
@@ -118,6 +119,7 @@ export function ContentView() {
   const [editingLessonId, setEditingLessonId] = useState<string | null>(null);
   const [commentsLessonId, setCommentsLessonId] = useState<string | null>(null);
   const [quizDialogOpen, setQuizDialogOpen] = useState(false);
+  const [assignmentsOpen, setAssignmentsOpen] = useState(false);
   const { data: quizDraft } = useQuizDraft(moduleId);
   const saveQuizDraft = useSaveQuizDraft(moduleId);
   const removeQuizDraft = useRemoveQuiz(moduleId);
@@ -133,7 +135,7 @@ export function ContentView() {
   // instante, así que no existe ningún "borrador" que guardar. Un botón que
   // finge guardar algo que ya está guardado es peor que no tener botón.
   useAdminHeader(
-    activeModule ? `${activeModule.title} · ${blocks?.length ?? 0} bloques` : 'Sin módulo',
+    activeModule ? `${activeModule.title} · ${blocks?.length ?? 0} bloques` : 'Sin unidad',
   );
 
   const loadingBlocks = isModulesPending || isPending;
@@ -145,10 +147,10 @@ export function ContentView() {
       <div className="px-5 py-8 lg:px-[30px] lg:py-12">
         <EmptyState
           title="Elige un curso para editar su contenido"
-          description="Entra al constructor de contenido desde un curso concreto en “Cursos y módulos”."
+          description="Entra al constructor de contenido desde un curso concreto en “Cursos y unidades”."
           action={
             <Button asChild size="md" className="font-extrabold">
-              <Link href={ROUTES.admin.cursos}>Ir a Cursos y módulos</Link>
+              <Link href={ROUTES.admin.cursos}>Ir a Cursos y unidades</Link>
             </Button>
           }
         />
@@ -180,15 +182,15 @@ export function ContentView() {
           className="mx-5 flex w-fit items-center gap-1.5 rounded-full px-3 py-1.5 text-tiny font-bold text-fg-dim transition-colors hover:bg-surface-sunken hover:text-fg lg:mx-[30px]"
         >
           <ArrowLeft aria-hidden size={14} strokeWidth={2.4} />
-          Cursos y módulos
+          Cursos y unidades
         </Link>
         <div className="px-5 pb-8 lg:px-[30px] lg:pb-12">
         <EmptyState
-          title="Todavía no existe ningún módulo"
-          description={`Crea el primer módulo de “${course?.name ?? 'este curso'}” para poder empezar a añadir contenido.`}
+          title="Todavía no existe ninguna unidad"
+          description={`Crea la primera unidad de “${course?.name ?? 'este curso'}” para poder empezar a añadir contenido.`}
           action={
             <Button size="md" className="font-extrabold" onClick={() => setCreateModuleOpen(true)}>
-              Crear módulo
+              Crear unidad
             </Button>
           }
         />
@@ -224,7 +226,7 @@ export function ContentView() {
         className="mx-5 flex w-fit items-center gap-1.5 rounded-full px-3 py-1.5 text-tiny font-bold text-fg-dim transition-colors hover:bg-surface-sunken hover:text-fg lg:mx-[30px]"
       >
         <ArrowLeft aria-hidden size={14} strokeWidth={2.4} />
-        Cursos y módulos
+        Cursos y unidades
       </Link>
 
       <div
@@ -248,7 +250,7 @@ export function ContentView() {
 
       <div className="flex flex-col gap-2.5">
         {hasModuleRail && (
-          <ChipRow label="Módulos del curso" className="pb-0.5 lg:hidden">
+          <ChipRow label="Unidades del curso" className="pb-0.5 lg:hidden">
             {modules!.map((m) => (
               <Chip key={m.id} active={m.id === selectedModuleId} onClick={() => setSelectedModuleId(m.id)}>
                 {m.title}
@@ -259,20 +261,27 @@ export function ContentView() {
 
         <Card
           radius="md"
-          className="hidden items-center justify-between px-[18px] py-3.5 lg:flex"
+          className="hidden flex-wrap items-center justify-between gap-x-4 gap-y-2 px-[18px] py-3.5 lg:flex"
         >
-          <div>
-            <h2 className="text-body-lg font-bold text-fg">{activeModule.title}</h2>
-            <p className="mt-0.5 text-meta font-semibold text-fg-ghost">{contextLine}</p>
+          <div className="min-w-[220px] flex-1">
+            <h2 className="truncate text-body-lg font-bold text-fg">{activeModule.title}</h2>
+            <p className="mt-0.5 truncate text-meta font-semibold text-fg-ghost">{contextLine}</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
             {!hasModuleRail && (
               <Button variant="ghost" size="sm" onClick={() => setCreateModuleOpen(true)}>
-                + Nuevo módulo
+                + Nueva unidad
               </Button>
             )}
             <Button variant="ghost" size="sm" onClick={() => setQuizDialogOpen(true)}>
-              {quizDraft ? 'Evaluación del módulo' : '+ Evaluación'}
+              {quizDraft ? 'Evaluación de la unidad' : '+ Evaluación'}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setAssignmentsOpen((open) => !open)}
+            >
+              {assignmentsOpen ? 'Ocultar tareas' : 'Tareas'}
             </Button>
             <Button
               variant="ghost"
@@ -286,7 +295,7 @@ export function ContentView() {
 
         {loadingBlocks && (
           <>
-            <LoadingRegion label="Cargando bloques del módulo" />
+            <LoadingRegion label="Cargando bloques de la unidad" />
             {Array.from({ length: 5 }, (_, i) => (
               <Skeleton key={i} className="h-[74px] rounded-4xl" />
             ))}
@@ -362,6 +371,10 @@ export function ContentView() {
           className="hidden lg:block"
         />
 
+        {assignmentsOpen && (
+          <ModuleAssignmentsPanel moduleId={moduleId} moduleTitle={activeModule.title} courseId={courseId} />
+        )}
+
       </div>
 
       <AddBlockPanel />
@@ -431,7 +444,7 @@ export function ContentView() {
         onSave={(draft) => saveQuizDraft.mutate(draft, { onSuccess: () => setQuizDialogOpen(false) })}
         onRemove={() =>
           confirmDialog.confirm({
-            title: 'Eliminar la evaluación del módulo',
+            title: 'Eliminar la evaluación de la unidad',
             body: `Se borrará el quiz de “${activeModule.title}” y todos los intentos de los alumnos. Esta acción no se puede deshacer.`,
             confirmLabel: 'Sí, eliminar',
             onConfirm: () => removeQuizDraft.mutateAsync().then(() => setQuizDialogOpen(false)),

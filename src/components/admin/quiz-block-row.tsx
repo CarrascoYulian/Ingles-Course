@@ -33,7 +33,7 @@ export function QuizBlockRow({ draft, index, onEdit }: QuizBlockRowProps) {
       </div>
 
       <div className="min-w-0 flex-1">
-        <p className="truncate text-body font-bold text-fg md:text-body-lg">Evaluación del módulo</p>
+        <p className="truncate text-body font-bold text-fg md:text-body-lg">Evaluación de la unidad</p>
         <p className="mt-0.5 text-tiny font-semibold text-fg-ghost md:text-meta">
           Bloque {index + 1} · {questionCount} {questionCount === 1 ? 'pregunta' : 'preguntas'} ·
           aprueba con {draft.passingScore}%
@@ -45,7 +45,7 @@ export function QuizBlockRow({ draft, index, onEdit }: QuizBlockRowProps) {
           variant="icon"
           size="square"
           onClick={onEdit}
-          aria-label="Editar la evaluación del módulo"
+          aria-label="Editar la evaluación de la unidad"
           title="Editar preguntas y puntaje mínimo"
           className="hover:border-brand hover:text-brand"
         >

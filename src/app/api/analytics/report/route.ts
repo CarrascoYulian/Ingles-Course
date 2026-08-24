@@ -36,7 +36,7 @@ export async function GET(request: Request) {
       range,
       bars: DEMO_REPORT_BARS[range],
       retention: { value: '91 %', delta: '+2,4 pts vs. periodo anterior' },
-      dropOff: { lesson: '4.8 Evaluación del módulo', rate: '32 % la deja sin terminar' },
+      dropOff: { lesson: '4.8 Evaluación de la unidad', rate: '32 % la deja sin terminar' },
       recommendation:
         'Divide la evaluación 4.8 en dos partes: el abandono se concentra después del minuto 12.',
     };

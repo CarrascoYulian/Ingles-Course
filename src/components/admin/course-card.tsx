@@ -66,7 +66,7 @@ export function CourseCard({
           </div>
 
           <p className="mt-0.5 text-caption font-semibold text-fg-ghost md:mt-[3px] md:text-meta">
-            {modules} módulos · {students} alumnos
+            {modules} unidades · {students} alumnos
           </p>
 
           <div className="mt-[9px] hidden md:block">
@@ -125,8 +125,8 @@ export function CourseCard({
           Calificaciones
         </Button>
         <Button variant="ghost" size="sm" onClick={() => onEdit(course)}>
-          <span className="md:hidden">Módulos</span>
-          <span className="hidden md:inline">Editar módulos</span>
+          <span className="md:hidden">Unidades</span>
+          <span className="hidden md:inline">Editar unidades</span>
         </Button>
         <Button variant="danger" size="sm" onClick={() => onDelete(course)} disabled={pending}>
           Eliminar

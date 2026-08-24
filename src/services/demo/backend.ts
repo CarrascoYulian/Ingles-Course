@@ -6,7 +6,6 @@ import {
   DEMO_ASSIGNMENT,
   DEMO_BADGES,
   DEMO_COURSES,
-  DEMO_LEADERBOARD,
   DEMO_LESSONS,
   DEMO_METRICS,
   DEMO_MODULE,
@@ -16,6 +15,7 @@ import {
   DEMO_QUIZ_ID,
   DEMO_REPORT_BARS,
   DEMO_STUDENT,
+  DEMO_STUDENT_PERFORMANCE,
   DEMO_STUDENTS,
   DEMO_TEACHER,
 } from './data';
@@ -36,6 +36,7 @@ import type {
   QuizAttempt,
   QuizDraft,
   ReportRange,
+  StudentPerformanceSummary,
   StudentSummary,
 } from '@/types';
 
@@ -350,13 +351,40 @@ export const demoBackend: Backend = {
   analytics: {
     getMetrics: () => latency(DEMO_METRICS),
     getActivity: () => latency(DEMO_ACTIVITY),
-    getLeaderboard: () => latency(DEMO_LEADERBOARD),
+    getStudentPerformance: ({ query = '', level = 'Todos', page = 1 }) => {
+      const needle = query.trim().toLowerCase();
+      const filtered = store.students.filter((student) => {
+        const matchesQuery =
+          !needle ||
+          student.name.toLowerCase().includes(needle) ||
+          student.enrollmentCode.toLowerCase().includes(needle);
+        const matchesLevel = level === 'Todos' || student.level === level;
+        return matchesQuery && matchesLevel;
+      });
+      const pageSize = STUDENTS_PAGE_SIZE;
+      const from = (page - 1) * pageSize;
+      const items: StudentPerformanceSummary[] = filtered.slice(from, from + pageSize).map((student) => {
+        const performance = DEMO_STUDENT_PERFORMANCE[student.id];
+        return {
+          id: student.id,
+          name: student.name,
+          enrollmentCode: student.enrollmentCode,
+          level: student.level,
+          avatarColor: student.avatarColor,
+          avgScore: performance?.avgScore ?? null,
+          passRate: performance?.passRate ?? null,
+          attempts: performance?.attempts ?? 0,
+          lastAttemptAt: performance?.lastAttemptAt ?? null,
+        };
+      });
+      return latency({ items, total: filtered.length, page, pageSize });
+    },
     getReport: (range: ReportRange) =>
       latency({
         range,
         bars: DEMO_REPORT_BARS[range],
         retention: { value: '91 %', delta: '+2,4 pts vs. periodo anterior' },
-        dropOff: { lesson: '4.8 Evaluación del módulo', rate: '32 % la deja sin terminar' },
+        dropOff: { lesson: '4.8 Evaluación de la unidad', rate: '32 % la deja sin terminar' },
         recommendation:
           'Divide la evaluación 4.8 en dos partes: el abandono se concentra después del minuto 12.',
       }),

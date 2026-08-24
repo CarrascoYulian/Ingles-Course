@@ -124,7 +124,7 @@ export function LessonList({ lessons, quiz, onSelect, onSelectQuiz }: LessonList
             aria-disabled={quiz.state === 'locked' || undefined}
             onClick={() => {
               if (quiz.state === 'locked') {
-                toast('Termina el resto del módulo para desbloquear la evaluación');
+                toast('Termina el resto de la unidad para desbloquear la evaluación');
                 return;
               }
               onSelectQuiz?.();
@@ -165,7 +165,7 @@ export function LessonList({ lessons, quiz, onSelect, onSelectQuiz }: LessonList
                   quiz.state === 'locked' ? 'text-fg-faint' : 'text-fg-strong',
                 )}
               >
-                Evaluación del módulo
+                Evaluación de la unidad
               </span>
               <span className="mt-0.5 block text-tiny font-bold text-fg-disabled">
                 {quiz.state === 'locked' ? 'Bloqueada' : quiz.state === 'done' ? 'Aprobada' : 'Obligatoria'}

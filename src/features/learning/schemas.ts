@@ -5,7 +5,7 @@ export const createModuleSchema = z.object({
   title: z
     .string()
     .trim()
-    .min(1, 'Ponle un título al módulo para continuar')
+    .min(1, 'Ponle un título a la unidad para continuar')
     .max(80, 'El título no puede superar los 80 caracteres'),
 });
 

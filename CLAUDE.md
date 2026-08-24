@@ -162,7 +162,19 @@ npm run build       # como CI
   fuera de `PROTECTED_PREFIXES` (`src/constants/routes.ts`), o comentar
   temporalmente `NEXT_PUBLIC_SUPABASE_URL`/`ANON_KEY` en `.env.local` para
   forzar modo demo (recordar restaurar después).
-- El leaderboard (`/api/analytics/leaderboard`) agrupaba por fila de
-  `enrollments` en vez de por alumno — un alumno matriculado en 2+ cursos
-  aparecía dos veces con la misma `key` de React. Corregido agregando por
-  `profiles.id` antes de cortar el top 5.
+- El dashboard general (`/admin`) sólo muestra KPIs agregados — el docente
+  no puede ver el rendimiento de un alumno individual ahí. Esa vista
+  individual (calificaciones acumuladas de `quiz_attempts` por alumno) vive
+  exclusivamente en Reportes (`/admin/reportes`,
+  `src/app/api/analytics/performance/route.ts`). `/admin/estudiantes` sigue
+  mostrando progreso individual porque es gestión de matrícula, no
+  reportería — no confundir los tres.
+- Ninguna página bajo `/admin/*` necesita su propio `<Suspense>` para
+  `useSearchParams()` — `AdminShell` ya envuelve `AdminTopbar` (que también
+  usa `useSearchParams`) en uno, y ese límite cubre toda la ruta. Agregar
+  un segundo `<Suspense>` anidado localmente (como tenía
+  `estudiantes/page.tsx`) deja ese sub-árbol colgado en el placeholder de
+  streaming de RSC — nunca hidrata en el cliente, sin error visible en
+  consola ni en la red. Si una página del panel se queda pegada en su
+  estado de carga inicial para siempre, comprobar primero si tiene un
+  `<Suspense>` propio de más.

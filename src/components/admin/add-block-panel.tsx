@@ -44,8 +44,8 @@ export function AddBlockPanel() {
       </div>
 
       <p className="rounded-2xl bg-surface-muted p-[13px] text-meta font-semibold leading-normal text-fg-soft">
-        Los bloques se muestran al alumno en este orden. Para la evaluación del módulo usa el
-        botón “+ Evaluación” de arriba — siempre cierra el módulo, al final.
+        Los bloques se muestran al alumno en este orden. Para la evaluación de la unidad usa el
+        botón “+ Evaluación” de arriba — siempre cierra la unidad, al final.
       </p>
     </Card>
   );

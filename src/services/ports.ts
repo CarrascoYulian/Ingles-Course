@@ -15,7 +15,6 @@ import type {
   CefrLevel,
   Course,
   DashboardMetrics,
-  LeaderboardEntry,
   Lesson,
   LessonComment,
   LessonNote,
@@ -33,6 +32,7 @@ import type {
   ReportRange,
   ReportSnapshot,
   StorageUsage,
+  StudentPerformanceSummary,
   StudentProgress,
   StudentSummary,
 } from '@/types';
@@ -146,10 +146,11 @@ export interface StudentsPort {
 export interface AnalyticsPort {
   getMetrics(): Promise<DashboardMetrics>;
   getActivity(): Promise<ActivityEvent[]>;
-  getLeaderboard(): Promise<LeaderboardEntry[]>;
   getReport(range: ReportRange): Promise<ReportSnapshot>;
   /** Sólo docente — promedio + reseñas de un curso, nunca de qué alumno es cada una. */
   getCourseRatings(courseId: string): Promise<CourseRatingsSummary>;
+  /** Rendimiento/calificaciones acumuladas por alumno — sólo dentro del módulo de Reportes. */
+  getStudentPerformance(filters: StudentFilters): Promise<PaginatedResult<StudentPerformanceSummary>>;
 }
 
 export interface CreateModuleInput {

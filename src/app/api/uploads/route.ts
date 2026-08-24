@@ -63,7 +63,7 @@ export async function POST(request: Request) {
         .eq('module_id', moduleId)
         .maybeSingle();
       if (!access) {
-        return NextResponse.json({ error: 'No tenés acceso a ese módulo' }, { status: 403 });
+        return NextResponse.json({ error: 'No tenés acceso a esa unidad' }, { status: 403 });
       }
     }
   }

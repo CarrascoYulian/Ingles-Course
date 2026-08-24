@@ -290,7 +290,7 @@ export function StudentsView() {
         onReset={(student) =>
           confirmDialog.confirm({
             title: 'Reiniciar el progreso',
-            body: `Se borrará todo el avance de ${student.name} y volverá al módulo 1. Esta acción no se puede deshacer.`,
+            body: `Se borrará todo el avance de ${student.name} y volverá a la unidad 1. Esta acción no se puede deshacer.`,
             confirmLabel: 'Sí, reiniciar',
             onConfirm: () =>
               resetProgress.mutateAsync({ id: student.id, name: student.name }).then(() => {

@@ -245,7 +245,7 @@ export function CourseView({ lessonOrder, currentUserId = null }: CourseViewProp
         {courseSwitcher}
         <div className="px-5 py-8 lg:px-[30px] lg:py-12">
           <EmptyState
-            title="Todavía no hay ningún módulo publicado"
+            title="Todavía no hay ninguna unidad publicada"
             description="Tu docente aún no ha creado contenido para este curso. Vuelve pronto."
           />
         </div>
@@ -476,8 +476,8 @@ export function CourseView({ lessonOrder, currentUserId = null }: CourseViewProp
 
           {allModules && allModules.length > 1 && (
             <Card padding="md" radius="xl">
-              <p className="mb-2 text-tiny font-bold text-fg-ghost">Tus módulos</p>
-              <ChipRow label="Elegir módulo" className="flex-wrap">
+              <p className="mb-2 text-tiny font-bold text-fg-ghost">Tus unidades</p>
+              <ChipRow label="Elegir unidad" className="flex-wrap">
                 {allModules.map((m) => (
                   <Chip
                     key={m.id}
@@ -493,7 +493,7 @@ export function CourseView({ lessonOrder, currentUserId = null }: CourseViewProp
 
           <Card padding="lg" radius="xl">
             <div className="mb-3 flex items-center justify-between lg:mb-3.5">
-              <h2 className="text-body-lg font-bold text-fg">Contenido del módulo</h2>
+              <h2 className="text-body-lg font-bold text-fg">Contenido de la unidad</h2>
               <span className="text-tiny font-bold text-fg-ghost">
                 {completed} / {total}
               </span>
@@ -501,7 +501,7 @@ export function CourseView({ lessonOrder, currentUserId = null }: CourseViewProp
 
             {isPending && (
               <div className="flex flex-col gap-1">
-                <LoadingRegion label="Cargando el contenido del módulo" />
+                <LoadingRegion label="Cargando el contenido de la unidad" />
                 {Array.from({ length: 6 }, (_, i) => (
                   <Skeleton key={i} className="h-12 rounded-2xl" />
                 ))}
@@ -530,7 +530,7 @@ export function CourseView({ lessonOrder, currentUserId = null }: CourseViewProp
               <EmptyState
                 compact
                 title="Sin lecciones todavía"
-                description="Este módulo aún no tiene lecciones publicadas."
+                description="Esta unidad aún no tiene lecciones publicadas."
               />
             )}
 
@@ -542,7 +542,7 @@ export function CourseView({ lessonOrder, currentUserId = null }: CourseViewProp
                 className="mt-px shrink-0 text-fg-faint"
               />
               <span className="text-meta font-semibold leading-normal text-fg-soft">
-                El siguiente módulo se abre al terminar el 100 % de este. Tu avance se guarda solo.
+                La siguiente unidad se abre al terminar el 100 % de esta. Tu avance se guarda solo.
               </span>
             </p>
           </Card>

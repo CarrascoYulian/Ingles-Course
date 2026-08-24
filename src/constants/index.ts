@@ -14,6 +14,7 @@ export const QUERY_KEYS = {
   modules: (courseId: string) => ['modules', courseId] as const,
   blocks: (moduleId: string) => ['blocks', moduleId] as const,
   students: (filters?: unknown) => ['students', filters ?? {}] as const,
+  studentPerformance: (filters?: unknown) => ['student-performance', filters ?? {}] as const,
   studentEnrollments: (studentId: string) => ['student-enrollments', studentId] as const,
   moduleAccess: (studentId: string, courseId: string) => ['module-access', studentId, courseId] as const,
   dashboard: ['dashboard'] as const,

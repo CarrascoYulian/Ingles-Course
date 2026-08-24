@@ -96,7 +96,7 @@ export function useCreateModule() {
       toast(`“${module.title}” creado`);
     },
     onError: (error) =>
-      toast.error(error instanceof Error ? error.message : 'No se pudo crear el módulo.'),
+      toast.error(error instanceof Error ? error.message : 'No se pudo crear la unidad.'),
   });
 }
 

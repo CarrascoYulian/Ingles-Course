@@ -13,7 +13,6 @@ import type {
   Badge,
   Course,
   DashboardMetrics,
-  LeaderboardEntry,
   Lesson,
   Module,
   PracticeLevel,
@@ -21,6 +20,7 @@ import type {
   Profile,
   QuizDraft,
   ReportRange,
+  StudentPerformanceSummary,
   StudentSummary,
 } from '@/types';
 
@@ -88,7 +88,7 @@ export const DEMO_COURSES: Course[] = [
 export const DEMO_MODULE: Module = {
   id: 'mod-4',
   courseId: '2',
-  title: 'Módulo 4 · Tiempos perfectos',
+  title: 'Unidad 4 · Tiempos perfectos',
   position: 3,
   requiresModuleId: 'mod-3',
 };
@@ -212,13 +212,13 @@ export const DEMO_LESSONS: Lesson[] = [
   { id: 'l5', moduleId: 'mod-4', order: 5, type: 'Video', title: 'Present Perfect vs. Past Simple', meta: '14 min · 1080p', duration: '14 min', durationSeconds: 840, state: 'current', watchedPercent: 38, mediaKey: null, description: null, uploadedBy: DEMO_TEACHER.id },
   { id: 'l6', moduleId: 'mod-4', order: 6, type: 'Video', title: 'Práctica guiada de diálogo', meta: '13 min · 1080p', duration: '13 min', durationSeconds: 780, state: 'locked', watchedPercent: 0, mediaKey: null, description: null, uploadedBy: DEMO_TEACHER.id },
   { id: 'l7', moduleId: 'mod-4', order: 7, type: 'Audio', title: 'Listening: at the market', meta: '4,2 MB', duration: '4,2 MB', durationSeconds: 0, state: 'locked', watchedPercent: 0, mediaKey: null, description: null, uploadedBy: DEMO_TEACHER.id },
-  { id: 'l8', moduleId: 'mod-4', order: 8, type: 'Evaluación', title: 'Evaluación del módulo', meta: '20 preguntas · 70 % para aprobar', duration: '20 preguntas', durationSeconds: 0, state: 'locked', watchedPercent: 0, mediaKey: null, description: null, uploadedBy: null },
+  { id: 'l8', moduleId: 'mod-4', order: 8, type: 'Evaluación', title: 'Evaluación de la unidad', meta: '20 preguntas · 70 % para aprobar', duration: '20 preguntas', durationSeconds: 0, state: 'locked', watchedPercent: 0, mediaKey: null, description: null, uploadedBy: null },
   { id: 'l9', moduleId: 'mod-4', order: 9, type: 'Video', title: 'Cierre y recursos extra', meta: '6 min · 1080p', duration: '6 min', durationSeconds: 360, state: 'locked', watchedPercent: 0, mediaKey: null, description: null, uploadedBy: DEMO_TEACHER.id },
 ];
 
 export const DEMO_BADGES: Badge[] = [
   { id: 'b1', name: 'Racha de 7 días', state: 'Obtenida', earned: true },
-  { id: 'b2', name: 'Primer módulo', state: 'Obtenida', earned: true },
+  { id: 'b2', name: 'Primera unidad', state: 'Obtenida', earned: true },
   { id: 'b3', name: '10 h de estudio', state: 'Obtenida', earned: true },
   { id: 'b4', name: 'Sin errores ×20', state: 'Obtenida', earned: true },
   { id: 'b5', name: 'Maestro del pasado', state: '4 ejercicios más', earned: false },
@@ -231,7 +231,7 @@ export const DEMO_ACTIVITY: ActivityEvent[] = [
     tone: 'success',
     segments: [
       { text: 'María Altagracia completó ' },
-      { text: 'Módulo 4 · Past Perfect', strong: true },
+      { text: 'Unidad 4 · Past Perfect', strong: true },
     ],
     timeAgo: 'hace 6 min',
   },
@@ -266,13 +266,20 @@ export const DEMO_ACTIVITY: ActivityEvent[] = [
   },
 ];
 
-export const DEMO_LEADERBOARD: LeaderboardEntry[] = [
-  { id: '1', rank: 1, name: 'María Altagracia', enrollmentCode: 'ING-000014', level: 'B2', score: 96, avatarColor: '#0F5257', initials: 'MA' },
-  { id: '2', rank: 2, name: 'Juan Carlos Peña', enrollmentCode: 'ING-000072', level: 'B1', score: 91, avatarColor: '#2F6BFF', initials: 'JC' },
-  { id: '3', rank: 3, name: 'Laura Rivas', enrollmentCode: 'ING-000009', level: 'B2', score: 88, avatarColor: '#7A5AF8', initials: 'LR' },
-  { id: '4', rank: 4, name: 'Sofía Domínguez', enrollmentCode: 'ING-000131', level: 'A2', score: 80, avatarColor: '#0EA5A8', initials: 'SD' },
-  { id: '5', rank: 5, name: 'Ramón Bautista', enrollmentCode: 'ING-000045', level: 'A2', score: 74, avatarColor: '#475569', initials: 'RB' },
-];
+/**
+ * Rendimiento en evaluaciones (quiz_attempts) por alumno demo, keyed por
+ * `DEMO_STUDENTS[i].id`. El id '5' (Ramón Bautista) queda sin entrada a
+ * propósito, para ejercitar el estado "sin intentos todavía" en la tabla.
+ */
+export const DEMO_STUDENT_PERFORMANCE: Record<
+  string,
+  Pick<StudentPerformanceSummary, 'avgScore' | 'passRate' | 'attempts' | 'lastAttemptAt'>
+> = {
+  '1': { avgScore: 94, passRate: 100, attempts: 6, lastAttemptAt: '2026-08-18T14:20:00.000Z' },
+  '2': { avgScore: 71, passRate: 67, attempts: 9, lastAttemptAt: '2026-08-17T09:05:00.000Z' },
+  '3': { avgScore: 88, passRate: 90, attempts: 5, lastAttemptAt: '2026-08-19T11:40:00.000Z' },
+  '4': { avgScore: 62, passRate: 40, attempts: 4, lastAttemptAt: '2026-08-14T16:10:00.000Z' },
+};
 
 export const DEMO_METRICS: DashboardMetrics = {
   activeStudents: {

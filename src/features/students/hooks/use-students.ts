@@ -245,10 +245,10 @@ export function useSetModuleAccess() {
     onSuccess: (_data, { studentId, name, courseId }) => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.moduleAccess(studentId, courseId) });
       queryClient.invalidateQueries({ queryKey: ['students'] });
-      toast(`Acceso a módulos de ${name} actualizado`);
+      toast(`Acceso a unidades de ${name} actualizado`);
     },
     onError: (error) =>
-      toast.error(error instanceof Error ? error.message : 'No se pudo actualizar el acceso a módulos.'),
+      toast.error(error instanceof Error ? error.message : 'No se pudo actualizar el acceso a unidades.'),
   });
 }
 

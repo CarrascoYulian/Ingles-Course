@@ -51,7 +51,7 @@ export function useAddBlock(moduleId: string) {
     mutationFn: (type: BlockType) => backend.content.addBlock(moduleId, type),
     onSuccess: (block) => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.blocks(moduleId) });
-      toast(`Bloque de ${block.type.toLowerCase()} añadido al final del módulo`);
+      toast(`Bloque de ${block.type.toLowerCase()} añadido al final de la unidad`);
     },
     onError: () => toast.error('No se pudo añadir el bloque.'),
   });

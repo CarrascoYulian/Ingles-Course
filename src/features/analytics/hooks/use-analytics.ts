@@ -5,6 +5,7 @@ import { keepPreviousData } from '@tanstack/react-query';
 
 import { QUERY_KEYS } from '@/constants';
 import { backend } from '@/services';
+import type { StudentFilters } from '@/services';
 import type { ReportRange } from '@/types';
 
 export function useDashboardMetrics() {
@@ -24,10 +25,11 @@ export function useRecentActivity() {
   });
 }
 
-export function useLeaderboard() {
+export function useStudentPerformance(filters: StudentFilters) {
   return useQuery({
-    queryKey: [...QUERY_KEYS.dashboard, 'leaderboard'],
-    queryFn: () => backend.analytics.getLeaderboard(),
+    queryKey: QUERY_KEYS.studentPerformance(filters),
+    queryFn: () => backend.analytics.getStudentPerformance(filters),
+    placeholderData: keepPreviousData,
   });
 }
 

@@ -49,7 +49,7 @@ export function UploadDropzone({ courseId, moduleId, onUploaded, className }: Up
       try {
         const result = await uploadFile({ file, courseId, moduleId, onProgress: setProgress });
         await onUploaded({ ...result, fileName: file.name, sizeLabel: formatBytes(file.size) });
-        toast(`“${file.name}” subido al módulo`);
+        toast(`“${file.name}” subido a la unidad`);
       } catch (error) {
         toast.error(
           error instanceof Error
@@ -97,7 +97,7 @@ export function UploadDropzone({ courseId, moduleId, onUploaded, className }: Up
       >
         <span className="block text-body-sm font-bold text-fg-subtle">
           {progress === null
-            ? 'Suelta aquí un archivo para añadirlo al módulo'
+            ? 'Suelta aquí un archivo para añadirlo a la unidad'
             : `Subiendo… ${Math.round(progress)} %`}
         </span>
         <span className="mt-[3px] block text-tiny font-semibold text-fg-disabled">

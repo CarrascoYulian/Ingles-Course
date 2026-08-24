@@ -69,7 +69,7 @@ export function EnrollStudentDialog({ open, student, onOpenChange, onSubmit, pen
           {!coursesPending && publishedCourses.length === 0 && (
             <EmptyState
               title="No hay cursos publicados"
-              description="Publica un curso desde “Cursos y módulos” antes de matricular estudiantes."
+              description="Publica un curso desde “Cursos y unidades” antes de matricular estudiantes."
             />
           )}
 

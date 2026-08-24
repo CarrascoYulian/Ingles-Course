@@ -255,15 +255,19 @@ export interface ActivityEvent {
   timeAgo: string;
 }
 
-export interface LeaderboardEntry {
+export interface StudentPerformanceSummary {
   id: string;
-  rank: number;
   name: string;
   enrollmentCode: string;
   level: CefrLevel;
-  score: number;
   avatarColor: string;
-  initials: string;
+  /** Promedio de `quiz_attempts.score`; `null` si el alumno no tiene intentos. */
+  avgScore: number | null;
+  /** % de intentos con `passed = true`; `null` si el alumno no tiene intentos. */
+  passRate: number | null;
+  attempts: number;
+  /** ISO del intento más reciente del alumno; `null` si no tiene ninguno. */
+  lastAttemptAt: string | null;
 }
 
 export interface DashboardMetrics {

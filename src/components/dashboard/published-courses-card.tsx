@@ -53,7 +53,7 @@ export function PublishedCoursesCard({ courses, onPublish }: PublishedCoursesCar
                 />
               ) : (
                 <p className="mt-[3px] text-caption font-semibold text-fg-ghost">
-                  Borrador · {course.modules} módulos listos
+                  Borrador · {course.modules} unidades listas
                 </p>
               )}
             </div>

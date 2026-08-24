@@ -54,7 +54,7 @@ export function EditCourseDialog({ course, onOpenChange, onSubmit, pending }: Ed
     <Dialog open={course !== null} onOpenChange={onOpenChange}>
       <DialogContent width={460}>
         <DialogTitle>Editar curso</DialogTitle>
-        <DialogDescription>Cambia el nombre o el nivel sin perder módulos ni alumnos.</DialogDescription>
+        <DialogDescription>Cambia el nombre o el nivel sin perder unidades ni alumnos.</DialogDescription>
 
         <form onSubmit={submit} noValidate>
           <Field

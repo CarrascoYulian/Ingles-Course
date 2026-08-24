@@ -65,8 +65,8 @@ export function ManageModuleAccessDialog({
       }}
     >
       <DialogContent width={420}>
-        <DialogTitle>Dar acceso a módulos</DialogTitle>
-        <DialogDescription>Elige el curso y los módulos a los que “{student.name}” debe tener acceso.</DialogDescription>
+        <DialogTitle>Dar acceso a unidades</DialogTitle>
+        <DialogDescription>Elige el curso y las unidades a los que “{student.name}” debe tener acceso.</DialogDescription>
 
         <div className="mt-5 flex flex-col gap-2">
           {enrollmentsPending && <p className="text-body-sm font-semibold text-fg-faint">Cargando cursos…</p>}

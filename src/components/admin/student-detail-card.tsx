@@ -139,7 +139,7 @@ export function StudentDetailCard({
               Matricular en curso
             </Button>
             <Button variant="ghost" size="sm" onClick={() => onManageModuleAccess(student)}>
-              Dar acceso a módulos
+              Dar acceso a unidades
             </Button>
             {student.active ? (
               <Button variant="danger" size="sm" onClick={() => onToggleActive(student)}>

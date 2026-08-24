@@ -24,15 +24,15 @@ export function ModuleAccessChecklist({
   onChange,
 }: ModuleAccessChecklistProps) {
   if (modulesPending) {
-    return <p className="text-body-sm font-semibold text-fg-faint">Cargando módulos…</p>;
+    return <p className="text-body-sm font-semibold text-fg-faint">Cargando unidades…</p>;
   }
 
   if (!modules || modules.length === 0) {
     return (
       <EmptyState
         compact
-        title="Este curso no tiene módulos todavía"
-        description="Crea al menos un módulo desde “Cursos y módulos” antes de dar acceso."
+        title="Este curso no tiene unidades todavía"
+        description="Crea al menos una unidad desde “Cursos y unidades” antes de dar acceso."
       />
     );
   }
@@ -49,7 +49,7 @@ export function ModuleAccessChecklist({
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
-        <p className="text-tiny font-bold text-fg-ghost">Módulos con acceso</p>
+        <p className="text-tiny font-bold text-fg-ghost">Unidades con acceso</p>
         <Button
           type="button"
           variant="quiet"
@@ -78,7 +78,7 @@ export function ModuleAccessChecklist({
       </ul>
 
       {selectedModuleIds.size === 0 && (
-        <p className="text-tiny font-bold text-danger">Selecciona al menos un módulo.</p>
+        <p className="text-tiny font-bold text-danger">Selecciona al menos una unidad.</p>
       )}
     </div>
   );

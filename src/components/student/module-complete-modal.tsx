@@ -56,8 +56,8 @@ export function ModuleCompleteModal({
           </DialogTitle>
           <p className="mt-1.5 text-body-sm font-medium leading-normal text-fg-soft">
             {isLastModule
-              ? 'Viste todos los videos de todos los módulos. Tu docente puede ver tu progreso completo.'
-              : 'Viste todos los videos de este módulo. El siguiente ya te está esperando.'}
+              ? 'Viste todos los videos de todas las unidades. Tu docente puede ver tu progreso completo.'
+              : 'Viste todos los videos de esta unidad. El siguiente ya te está esperando.'}
           </p>
 
           {isLastModule && onViewCertificate && (
@@ -70,7 +70,7 @@ export function ModuleCompleteModal({
             className={isLastModule && onViewCertificate ? 'mt-2.5 w-full font-extrabold' : 'mt-6 w-full font-extrabold'}
             onClick={onContinue}
           >
-            {isLastModule ? 'Volver a mis cursos' : 'Ir al módulo siguiente'}
+            {isLastModule ? 'Volver a mis cursos' : 'Ir a la unidad siguiente'}
           </Button>
         </div>
       </DialogContent>

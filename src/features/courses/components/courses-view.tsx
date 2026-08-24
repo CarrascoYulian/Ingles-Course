@@ -73,7 +73,7 @@ export function CoursesView() {
           ))}
         </ChipRow>
         <p className="hidden shrink-0 text-meta font-bold text-fg-ghost xl:block">
-          Usa las flechas para reordenar · toca un curso para editar sus módulos
+          Usa las flechas para reordenar · toca un curso para editar sus unidades
         </p>
       </div>
 

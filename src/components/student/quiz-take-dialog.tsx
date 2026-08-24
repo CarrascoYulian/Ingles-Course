@@ -50,7 +50,7 @@ export function QuizTakeDialog({ open, onOpenChange, moduleId, moduleTitle, onCo
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent width={560}>
-        <DialogTitle>Evaluación del módulo</DialogTitle>
+        <DialogTitle>Evaluación de la unidad</DialogTitle>
         <DialogDescription>{moduleTitle}</DialogDescription>
 
         {isPending && (
@@ -124,7 +124,7 @@ export function QuizTakeDialog({ open, onOpenChange, moduleId, moduleTitle, onCo
             <p className="mt-3 text-title font-extrabold text-fg">{Math.round(result.score)} %</p>
             <p className="mt-1 text-body-sm font-semibold text-fg-soft">
               {result.passed
-                ? 'Aprobaste la evaluación del módulo.'
+                ? 'Aprobaste la evaluación de la unidad.'
                 : 'No llegaste al puntaje mínimo — podés intentarlo de nuevo cuando quieras.'}
             </p>
 

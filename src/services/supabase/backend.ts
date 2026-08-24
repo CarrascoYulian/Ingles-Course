@@ -558,7 +558,7 @@ export const supabaseBackend: Backend = {
       );
       await logActivity('success', [
         { text: student.full_name, strong: true },
-        { text: ` · acceso a módulos actualizado (${moduleIds.length})` },
+        { text: ` · acceso a unidades actualizado (${moduleIds.length})` },
       ]);
     },
 
@@ -612,9 +612,12 @@ export const supabaseBackend: Backend = {
       if (!response.ok) throw new Error('No se pudo cargar la actividad');
       return response.json();
     },
-    async getLeaderboard() {
-      const response = await fetch('/api/analytics/leaderboard');
-      if (!response.ok) throw new Error('No se pudo cargar el ranking');
+    async getStudentPerformance({ query = '', level = 'Todos', page = 1 }) {
+      const params = new URLSearchParams({ page: String(page) });
+      if (query) params.set('q', query);
+      if (level !== 'Todos') params.set('level', level);
+      const response = await fetch(`/api/analytics/performance?${params.toString()}`);
+      if (!response.ok) throw new Error('No se pudo cargar el rendimiento de los alumnos');
       return response.json();
     },
     async getReport(range: ReportRange) {
