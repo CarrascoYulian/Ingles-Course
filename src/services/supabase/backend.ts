@@ -74,6 +74,16 @@ async function collectCourseMediaKeys(courseId: string): Promise<string[]> {
   return (data ?? []).map((row) => row.media_key).filter((key): key is string => Boolean(key));
 }
 
+/** Mismo criterio que `collectCourseMediaKeys`, pero para una sola unidad. */
+async function collectModuleMediaKeys(moduleId: string): Promise<string[]> {
+  const { data } = await db()
+    .from('lessons')
+    .select('media_key')
+    .eq('module_id', moduleId)
+    .not('media_key', 'is', null);
+  return (data ?? []).map((row) => row.media_key).filter((key): key is string => Boolean(key));
+}
+
 type ActivityTone = 'success' | 'info' | 'warning' | 'danger';
 type ActivitySegment = { text: string; strong?: boolean };
 
@@ -235,6 +245,45 @@ export const supabaseBackend: Backend = {
           .order('position', { ascending: true }),
       );
       return rows.map(toModule);
+    },
+
+    async updateModule(moduleId, { title }) {
+      const row = unwrap<Row<'modules'>>(
+        await db().from('modules').update({ title }).eq('id', moduleId).select().single(),
+      );
+      return toModule(row);
+    },
+
+    async removeModule(moduleId) {
+      // Igual que en `courses.remove`: hay que leer las claves antes de
+      // borrar, porque el cascade de Postgres se lleva `modules` → `lessons`
+      // en el mismo statement y después ya no queda nada que consultar.
+      const mediaKeys = await collectModuleMediaKeys(moduleId);
+
+      const { error } = await db().from('modules').delete().eq('id', moduleId);
+      if (error) throw new Error(error.message);
+
+      await removeStorageObjects(mediaKeys);
+    },
+
+    async reorderModule(moduleId, direction) {
+      const row = unwrap<Row<'modules'>>(
+        await db().from('modules').select('*').eq('id', moduleId).single(),
+      );
+      const modules = await supabaseBackend.content.listModules(row.course_id);
+      const from = modules.findIndex((m) => m.id === moduleId);
+      const to = from + direction;
+      if (from < 0 || to < 0 || to >= modules.length) return modules;
+
+      const a = modules[from]!;
+      const b = modules[to]!;
+      // RPC atómico — ver `0039_module_management.sql`.
+      const { error } = await db().rpc('swap_module_position', {
+        module_a_id: a.id,
+        module_b_id: b.id,
+      });
+      if (error) throw new Error(error.message);
+      return supabaseBackend.content.listModules(row.course_id);
     },
 
     async listBlocks(moduleId) {

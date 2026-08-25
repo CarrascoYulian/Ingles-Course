@@ -16,6 +16,50 @@ export function useModules(courseId: string) {
   });
 }
 
+export function useUpdateModule(courseId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ moduleId, title }: { moduleId: string; title: string }) =>
+      backend.content.updateModule(moduleId, { title }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.modules(courseId) });
+      toast('Unidad renombrada');
+    },
+    onError: () => toast.error('No se pudo renombrar la unidad.'),
+  });
+}
+
+export function useRemoveModule(courseId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ moduleId }: { moduleId: string; title: string }) =>
+      backend.content.removeModule(moduleId),
+    onSuccess: (_data, { title }) => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.modules(courseId) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.courses });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.storageUsage });
+      toast(`“${title}” eliminada`);
+    },
+    onError: (error) =>
+      toast.error(error instanceof Error ? error.message : 'No se pudo eliminar la unidad.'),
+  });
+}
+
+export function useReorderModule(courseId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ moduleId, direction }: { moduleId: string; direction: -1 | 1 }) =>
+      backend.content.reorderModule(moduleId, direction),
+    onSuccess: (modules) => {
+      queryClient.setQueryData(QUERY_KEYS.modules(courseId), modules);
+    },
+    onError: () => toast.error('No se pudo reordenar la unidad.'),
+  });
+}
+
 export function useContentBlocks(moduleId: string) {
   return useQuery({
     queryKey: QUERY_KEYS.blocks(moduleId),

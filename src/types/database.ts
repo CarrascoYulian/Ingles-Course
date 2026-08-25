@@ -1122,12 +1122,20 @@ export type Database = {
       is_admin: { Args: never; Returns: boolean }
       is_staff: { Args: never; Returns: boolean }
       next_enrollment_code: { Args: never; Returns: string }
+      recalc_enrollment_progress_core: {
+        Args: { p_course_id: string; p_student_id: string }
+        Returns: undefined
+      }
       swap_course_position: {
         Args: { course_a_id: string; course_b_id: string }
         Returns: undefined
       }
       swap_lesson_position: {
         Args: { lesson_a_id: string; lesson_b_id: string }
+        Returns: undefined
+      }
+      swap_module_position: {
+        Args: { module_a_id: string; module_b_id: string }
         Returns: undefined
       }
     }
@@ -1144,7 +1152,7 @@ export type Database = {
 
 type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
-type DefaultSchema = DatabaseWithoutInternals["public"]
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends

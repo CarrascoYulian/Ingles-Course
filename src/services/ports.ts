@@ -94,6 +94,16 @@ export interface ContentPort {
   getModule(moduleId: string): Promise<Module>;
   /** Todos los módulos de un curso, en orden — permite navegar entre varios. */
   listModules(courseId: string): Promise<Module[]>;
+  /** Renombrar una unidad ya creada — antes sólo existía `createModule`. */
+  updateModule(moduleId: string, input: { title: string }): Promise<Module>;
+  /**
+   * Borra la unidad y todo lo que cuelga de ella (bloques, evaluación,
+   * tareas, accesos otorgados) vía cascade — el binario real en R2 de cada
+   * bloque se borra aparte, igual que en `removeBlock`.
+   */
+  removeModule(moduleId: string): Promise<void>;
+  /** Intercambia la posición de la unidad con la de su vecina inmediata. */
+  reorderModule(moduleId: string, direction: -1 | 1): Promise<Module[]>;
   listBlocks(moduleId: string): Promise<Lesson[]>;
   addBlock(moduleId: string, type: BlockType): Promise<Lesson>;
   moveBlock(moduleId: string, blockId: string, direction: -1 | 1): Promise<Lesson[]>;

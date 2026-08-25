@@ -189,6 +189,25 @@ export const demoBackend: Backend = {
     listModules: (courseId) =>
       latency(DEMO_MODULE.courseId === courseId ? [DEMO_MODULE] : []),
 
+    updateModule: (moduleId, { title }) => {
+      if (moduleId !== DEMO_MODULE.id) return Promise.reject(new Error('Unidad no encontrada'));
+      // Mutación en el sitio del fixture — mismo patrón que `demoQuizDraft`.
+      DEMO_MODULE.title = title;
+      return latency({ ...DEMO_MODULE });
+    },
+
+    removeModule: () =>
+      // El fixture sólo modela una unidad de referencia por curso: no hay
+      // nada a lo que "reordenar" tras borrarla sin romper el resto del
+      // mundo demo (quiz, tareas, progreso), que asumen que existe.
+      Promise.reject(new Error('El modo demo no permite borrar la única unidad de referencia')),
+
+    reorderModule: (moduleId) =>
+      // Con un solo módulo por curso no hay vecino con quien intercambiar
+      // posición — se devuelve la lista tal cual, igual que haría el swap
+      // real cuando `from`/`to` caen fuera de rango.
+      latency(moduleId === DEMO_MODULE.id ? [DEMO_MODULE] : []),
+
     listBlocks: (moduleId) =>
       latency(
         store.lessons

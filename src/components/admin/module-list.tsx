@@ -1,9 +1,15 @@
 'use client';
 
-import { Lock, Plus } from 'lucide-react';
+import { ArrowDown, ArrowUp, Lock, MoreVertical, Plus } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { avatarColorFor } from '@/constants/palettes';
 import { cn } from '@/lib/utils';
 import type { Module } from '@/types';
@@ -13,6 +19,10 @@ export interface ModuleListProps {
   activeModuleId: string;
   onSelect: (module: Module) => void;
   onCreate: () => void;
+  onRename: (module: Module) => void;
+  onDelete: (module: Module) => void;
+  onReorder: (module: Module, direction: -1 | 1) => void;
+  canDelete: boolean;
 }
 
 /**
@@ -24,7 +34,16 @@ export interface ModuleListProps {
  * ya usa `LessonList` del lado del alumno, sólo sin el estado de
  * visto/bloqueado que no aplica aquí).
  */
-export function ModuleList({ modules, activeModuleId, onSelect, onCreate }: ModuleListProps) {
+export function ModuleList({
+  modules,
+  activeModuleId,
+  onSelect,
+  onCreate,
+  onRename,
+  onDelete,
+  onReorder,
+  canDelete,
+}: ModuleListProps) {
   return (
     <Card padding="sm" radius="xl" className="flex flex-col gap-1">
       <p className="px-2 pb-1 pt-1 text-tiny font-extrabold tracking-eyebrow text-fg-ghost">
@@ -32,23 +51,26 @@ export function ModuleList({ modules, activeModuleId, onSelect, onCreate }: Modu
       </p>
 
       <ol className="flex flex-col gap-1">
-        {modules.map((module) => {
+        {modules.map((module, index) => {
           const isActive = module.id === activeModuleId;
           const color = avatarColorFor(module.id);
+          const isFirst = index === 0;
+          const isLast = index === modules.length - 1;
 
           return (
-            <li key={module.id}>
+            <li
+              key={module.id}
+              className={cn(
+                'group flex items-center gap-1 rounded-2xl border-l-[3px] pr-1',
+                'transition-[background-color,border-color] duration-[160ms] ease-[cubic-bezier(0.23,1,0.32,1)]',
+                isActive ? 'border-accent bg-accent-tint' : 'border-transparent hover:bg-surface-muted',
+              )}
+            >
               <button
                 type="button"
                 aria-current={isActive ? 'true' : undefined}
                 onClick={() => onSelect(module)}
-                className={cn(
-                  'flex w-full items-center gap-2.5 rounded-2xl border-l-[3px] py-2 pl-2.5 pr-3 text-left',
-                  'transition-[background-color,border-color] duration-[160ms] ease-[cubic-bezier(0.23,1,0.32,1)]',
-                  isActive
-                    ? 'border-accent bg-accent-tint'
-                    : 'border-transparent hover:bg-surface-muted',
-                )}
+                className="flex min-w-0 flex-1 items-center gap-2.5 py-2 pl-2.5 pr-1 text-left"
               >
                 <span
                   aria-hidden
@@ -75,6 +97,49 @@ export function ModuleList({ modules, activeModuleId, onSelect, onCreate }: Modu
                   )}
                 </span>
               </button>
+
+              <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity duration-[160ms] focus-within:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100">
+                <Button
+                  variant="icon"
+                  size="square"
+                  onClick={() => onReorder(module, -1)}
+                  disabled={isFirst}
+                  aria-label={`Subir “${module.title}”`}
+                  className="size-6 disabled:opacity-40"
+                >
+                  <ArrowUp aria-hidden size={11} strokeWidth={2.4} />
+                </Button>
+                <Button
+                  variant="icon"
+                  size="square"
+                  onClick={() => onReorder(module, 1)}
+                  disabled={isLast}
+                  aria-label={`Bajar “${module.title}”`}
+                  className="size-6 disabled:opacity-40"
+                >
+                  <ArrowDown aria-hidden size={11} strokeWidth={2.4} />
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="icon"
+                      size="square"
+                      aria-label={`Más acciones para “${module.title}”`}
+                      className="size-6"
+                    >
+                      <MoreVertical aria-hidden size={11} strokeWidth={2.4} />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onSelect={() => onRename(module)}>Renombrar</DropdownMenuItem>
+                    {canDelete && (
+                      <DropdownMenuItem variant="danger" onSelect={() => onDelete(module)}>
+                        Eliminar
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </li>
           );
         })}

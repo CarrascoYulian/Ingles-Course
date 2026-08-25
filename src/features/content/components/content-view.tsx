@@ -25,6 +25,7 @@ import { ContentBlockRow } from '@/components/admin/content-block-row';
 import { can } from '@/lib/auth/rbac';
 import { CreateModuleDialog } from '@/components/admin/create-module-dialog';
 import { EditLessonDialog, type EditLessonValues } from '@/components/admin/edit-lesson-dialog';
+import { EditModuleDialog, type EditModuleValues } from '@/components/admin/edit-module-dialog';
 import { LessonCommentsDialog } from '@/components/admin/lesson-comments-dialog';
 import { ModuleList } from '@/components/admin/module-list';
 import { PreviewFileDialog } from '@/components/admin/preview-file-dialog';
@@ -50,8 +51,11 @@ import {
   useOpenFile,
   usePreviewFileUrl,
   useRemoveBlock,
+  useRemoveModule,
   useReorderBlock,
+  useReorderModule,
   useUpdateLesson,
+  useUpdateModule,
 } from '../hooks/use-content-blocks';
 import { useQuizDraft, useRemoveQuiz, useSaveQuizDraft } from '../hooks/use-quiz';
 import { UploadDropzone } from './upload-dropzone';
@@ -77,6 +81,15 @@ export function ContentView() {
     syncedFor.current = courseId;
     setSelectedModuleId(modules[0]?.id ?? '');
   }, [modules, courseId]);
+
+  // Si la unidad seleccionada se borró (o cambió de curso), cae a la
+  // primera que quede en vez de dejar la pantalla en "no existe ninguna
+  // unidad" con otras unidades todavía disponibles al lado.
+  useEffect(() => {
+    if (!modules || modules.length === 0) return;
+    if (modules.some((m) => m.id === selectedModuleId)) return;
+    setSelectedModuleId(modules[0]!.id);
+  }, [modules, selectedModuleId]);
 
   const activeModule = modules?.find((m) => m.id === selectedModuleId);
   const moduleId = activeModule?.id ?? '';
@@ -111,12 +124,16 @@ export function ContentView() {
   const openFile = useOpenFile();
   const previewFileUrl = usePreviewFileUrl();
   const updateLesson = useUpdateLesson(moduleId);
+  const updateModule = useUpdateModule(courseId);
+  const removeModule = useRemoveModule(courseId);
+  const reorderModule = useReorderModule(courseId);
   const confirmDialog = useConfirmDialog();
   const createModule = useCreateModule();
   const [createModuleOpen, setCreateModuleOpen] = useState(false);
   const [previewBlock, setPreviewBlock] = useState<{ title: string } | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [editingLessonId, setEditingLessonId] = useState<string | null>(null);
+  const [editingModuleId, setEditingModuleId] = useState<string | null>(null);
   const [commentsLessonId, setCommentsLessonId] = useState<string | null>(null);
   const [quizDialogOpen, setQuizDialogOpen] = useState(false);
   const [assignmentsOpen, setAssignmentsOpen] = useState(false);
@@ -244,6 +261,17 @@ export function ContentView() {
             activeModuleId={selectedModuleId}
             onSelect={(m) => setSelectedModuleId(m.id)}
             onCreate={() => setCreateModuleOpen(true)}
+            onRename={(m) => setEditingModuleId(m.id)}
+            onReorder={(m, direction) => reorderModule.mutate({ moduleId: m.id, direction })}
+            canDelete={canDeleteBlock}
+            onDelete={(m) =>
+              confirmDialog.confirm({
+                title: 'Eliminar definitivamente',
+                body: `“${m.title}” se eliminará junto con sus bloques, evaluación y tareas — para todos los estudiantes. Esta acción no se puede deshacer.`,
+                confirmLabel: 'Sí, eliminar',
+                onConfirm: () => removeModule.mutateAsync({ moduleId: m.id, title: m.title }),
+              })
+            }
           />
         </div>
       )}
@@ -423,6 +451,24 @@ export function ContentView() {
         onSubmit={(values: EditLessonValues) => {
           if (!editingLessonId) return Promise.resolve();
           return updateLesson.mutateAsync({ lessonId: editingLessonId, ...values });
+        }}
+      />
+
+      <EditModuleDialog
+        open={editingModuleId !== null}
+        onOpenChange={(open) => !open && setEditingModuleId(null)}
+        pending={updateModule.isPending}
+        initialValues={
+          editingModuleId
+            ? (() => {
+                const target = modules?.find((m) => m.id === editingModuleId);
+                return target ? { title: target.title } : null;
+              })()
+            : null
+        }
+        onSubmit={(values: EditModuleValues) => {
+          if (!editingModuleId) return Promise.resolve();
+          return updateModule.mutateAsync({ moduleId: editingModuleId, ...values });
         }}
       />
 
