@@ -189,10 +189,14 @@ export const demoBackend: Backend = {
     listModules: (courseId) =>
       latency(DEMO_MODULE.courseId === courseId ? [DEMO_MODULE] : []),
 
-    updateModule: (moduleId, { title }) => {
+    updateModule: (moduleId, { title, requiresModuleId }) => {
       if (moduleId !== DEMO_MODULE.id) return Promise.reject(new Error('Unidad no encontrada'));
       // Mutación en el sitio del fixture — mismo patrón que `demoQuizDraft`.
+      // El fixture sólo modela una unidad de referencia por curso, así que
+      // `requiresModuleId` nunca tiene con qué unidad real vincularse — se
+      // conserva de todos modos para que el formulario no truene.
       DEMO_MODULE.title = title;
+      DEMO_MODULE.requiresModuleId = requiresModuleId;
       return latency({ ...DEMO_MODULE });
     },
 

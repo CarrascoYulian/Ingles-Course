@@ -30,35 +30,78 @@ export interface UploadDropzoneProps {
  * Es a la vez zona de arrastre y botón: el drag-and-drop no es accesible por
  * teclado, así que el elemento es un `<button>` que abre el selector nativo.
  */
+interface QueueState {
+  index: number;
+  total: number;
+  fileName: string;
+  percent: number;
+}
+
 export function UploadDropzone({ courseId, moduleId, onUploaded, className }: UploadDropzoneProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
-  const [progress, setProgress] = useState<number | null>(null);
+  const [queue, setQueue] = useState<QueueState | null>(null);
 
+  /**
+   * Antes sólo se tomaba `files[0]`: subir un curso entero con muchos videos
+   * obligaba a repetir el diálogo de archivo uno por uno. Ahora se sube toda
+   * la selección/arrastre en cola, secuencial — no en paralelo, porque cada
+   * subida termina en un `attachUpload` que calcula la siguiente posición
+   * del bloque a partir del máximo actual (`nextBlockPosition`); dos
+   * `attachUpload` concurrentes podrían leer la misma posición "siguiente"
+   * antes de que la primera se confirme.
+   */
   const handleFiles = useCallback(
     async (files: FileList | null) => {
-      const file = files?.[0];
-      if (!file) return;
+      const list = Array.from(files ?? []);
+      if (list.length === 0) return;
 
-      if (file.size > MAX_BYTES) {
-        toast.error('El archivo supera los 2 GB permitidos');
-        return;
+      const tooLarge = list.filter((f) => f.size > MAX_BYTES);
+      const toUpload = list.filter((f) => f.size <= MAX_BYTES);
+      if (tooLarge.length > 0) {
+        toast.error(
+          tooLarge.length === 1
+            ? `“${tooLarge[0]!.name}” supera los 2 GB permitidos`
+            : `${tooLarge.length} archivos superan los 2 GB permitidos`,
+        );
       }
 
-      setProgress(0);
-      try {
-        const result = await uploadFile({ file, courseId, moduleId, onProgress: setProgress });
-        await onUploaded({ ...result, fileName: file.name, sizeLabel: formatBytes(file.size) });
-        toast(`“${file.name}” subido a la unidad`);
-      } catch (error) {
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : 'Falló la subida. Revisa tu conexión e inténtalo de nuevo.',
+      const failed: string[] = [];
+      const succeeded: string[] = [];
+
+      for (const [i, file] of toUpload.entries()) {
+        setQueue({ index: i, total: toUpload.length, fileName: file.name, percent: 0 });
+        try {
+          const result = await uploadFile({
+            file,
+            courseId,
+            moduleId,
+            onProgress: (percent) => setQueue({ index: i, total: toUpload.length, fileName: file.name, percent }),
+          });
+          await onUploaded({ ...result, fileName: file.name, sizeLabel: formatBytes(file.size) });
+          succeeded.push(file.name);
+        } catch (error) {
+          failed.push(file.name);
+          console.error(`No se pudo subir "${file.name}"`, error);
+        }
+      }
+
+      setQueue(null);
+      if (inputRef.current) inputRef.current.value = '';
+
+      if (succeeded.length > 0) {
+        toast(
+          succeeded.length === 1
+            ? `“${succeeded[0]}” subido a la unidad`
+            : `${succeeded.length} archivos subidos a la unidad`,
         );
-      } finally {
-        setProgress(null);
-        if (inputRef.current) inputRef.current.value = '';
+      }
+      if (failed.length > 0) {
+        toast.error(
+          failed.length === 1
+            ? `“${failed[0]}” falló al subir. Revisa tu conexión e inténtalo de nuevo.`
+            : `${failed.length} archivos fallaron al subir: ${failed.join(', ')}`,
+        );
       }
     },
     [courseId, moduleId, onUploaded],
@@ -70,6 +113,7 @@ export function UploadDropzone({ courseId, moduleId, onUploaded, className }: Up
         ref={inputRef}
         type="file"
         accept={ACCEPTED}
+        multiple
         className="sr-only"
         onChange={(event) => void handleFiles(event.target.files)}
       />
@@ -96,22 +140,22 @@ export function UploadDropzone({ courseId, moduleId, onUploaded, className }: Up
         )}
       >
         <span className="block text-body-sm font-bold text-fg-subtle">
-          {progress === null
-            ? 'Suelta aquí un archivo para añadirlo a la unidad'
-            : `Subiendo… ${Math.round(progress)} %`}
+          {queue === null
+            ? 'Suelta aquí uno o varios archivos para añadirlos a la unidad'
+            : `Subiendo ${queue.index + 1}/${queue.total} · “${queue.fileName}” — ${Math.round(queue.percent)} %`}
         </span>
         <span className="mt-[3px] block text-tiny font-semibold text-fg-disabled">
-          MP4, MP3, PDF, DOCX o imágenes · hasta 2 GB
+          MP4, MP3, PDF, DOCX o imágenes · hasta 2 GB por archivo
         </span>
       </button>
 
-      {progress !== null && (
+      {queue !== null && (
         <Progress
-          value={progress}
+          value={(queue.index / queue.total) * 100 + queue.percent / queue.total}
           tone="accent"
           height={5}
           className="mt-2.5"
-          label="Progreso de la subida"
+          label={`Progreso de la subida (${queue.index + 1} de ${queue.total})`}
         />
       )}
     </div>

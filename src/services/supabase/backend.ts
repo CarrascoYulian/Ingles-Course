@@ -247,9 +247,14 @@ export const supabaseBackend: Backend = {
       return rows.map(toModule);
     },
 
-    async updateModule(moduleId, { title }) {
+    async updateModule(moduleId, { title, requiresModuleId }) {
       const row = unwrap<Row<'modules'>>(
-        await db().from('modules').update({ title }).eq('id', moduleId).select().single(),
+        await db()
+          .from('modules')
+          .update({ title, requires_module_id: requiresModuleId })
+          .eq('id', moduleId)
+          .select()
+          .single(),
       );
       return toModule(row);
     },

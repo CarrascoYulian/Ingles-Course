@@ -458,11 +458,12 @@ export function ContentView() {
         open={editingModuleId !== null}
         onOpenChange={(open) => !open && setEditingModuleId(null)}
         pending={updateModule.isPending}
+        otherModules={modules?.filter((m) => m.id !== editingModuleId) ?? []}
         initialValues={
           editingModuleId
             ? (() => {
                 const target = modules?.find((m) => m.id === editingModuleId);
-                return target ? { title: target.title } : null;
+                return target ? { title: target.title, requiresModuleId: target.requiresModuleId } : null;
               })()
             : null
         }

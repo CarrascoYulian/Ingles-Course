@@ -20,13 +20,20 @@ export function useUpdateModule(courseId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ moduleId, title }: { moduleId: string; title: string }) =>
-      backend.content.updateModule(moduleId, { title }),
+    mutationFn: ({
+      moduleId,
+      title,
+      requiresModuleId,
+    }: {
+      moduleId: string;
+      title: string;
+      requiresModuleId: string | null;
+    }) => backend.content.updateModule(moduleId, { title, requiresModuleId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.modules(courseId) });
-      toast('Unidad renombrada');
+      toast('Unidad actualizada');
     },
-    onError: () => toast.error('No se pudo renombrar la unidad.'),
+    onError: () => toast.error('No se pudo actualizar la unidad.'),
   });
 }
 
