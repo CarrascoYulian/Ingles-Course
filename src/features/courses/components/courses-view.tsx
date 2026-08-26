@@ -15,6 +15,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton, LoadingRegion } from '@/components/ui/skeleton';
 import { ROUTES } from '@/constants/routes';
 import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
+import { useUndoableDelete } from '@/hooks/use-undoable-delete';
 import { useAdminSearch } from '@/features/students/hooks/use-admin-search';
 import { CEFR_LEVELS, type CefrLevel, type Course } from '@/types';
 import {
@@ -45,6 +46,7 @@ export function CoursesView() {
   const reorderCourse = useReorderCourse();
   const publishWarnings = usePublishWarnings();
   const confirmDialog = useConfirmDialog();
+  const undoableCourses = useUndoableDelete();
 
   /**
    * Publicar es irreversible en la práctica (el curso queda visible para
@@ -87,6 +89,7 @@ export function CoursesView() {
   const needle = appliedQuery.trim().toLocaleLowerCase();
   const visible = courses?.filter(
     (course) =>
+      !undoableCourses.isHidden(course.id) &&
       (levelFilter === 'Todos' || course.level === levelFilter) &&
       (needle === '' || course.name.toLocaleLowerCase().includes(needle)),
   );
@@ -149,9 +152,12 @@ export function CoursesView() {
           onDelete={(target) =>
             confirmDialog.confirm({
               title: 'Eliminar definitivamente',
-              body: `“${target.name}” se eliminará para todos los estudiantes. Esta acción no se puede deshacer.`,
+              body: `“${target.name}” se eliminará para todos los estudiantes. Vas a tener unos segundos para deshacerlo después.`,
               confirmLabel: 'Sí, eliminar',
-              onConfirm: () => deleteCourse.mutateAsync({ id: target.id, name: target.name }),
+              onConfirm: () =>
+                undoableCourses.request(target.id, `“${target.name}” eliminado`, () =>
+                  deleteCourse.mutateAsync({ id: target.id, name: target.name }),
+                ),
             })
           }
         />

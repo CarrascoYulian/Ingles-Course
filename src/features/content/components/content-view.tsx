@@ -39,6 +39,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { LoadingRegion, Skeleton } from '@/components/ui/skeleton';
 import { ROUTES } from '@/constants/routes';
 import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
+import { useUndoableDelete } from '@/hooks/use-undoable-delete';
 import { useCreateModule } from '@/features/learning/hooks/use-learning';
 import { useCourses } from '@/features/courses/hooks/use-courses';
 import { ModuleAssignmentsPanel } from '@/features/assignments/components/module-assignments-panel';
@@ -70,6 +71,8 @@ export function ContentView() {
   // de la URL y los módulos se listan filtrados por ese curso.
   const { data: courses } = useCourses();
   const course = courses?.find((c) => c.id === courseId);
+  const undoableBlocks = useUndoableDelete();
+  const undoableModules = useUndoableDelete();
 
   const { data: modules, isPending: isModulesPending } = useModules(courseId);
   const [selectedModuleId, setSelectedModuleId] = useState('');
@@ -100,6 +103,7 @@ export function ContentView() {
     : 'Cargando curso…';
 
   const { data: blocks, isPending } = useContentBlocks(moduleId);
+  const visibleBlocks = blocks?.filter((b) => !undoableBlocks.isHidden(b.id));
   const moveBlock = useMoveBlock(moduleId);
   const reorderBlock = useReorderBlock(moduleId);
   const removeBlock = useRemoveBlock(moduleId);
@@ -115,9 +119,9 @@ export function ContentView() {
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-    if (!over || active.id === over.id || !blocks) return;
-    const from = blocks.findIndex((b) => b.id === active.id);
-    const to = blocks.findIndex((b) => b.id === over.id);
+    if (!over || active.id === over.id || !visibleBlocks) return;
+    const from = visibleBlocks.findIndex((b) => b.id === active.id);
+    const to = visibleBlocks.findIndex((b) => b.id === over.id);
     if (from < 0 || to < 0) return;
     reorderBlock.mutate({ blockId: String(active.id), from, to });
   };
@@ -236,7 +240,8 @@ export function ContentView() {
   // para ese raíl que nunca se renderizó, y el panel de "Añadir bloque"
   // heredaba la del medio — el layout se veía roto para cualquier curso de
   // un solo módulo.
-  const hasModuleRail = Boolean(modules && modules.length > 1);
+  const visibleModules = modules?.filter((m) => !undoableModules.isHidden(m.id));
+  const hasModuleRail = Boolean(visibleModules && visibleModules.length > 1);
 
   return (
     <div className="flex flex-col gap-2.5 pt-4 lg:pt-6">
@@ -259,7 +264,7 @@ export function ContentView() {
       {hasModuleRail && (
         <div className="hidden lg:block">
           <ModuleList
-            modules={modules!}
+            modules={visibleModules!}
             activeModuleId={selectedModuleId}
             onSelect={(m) => setSelectedModuleId(m.id)}
             onCreate={() => setCreateModuleOpen(true)}
@@ -273,9 +278,16 @@ export function ContentView() {
             onDelete={(m) =>
               confirmDialog.confirm({
                 title: 'Eliminar definitivamente',
-                body: `“${m.title}” se eliminará junto con sus bloques, evaluación y tareas — para todos los estudiantes. Esta acción no se puede deshacer.`,
+                body: `“${m.title}” se eliminará junto con sus bloques, evaluación y tareas — para todos los estudiantes. Vas a tener unos segundos para deshacerlo después.`,
                 confirmLabel: 'Sí, eliminar',
-                onConfirm: () => removeModule.mutateAsync({ moduleId: m.id, title: m.title }),
+                onConfirm: () => {
+                  undoableModules.request(m.id, `“${m.title}” eliminada`, () =>
+                    removeModule.mutateAsync({ moduleId: m.id, title: m.title }),
+                  );
+                  if (selectedModuleId === m.id) {
+                    setSelectedModuleId(visibleModules!.find((x) => x.id !== m.id)?.id ?? '');
+                  }
+                },
               })
             }
           />
@@ -285,7 +297,7 @@ export function ContentView() {
       <div className="flex min-w-0 flex-col gap-2.5">
         {hasModuleRail && (
           <ChipRow label="Unidades del curso" className="pb-0.5 lg:hidden">
-            {modules!.map((m) => (
+            {visibleModules!.map((m) => (
               <Chip key={m.id} active={m.id === selectedModuleId} onClick={() => setSelectedModuleId(m.id)}>
                 {m.title}
               </Chip>
@@ -342,26 +354,29 @@ export function ContentView() {
           onDragEnd={handleDragEnd}
         >
           <SortableContext
-            items={blocks?.map((b) => b.id) ?? []}
+            items={visibleBlocks?.map((b) => b.id) ?? []}
             strategy={verticalListSortingStrategy}
           >
             <ol className="flex flex-col gap-2.5">
-              {blocks?.map((block, index) => {
+              {visibleBlocks?.map((block, index) => {
                 return (
                 <ContentBlockRow
                   key={block.id}
                   block={block}
                   index={index}
-                  total={blocks.length}
+                  total={visibleBlocks.length}
                   onMove={(direction) => moveBlock.mutate({ blockId: block.id, direction })}
                   onDelete={
                     canDeleteBlock
                       ? () =>
                           confirmDialog.confirm({
                             title: 'Eliminar definitivamente',
-                            body: `“${block.title}” se eliminará para todos los estudiantes. Esta acción no se puede deshacer.`,
+                            body: `“${block.title}” se eliminará para todos los estudiantes. Vas a tener unos segundos para deshacerlo después.`,
                             confirmLabel: 'Sí, eliminar',
-                            onConfirm: () => removeBlock.mutateAsync({ id: block.id, title: block.title }),
+                            onConfirm: () =>
+                              undoableBlocks.request(block.id, `“${block.title}” eliminado`, () =>
+                                removeBlock.mutateAsync({ id: block.id, title: block.title }),
+                              ),
                           })
                       : undefined
                   }
