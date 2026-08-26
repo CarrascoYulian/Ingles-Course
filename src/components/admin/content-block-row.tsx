@@ -24,6 +24,7 @@ import { BLOCK_BADGE } from '@/constants/palettes';
 import { useBlockThumbnailUrl } from '@/features/content/hooks/use-content-blocks';
 import { cn } from '@/lib/utils';
 import type { BlockType, Lesson } from '@/types';
+import { ReplaceMediaButton, type ReplaceMediaButtonProps } from './replace-media-button';
 
 export interface ContentBlockRowProps {
   block: Lesson;
@@ -41,6 +42,11 @@ export interface ContentBlockRowProps {
   onEditLesson?: () => void;
   /** Sólo si el ítem ya tiene un archivo real: ver/borrar sus comentarios. */
   onComments?: () => void;
+  /** Sólo si el ítem ya tiene un archivo real: reemplazarlo sin perder comentarios/progreso. */
+  onReplace?: Pick<ReplaceMediaButtonProps, 'courseId' | 'moduleId' | 'onReplaced'>;
+  /** Selección para acciones en lote — `undefined` oculta el checkbox. */
+  selected?: boolean;
+  onToggleSelect?: () => void;
 }
 
 const TYPE_ICON: Record<BlockType, typeof VideoIcon> = {
@@ -113,6 +119,9 @@ export function ContentBlockRow({
   onPreview,
   onEditLesson,
   onComments,
+  onReplace,
+  selected,
+  onToggleSelect,
 }: ContentBlockRowProps) {
   const isFirst = index === 0;
   const isLast = index === total - 1;
@@ -138,6 +147,16 @@ export function ContentBlockRow({
         isDragging && 'relative z-10 shadow-lg',
       )}
     >
+      {onToggleSelect && (
+        <input
+          type="checkbox"
+          checked={selected ?? false}
+          onChange={onToggleSelect}
+          aria-label={`Seleccionar “${block.title}”`}
+          className="size-4 shrink-0 cursor-pointer accent-accent"
+        />
+      )}
+
       <span
         aria-hidden={false}
         aria-label={`Arrastrar para reordenar “${block.title}”`}
@@ -220,6 +239,14 @@ export function ContentBlockRow({
           >
             <ExternalLink aria-hidden size={13} strokeWidth={2.4} />
           </Button>
+        )}
+        {onReplace && (
+          <ReplaceMediaButton
+            courseId={onReplace.courseId}
+            moduleId={onReplace.moduleId}
+            title={block.title}
+            onReplaced={onReplace.onReplaced}
+          />
         )}
         <Button
           variant="icon"

@@ -248,6 +248,7 @@ export const demoBackend: Backend = {
         watchedPercent: 0,
         mediaKey: null,
         description: null,
+        transcript: null,
         uploadedBy: null,
       };
       store.lessons = [...store.lessons, lesson];
@@ -289,6 +290,7 @@ export const demoBackend: Backend = {
         watchedPercent: 0,
         mediaKey: input.mediaKey,
         description: null,
+        transcript: null,
         uploadedBy: DEMO_TEACHER.id,
       };
       store.lessons = [...store.lessons, lesson];
@@ -301,8 +303,57 @@ export const demoBackend: Backend = {
     getFileUrl: (mediaKey: string) => latency(`/demo-uploads/${mediaKey}`),
     updateLesson: (lessonId, input) => {
       store.lessons = store.lessons.map((l) =>
-        l.id === lessonId ? { ...l, title: input.title, description: input.description || null } : l,
+        l.id === lessonId
+          ? { ...l, title: input.title, description: input.description || null, transcript: input.transcript || null }
+          : l,
       );
+      return latency(undefined);
+    },
+
+    // A diferencia de Supabase (donde el binario vive en R2 y hay que
+    // copiarlo/borrarlo server-side), acá los "archivos" son un mero string
+    // en memoria — reemplazar es simplemente pisar los campos de la fila.
+    replaceLessonMedia: (lessonId, input) => {
+      const type = inferBlockType(input.contentType);
+      store.lessons = store.lessons.map((l) =>
+        l.id === lessonId
+          ? {
+              ...l,
+              type,
+              meta: input.sizeLabel,
+              duration: type === 'Video' ? '0:00' : input.sizeLabel,
+              durationSeconds: input.durationSeconds ? Math.round(input.durationSeconds) : 0,
+              mediaKey: input.mediaKey,
+            }
+          : l,
+      );
+      return latency(undefined);
+    },
+
+    listCourseMedia: (courseId) => {
+      if (DEMO_MODULE.courseId !== courseId) return latency([]);
+      return latency(
+        store.lessons
+          .filter((l) => l.moduleId === DEMO_MODULE.id && l.mediaKey)
+          .map((l) => ({ lessonId: l.id, title: l.title, type: l.type, meta: l.meta, moduleTitle: DEMO_MODULE.title })),
+      );
+    },
+
+    // El fixture no tiene R2 real que copiar — simular una copia clonando
+    // la fila con un id nuevo (sin ref-count real, pero en memoria no hay
+    // riesgo de que borrar una se lleve puesta la otra).
+    addBlockFromLibrary: (moduleId, sourceLessonId) => {
+      const source = store.lessons.find((l) => l.id === sourceLessonId);
+      if (!source) return Promise.reject(new Error('Archivo no encontrado'));
+      const lesson: Lesson = {
+        ...source,
+        id: newId(),
+        moduleId,
+        order: store.lessons.length + 1,
+        state: 'locked',
+        watchedPercent: 0,
+      };
+      store.lessons = [...store.lessons, lesson];
       return latency(undefined);
     },
   },

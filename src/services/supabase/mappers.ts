@@ -71,6 +71,7 @@ export function toLesson(
     watchedPercent: Math.round(progress?.watchedPercent ?? 0),
     mediaKey: row.media_key,
     description: row.description,
+    transcript: row.transcript,
     uploadedBy: row.uploaded_by,
   };
 }

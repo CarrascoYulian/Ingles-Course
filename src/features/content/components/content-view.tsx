@@ -27,6 +27,7 @@ import { CreateModuleDialog } from '@/components/admin/create-module-dialog';
 import { EditLessonDialog, type EditLessonValues } from '@/components/admin/edit-lesson-dialog';
 import { EditModuleDialog, type EditModuleValues } from '@/components/admin/edit-module-dialog';
 import { LessonCommentsDialog } from '@/components/admin/lesson-comments-dialog';
+import { MediaLibraryDialog } from '@/components/admin/media-library-dialog';
 import { ModuleList } from '@/components/admin/module-list';
 import { PreviewFileDialog } from '@/components/admin/preview-file-dialog';
 import { QuizBlockRow } from '@/components/admin/quiz-block-row';
@@ -45,8 +46,10 @@ import { useCourses } from '@/features/courses/hooks/use-courses';
 import { ModuleAssignmentsPanel } from '@/features/assignments/components/module-assignments-panel';
 import { cn } from '@/lib/utils';
 import {
+  useAddBlockFromLibrary,
   useAttachUpload,
   useContentBlocks,
+  useCourseMedia,
   useDuplicateModule,
   useModules,
   useMoveBlock,
@@ -56,6 +59,7 @@ import {
   useRemoveModule,
   useReorderBlock,
   useReorderModule,
+  useReplaceLessonMedia,
   useUpdateLesson,
   useUpdateModule,
 } from '../hooks/use-content-blocks';
@@ -143,9 +147,28 @@ export function ContentView() {
   const [commentsLessonId, setCommentsLessonId] = useState<string | null>(null);
   const [quizDialogOpen, setQuizDialogOpen] = useState(false);
   const [assignmentsOpen, setAssignmentsOpen] = useState(false);
+  const [mediaLibraryOpen, setMediaLibraryOpen] = useState(false);
+  const [selectedBlockIds, setSelectedBlockIds] = useState<Set<string>>(new Set());
   const { data: quizDraft } = useQuizDraft(moduleId);
   const saveQuizDraft = useSaveQuizDraft(moduleId);
   const removeQuizDraft = useRemoveQuiz(moduleId);
+  const replaceLessonMedia = useReplaceLessonMedia(moduleId);
+  const { data: courseMedia, isPending: courseMediaPending } = useCourseMedia(courseId, mediaLibraryOpen);
+  const addBlockFromLibrary = useAddBlockFromLibrary(moduleId);
+
+  const toggleBlockSelected = (id: string) =>
+    setSelectedBlockIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  // Cambiar de unidad no debería arrastrar una selección de bloques de la
+  // unidad anterior, que ya ni siquiera se muestra.
+  useEffect(() => {
+    setSelectedBlockIds(new Set());
+  }, [moduleId]);
 
   const openPreview = (block: { title: string; mediaKey: string }) => {
     setPreviewBlock({ title: block.title });
@@ -329,6 +352,9 @@ export function ContentView() {
             >
               {assignmentsOpen ? 'Ocultar tareas' : 'Tareas'}
             </Button>
+            <Button variant="ghost" size="sm" onClick={() => setMediaLibraryOpen(true)}>
+              Reutilizar archivo
+            </Button>
             <Button
               variant="ghost"
               size="sm"
@@ -346,6 +372,48 @@ export function ContentView() {
               <Skeleton key={i} className="h-[74px] rounded-4xl" />
             ))}
           </>
+        )}
+
+        {canDeleteBlock && selectedBlockIds.size > 0 && (
+          <div className="flex items-center justify-between rounded-4xl bg-accent-tint px-4 py-2.5">
+            <p className="text-body-sm font-bold text-accent">
+              {selectedBlockIds.size} {selectedBlockIds.size === 1 ? 'bloque seleccionado' : 'bloques seleccionados'}
+            </p>
+            <div className="flex gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setSelectedBlockIds(new Set())}>
+                Cancelar
+              </Button>
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={() => {
+                  const ids = [...selectedBlockIds];
+                  const titles = ids
+                    .map((id) => visibleBlocks?.find((b) => b.id === id)?.title)
+                    .filter((t): t is string => Boolean(t));
+                  confirmDialog.confirm({
+                    title: 'Eliminar definitivamente',
+                    body: `${ids.length} bloques se eliminarán para todos los estudiantes. Vas a tener unos segundos para deshacerlo después.`,
+                    confirmLabel: 'Sí, eliminar',
+                    onConfirm: () => {
+                      undoableBlocks.requestMany(
+                        ids,
+                        `${ids.length} bloques eliminados`,
+                        (id) =>
+                          removeBlock.mutateAsync({
+                            id,
+                            title: titles[ids.indexOf(id)] ?? '',
+                          }),
+                      );
+                      setSelectedBlockIds(new Set());
+                    },
+                  });
+                }}
+              >
+                Eliminar seleccionados
+              </Button>
+            </div>
+          </div>
         )}
 
         <DndContext
@@ -389,6 +457,18 @@ export function ContentView() {
                   }
                   onEditLesson={block.mediaKey ? () => setEditingLessonId(block.id) : undefined}
                   onComments={block.mediaKey ? () => setCommentsLessonId(block.id) : undefined}
+                  onReplace={
+                    block.mediaKey
+                      ? {
+                          courseId,
+                          moduleId,
+                          onReplaced: (result) =>
+                            replaceLessonMedia.mutateAsync({ lessonId: block.id, ...result }),
+                        }
+                      : undefined
+                  }
+                  selected={canDeleteBlock ? selectedBlockIds.has(block.id) : undefined}
+                  onToggleSelect={canDeleteBlock ? () => toggleBlockSelected(block.id) : undefined}
                 />
                 );
               })}
@@ -465,7 +545,9 @@ export function ContentView() {
           editingLessonId
             ? (() => {
                 const block = blocks?.find((b) => b.id === editingLessonId);
-                return block ? { title: block.title, description: block.description ?? '' } : null;
+                return block
+                  ? { title: block.title, description: block.description ?? '', transcript: block.transcript ?? '' }
+                  : null;
               })()
             : null
         }
@@ -492,6 +574,17 @@ export function ContentView() {
           if (!editingModuleId) return Promise.resolve();
           return updateModule.mutateAsync({ moduleId: editingModuleId, ...values });
         }}
+      />
+
+      <MediaLibraryDialog
+        open={mediaLibraryOpen}
+        onOpenChange={setMediaLibraryOpen}
+        items={courseMedia?.filter((item) => !visibleBlocks?.some((b) => b.id === item.lessonId))}
+        loading={courseMediaPending}
+        usePending={addBlockFromLibrary.isPending}
+        onUse={(item) =>
+          addBlockFromLibrary.mutateAsync(item.lessonId).then(() => setMediaLibraryOpen(false))
+        }
       />
 
       <LessonCommentsDialog

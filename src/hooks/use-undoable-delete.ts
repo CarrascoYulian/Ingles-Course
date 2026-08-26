@@ -71,7 +71,54 @@ export function useUndoableDelete() {
     [],
   );
 
+  /**
+   * Variante para borrado en lote: un solo toast con "Deshacer" cubre
+   * varios ids a la vez — pedir un toast por fila seleccionada sería
+   * ruidoso e inútil (nadie va a deshacer uno de diez uno por uno).
+   */
+  const requestMany = useCallback(
+    (ids: string[], message: string, action: (id: string) => Promise<unknown>) => {
+      if (ids.length === 0) return;
+      setHiddenIds((prev) => {
+        const next = new Set(prev);
+        for (const id of ids) next.add(id);
+        return next;
+      });
+
+      const timer = setTimeout(() => {
+        for (const id of ids) timers.current.delete(id);
+        void Promise.allSettled(ids.map((id) => action(id))).then((results) => {
+          const failedIds = ids.filter((_, i) => results[i]!.status === 'rejected');
+          if (failedIds.length === 0) return;
+          setHiddenIds((prev) => {
+            const next = new Set(prev);
+            for (const id of failedIds) next.delete(id);
+            return next;
+          });
+        });
+      }, UNDO_WINDOW_MS);
+      for (const id of ids) timers.current.set(id, timer);
+
+      toast(message, {
+        duration: UNDO_WINDOW_MS,
+        action: {
+          label: 'Deshacer',
+          onClick: () => {
+            clearTimeout(timer);
+            for (const id of ids) timers.current.delete(id);
+            setHiddenIds((prev) => {
+              const next = new Set(prev);
+              for (const id of ids) next.delete(id);
+              return next;
+            });
+          },
+        },
+      });
+    },
+    [],
+  );
+
   const isHidden = useCallback((id: string) => hiddenIds.has(id), [hiddenIds]);
 
-  return { request, isHidden };
+  return { request, requestMany, isHidden };
 }

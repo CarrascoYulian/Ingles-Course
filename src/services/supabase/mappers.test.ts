@@ -18,6 +18,7 @@ function makeRow(overrides: Partial<LessonRow> = {}): LessonRow {
     type: 'Video',
     meta: '',
     uploaded_by: null,
+    transcript: null,
     ...overrides,
   };
 }

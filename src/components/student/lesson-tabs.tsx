@@ -1,6 +1,6 @@
 'use client';
 
-import { MessageCircle, Sparkles } from 'lucide-react';
+import { FileText, MessageCircle, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 
 import { Avatar } from '@/components/ui/avatar';
@@ -37,6 +37,8 @@ function formatTimestamp(seconds: number): string {
 
 export interface LessonTabsProps {
   description: string | null;
+  /** Texto plano — `null`/vacío oculta la pestaña entera en vez de mostrarla sin contenido. */
+  transcript: string | null;
   notes: LessonNote[];
   notesPending?: boolean;
   /** Segundo actual del video — la nota se guarda ahí, no en un valor inventado. */
@@ -61,6 +63,7 @@ export interface LessonTabsProps {
 /** Paneles de la lección: descripción, archivos, notas y comentarios. */
 export function LessonTabs({
   description,
+  transcript,
   notes,
   notesPending,
   currentTimeSeconds,
@@ -136,6 +139,11 @@ export function LessonTabs({
         <TabsTrigger value="desc" className={PILL_TRIGGER}>
           Descripción
         </TabsTrigger>
+        {transcript && (
+          <TabsTrigger value="transcript" className={PILL_TRIGGER}>
+            Transcripción
+          </TabsTrigger>
+        )}
         <TabsTrigger value="notes" className={PILL_TRIGGER}>
           <span className="md:hidden">Notas</span>
           <span className="hidden md:inline">Mis notas</span>
@@ -175,6 +183,17 @@ export function LessonTabs({
           </div>
         </div>
       </TabsContent>
+
+      {transcript && (
+        <TabsContent value="transcript">
+          <div className="flex gap-3 rounded-4xl bg-surface-muted p-4">
+            <FileText aria-hidden size={18} strokeWidth={2.2} className="mt-0.5 shrink-0 text-fg-ghost" />
+            <p className="min-w-0 whitespace-pre-line text-body font-medium leading-[1.65] text-fg-body">
+              {transcript}
+            </p>
+          </div>
+        </TabsContent>
+      )}
 
       <TabsContent value="notes">
         {!notesPending && notes.length === 0 && !composing && (

@@ -97,8 +97,17 @@ export function useUpdateLesson(moduleId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ lessonId, title, description }: { lessonId: string; title: string; description: string }) =>
-      backend.content.updateLesson(lessonId, { title, description }),
+    mutationFn: ({
+      lessonId,
+      title,
+      description,
+      transcript,
+    }: {
+      lessonId: string;
+      title: string;
+      description: string;
+      transcript: string;
+    }) => backend.content.updateLesson(lessonId, { title, description, transcript }),
     onSuccess: () => {
       // Un solo `update` en `lessons` (misma fila que ve el editor y el
       // alumno) — hay que refrescar ambas listas, no sólo la caché interna
@@ -276,5 +285,46 @@ export function useRemoveBlock(moduleId: string) {
       toast(`“${title}” eliminado`);
     },
     onError: () => toast.error('No se pudo eliminar el bloque.'),
+  });
+}
+
+/** Reemplaza el binario de un bloque sin perder su lugar en la lista, comentarios ni progreso. */
+export function useReplaceLessonMedia(moduleId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ lessonId, ...input }: { lessonId: string } & Omit<AttachUploadInput, 'moduleId'>) =>
+      backend.content.replaceLessonMedia(lessonId, input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.blocks(moduleId) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.lessons(moduleId) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.storageUsage });
+    },
+    onError: (error) =>
+      toast.error(error instanceof Error ? error.message : 'No se pudo reemplazar el archivo.'),
+  });
+}
+
+/** Archivos ya subidos en el curso — para el diálogo "Reutilizar archivo". */
+export function useCourseMedia(courseId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['course-media', courseId],
+    queryFn: () => backend.content.listCourseMedia(courseId),
+    enabled: enabled && courseId !== '',
+  });
+}
+
+export function useAddBlockFromLibrary(moduleId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (sourceLessonId: string) => backend.content.addBlockFromLibrary(moduleId, sourceLessonId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.blocks(moduleId) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.storageUsage });
+      toast('Bloque añadido desde la biblioteca');
+    },
+    onError: (error) =>
+      toast.error(error instanceof Error ? error.message : 'No se pudo añadir el archivo.'),
   });
 }

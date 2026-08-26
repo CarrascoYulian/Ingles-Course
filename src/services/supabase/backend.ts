@@ -443,9 +443,76 @@ export const supabaseBackend: Backend = {
     async updateLesson(lessonId, input) {
       const { error } = await db()
         .from('lessons')
-        .update({ title: input.title, description: input.description || null })
+        .update({
+          title: input.title,
+          description: input.description || null,
+          transcript: input.transcript || null,
+        })
         .eq('id', lessonId);
       if (error) throw new Error(error.message);
+    },
+
+    async replaceLessonMedia(lessonId, input) {
+      const { data: existing } = await db()
+        .from('lessons')
+        .select('media_key')
+        .eq('id', lessonId)
+        .maybeSingle();
+
+      const type = inferBlockType(input.contentType);
+      const durationSeconds =
+        type === 'Video' && input.durationSeconds ? Math.round(input.durationSeconds) : 0;
+
+      const { error } = await db()
+        .from('lessons')
+        .update({
+          type,
+          meta: input.sizeLabel,
+          media_key: input.mediaKey,
+          duration_minutes: Math.round(durationSeconds / 60),
+          duration_seconds: type === 'Video' ? durationSeconds : null,
+        })
+        .eq('id', lessonId);
+      if (error) throw new Error(error.message);
+
+      // El objeto viejo se borra recién después de confirmar el update —
+      // si el update fallara, no queremos haber borrado el archivo que
+      // todavía está referenciado.
+      if (existing?.media_key) await removeStorageObjects([existing.media_key]);
+    },
+
+    async listCourseMedia(courseId) {
+      const { data: modules } = await db().from('modules').select('id, title').eq('course_id', courseId);
+      const moduleTitleById = new Map((modules ?? []).map((m) => [m.id, m.title]));
+      const moduleIds = [...moduleTitleById.keys()];
+      if (moduleIds.length === 0) return [];
+
+      const { data: lessons } = await db()
+        .from('lessons')
+        .select('id, title, type, meta, module_id')
+        .in('module_id', moduleIds)
+        .not('media_key', 'is', null)
+        .order('title');
+
+      return (lessons ?? []).map((l) => ({
+        lessonId: l.id,
+        title: l.title,
+        type: l.type,
+        meta: l.meta,
+        moduleTitle: moduleTitleById.get(l.module_id) ?? '',
+      }));
+    },
+
+    async addBlockFromLibrary(moduleId, sourceLessonId) {
+      const response = await fetch(`/api/lessons/${sourceLessonId}/duplicate-to`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetModuleId: moduleId }),
+      });
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(body?.error ?? 'No se pudo reutilizar el archivo');
+      }
     },
   },
 

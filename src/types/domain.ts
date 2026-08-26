@@ -76,8 +76,23 @@ export interface Lesson {
   mediaKey: string | null;
   /** Escrita por el docente — `null` si todavía no le puso ninguna. */
   description: string | null;
+  /**
+   * Transcripción de texto plano — accesibilidad básica (lector de
+   * pantalla, buscar dentro del video), no subtítulos sincronizados por
+   * timestamp. `null` si el docente todavía no escribió ninguna.
+   */
+  transcript: string | null;
   /** Quién subió el archivo y cuándo — `null` en ítems creados sin archivo (p. ej. "Ejercicio"). */
   uploadedBy: string | null;
+}
+
+/** Un archivo ya subido a alguna unidad del curso — para reutilizarlo en otra sin subirlo de nuevo. */
+export interface MediaLibraryItem {
+  lessonId: string;
+  title: string;
+  type: BlockType;
+  meta: string;
+  moduleTitle: string;
 }
 
 export interface LessonNote {

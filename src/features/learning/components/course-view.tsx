@@ -425,6 +425,7 @@ export function CourseView({ lessonOrder, currentUserId = null }: CourseViewProp
               <div className="mt-3.5 lg:mt-[18px]">
                 <LessonTabs
                   description={currentLesson?.description ?? null}
+                  transcript={currentLesson?.transcript ?? null}
                   notes={notes}
                   notesPending={notesPending}
                   currentTimeSeconds={video.elapsedSeconds}

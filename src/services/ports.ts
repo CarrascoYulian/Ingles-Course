@@ -18,6 +18,7 @@ import type {
   Lesson,
   LessonComment,
   LessonNote,
+  MediaLibraryItem,
   Module,
   ModuleQuiz,
   CourseRating,
@@ -137,7 +138,20 @@ export interface ContentPort {
   /** URL firmada para confirmar que el archivo existe y abrirlo. */
   getFileUrl(mediaKey: string): Promise<string | null>;
   /** Título/descripción reales del ítem — para cualquier tipo, no sólo video. */
-  updateLesson(lessonId: string, input: { title: string; description: string }): Promise<void>;
+  updateLesson(
+    lessonId: string,
+    input: { title: string; description: string; transcript: string },
+  ): Promise<void>;
+  /**
+   * Reemplaza el binario de una lección ya existente sin tocar su `id` — a
+   * diferencia de borrar y volver a subir, conserva comentarios y progreso
+   * de alumnos ya guardados contra ese id.
+   */
+  replaceLessonMedia(lessonId: string, input: Omit<AttachUploadInput, 'moduleId'>): Promise<void>;
+  /** Todos los archivos ya subidos en el curso — para reutilizarlos sin subirlos de nuevo. */
+  listCourseMedia(courseId: string): Promise<MediaLibraryItem[]>;
+  /** Clona un archivo de la biblioteca como bloque nuevo al final de otra unidad. */
+  addBlockFromLibrary(moduleId: string, sourceLessonId: string): Promise<void>;
 }
 
 export interface CreateStudentInput {
