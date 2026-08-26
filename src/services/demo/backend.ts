@@ -180,6 +180,14 @@ export const demoBackend: Backend = {
       store.courses = store.courses.filter((c) => c.id !== id);
       return latency(undefined);
     },
+
+    getPublishWarnings: (courseId) => {
+      if (DEMO_MODULE.courseId !== courseId) return latency([]);
+      const empty = store.lessons.filter((l) => l.moduleId === DEMO_MODULE.id).length === 0;
+      const missingQuiz = demoQuizDraft === null;
+      if (!empty && !missingQuiz) return latency([]);
+      return latency([{ moduleId: DEMO_MODULE.id, title: DEMO_MODULE.title, empty, missingQuiz }]);
+    },
   },
 
   content: {
@@ -652,6 +660,7 @@ export const demoBackend: Backend = {
         limitBytes: 1 * 1024 ** 3,
         usedPercent: 30,
         tier: 'ok',
+        byCourse: [],
       }),
   },
 

@@ -40,24 +40,34 @@ function unwrap<T>(response: { data: T | null; error: { message: string } | null
 
 const STUDENTS_PAGE_SIZE = 20;
 
-/** Mismo bucket que `src/lib/storage.ts` — no se puede importar ese módulo
- * aquí porque está marcado `server-only` y este adaptador corre en el
- * navegador bajo RLS. */
-const STORAGE_BUCKET = 'course-files';
-
 /**
- * Borra objetos de Storage lo mejor que puede: si Storage falla, no aborta
- * el flujo que la llamó (la fila en Postgres ya se borró o está por
- * borrarse). El objeto que quede huérfano lo recoge el job de
- * reconciliación semanal — no bloquear la UI del docente por un error
- * transitorio de Storage es preferible a arriesgar una fila que no se puede
- * volver a borrar desde la interfaz.
+ * Borra objetos reales en R2 vía `/api/storage/delete` — no se puede llamar
+ * a `src/lib/storage.ts` directo desde acá porque está marcado
+ * `server-only` y este adaptador corre en el navegador. Antes esto llamaba
+ * a `db().storage.from('course-files').remove()` (API de Supabase Storage
+ * sobre el bucket viejo, pre-R2): no borraba nada real, sólo fallaba en
+ * silencio contra un bucket sin estos objetos — el huérfano igual se
+ * limpiaba, pero recién con el cron semanal de reconciliación.
+ *
+ * Sigue sin abortar el flujo que la llamó si falla: la fila en Postgres ya
+ * se borró o está por borrarse, y el objeto que quede huérfano lo recoge el
+ * job de reconciliación semanal como red de seguridad — no bloquear la UI
+ * del docente por un error transitorio de Storage es preferible a
+ * arriesgar una fila que no se puede volver a borrar desde la interfaz.
  */
 async function removeStorageObjects(mediaKeys: string[]): Promise<void> {
   const keys = mediaKeys.filter((key): key is string => Boolean(key));
   if (keys.length === 0) return;
-  const { error } = await db().storage.from(STORAGE_BUCKET).remove(keys);
-  if (error) console.error('No se pudieron borrar objetos de Storage', error);
+  try {
+    const response = await fetch('/api/storage/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mediaKeys: keys }),
+    });
+    if (!response.ok) console.error('No se pudieron borrar objetos de Storage', await response.text());
+  } catch (error) {
+    console.error('No se pudieron borrar objetos de Storage', error);
+  }
 }
 
 /** Todas las claves de archivo que cuelgan de un curso, vía sus módulos. */
@@ -228,6 +238,31 @@ export const supabaseBackend: Backend = {
       });
       if (error) throw new Error(error.message);
       return supabaseBackend.courses.list();
+    },
+
+    async getPublishWarnings(courseId) {
+      const modules = unwrap<Row<'modules'>[]>(
+        await db().from('modules').select('*').eq('course_id', courseId).order('position'),
+      );
+      if (modules.length === 0) return [];
+      const moduleIds = modules.map((m) => m.id);
+
+      const [{ data: lessons }, { data: quizzes }] = await Promise.all([
+        db().from('lessons').select('module_id').in('module_id', moduleIds),
+        db().from('quizzes').select('module_id').in('module_id', moduleIds),
+      ]);
+
+      const moduleIdsWithLessons = new Set((lessons ?? []).map((l) => l.module_id));
+      const moduleIdsWithQuiz = new Set((quizzes ?? []).map((q) => q.module_id));
+
+      return modules
+        .map((module) => ({
+          moduleId: module.id,
+          title: module.title,
+          empty: !moduleIdsWithLessons.has(module.id),
+          missingQuiz: !moduleIdsWithQuiz.has(module.id),
+        }))
+        .filter((warning) => warning.empty || warning.missingQuiz);
     },
   },
 

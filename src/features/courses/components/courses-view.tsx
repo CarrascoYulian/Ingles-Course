@@ -21,6 +21,7 @@ import {
   useCourses,
   useCreateCourse,
   useDeleteCourse,
+  usePublishWarnings,
   useReorderCourse,
   useTogglePublished,
   useUpdateCourse,
@@ -42,7 +43,39 @@ export function CoursesView() {
   const togglePublished = useTogglePublished();
   const deleteCourse = useDeleteCourse();
   const reorderCourse = useReorderCourse();
+  const publishWarnings = usePublishWarnings();
   const confirmDialog = useConfirmDialog();
+
+  /**
+   * Publicar es irreversible en la práctica (el curso queda visible para
+   * alumnos matriculados de inmediato) — antes de hacerlo, se avisa si
+   * alguna unidad quedaría vacía o sin evaluación, pero no se bloquea: el
+   * docente puede seguir publicando igual (p. ej. un curso sólo de lectura
+   * sin evaluación es válido).
+   */
+  const handleTogglePublish = async (target: Course) => {
+    if (target.published) {
+      togglePublished.mutate({ id: target.id, published: false });
+      return;
+    }
+
+    const warnings = await publishWarnings.mutateAsync(target.id).catch(() => []);
+    if (warnings.length === 0) {
+      togglePublished.mutate({ id: target.id, published: true });
+      return;
+    }
+
+    const detail = warnings
+      .map((w) => `“${w.title}” (${[w.empty && 'sin bloques', w.missingQuiz && 'sin evaluación'].filter(Boolean).join(' y ')})`)
+      .join(', ');
+
+    confirmDialog.confirm({
+      title: 'Publicar con unidades incompletas',
+      body: `${warnings.length === 1 ? 'Esta unidad quedaría' : `Estas ${warnings.length} unidades quedarían`} visible para los alumnos así: ${detail}. Podés publicar igual y completarlas después.`,
+      confirmLabel: 'Publicar de todos modos',
+      onConfirm: () => togglePublished.mutateAsync({ id: target.id, published: true }).then(() => undefined),
+    });
+  };
 
   useAdminHeader(
     courses
@@ -102,10 +135,8 @@ export function CoursesView() {
         <CourseCard
           key={course.id}
           course={course}
-          pending={togglePublished.isPending || deleteCourse.isPending}
-          onToggle={(target) =>
-            togglePublished.mutate({ id: target.id, published: !target.published })
-          }
+          pending={togglePublished.isPending || deleteCourse.isPending || publishWarnings.isPending}
+          onToggle={(target) => void handleTogglePublish(target)}
           onEdit={() => router.push(ROUTES.admin.contenidoDeCurso(course.id))}
           onRename={setEditingCourse}
           onViewRatings={setRatingsCourse}

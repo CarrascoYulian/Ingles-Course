@@ -19,6 +19,7 @@ const DEMO_USAGE: StorageUsage = {
   limitBytes: STORAGE_PLAN_LIMIT_BYTES,
   usedPercent: Math.round((DEMO_USED_BYTES / STORAGE_PLAN_LIMIT_BYTES) * 100),
   tier: 'ok',
+  byCourse: [],
 };
 
 /** < 65 % azul, 65-89 % ámbar, 90 %+ rojo. */
@@ -53,8 +54,46 @@ export async function GET() {
 
   if (tier === 'critical') await notifyCritical(usedPercent);
 
-  const usage: StorageUsage = { usedBytes, limitBytes: STORAGE_PLAN_LIMIT_BYTES, usedPercent, tier };
+  const byCourse = await breakdownByCourse(objects);
+
+  const usage: StorageUsage = { usedBytes, limitBytes: STORAGE_PLAN_LIMIT_BYTES, usedPercent, tier, byCourse };
   return NextResponse.json(usage, { headers: { 'Cache-Control': 'private, max-age=120' } });
+}
+
+/**
+ * Suma bytes por curso a partir del propio `key` del objeto — la ruta
+ * jerárquica de `buildMediaKey` (`cursos/{courseId}/modulos/...`) ya trae
+ * el curso sin tener que cruzar contra Postgres lección por lección. Los
+ * nombres se resuelven en una sola consulta batched al final.
+ */
+async function breakdownByCourse(
+  objects: Awaited<ReturnType<typeof listAllStorageObjects>>,
+): Promise<StorageUsage['byCourse']> {
+  const bytesByCourseId = new Map<string, number>();
+  for (const object of objects) {
+    const courseId = object.key.split('/')[1];
+    if (!courseId) continue;
+    bytesByCourseId.set(courseId, (bytesByCourseId.get(courseId) ?? 0) + object.size);
+  }
+  if (bytesByCourseId.size === 0) return [];
+
+  const admin = getSupabaseAdminClient();
+  const names = new Map<string, string>();
+  if (admin) {
+    const { data } = await admin.from('courses').select('id, name').in('id', [...bytesByCourseId.keys()]);
+    for (const row of data ?? []) names.set(row.id, row.name);
+  }
+
+  return [...bytesByCourseId.entries()]
+    .map(([courseId, bytes]) => ({
+      courseId,
+      // Un curso ya borrado puede seguir teniendo objetos huérfanos en R2
+      // hasta que pase el cron de reconciliación — se muestran igual, con
+      // una etiqueta que deja claro que no corresponden a un curso vivo.
+      courseName: names.get(courseId) ?? 'Curso eliminado',
+      bytes,
+    }))
+    .sort((a, b) => b.bytes - a.bytes);
 }
 
 /**

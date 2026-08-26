@@ -291,6 +291,14 @@ export interface StorageUsage {
   limitBytes: number;
   usedPercent: number;
   tier: 'ok' | 'warning' | 'critical';
+  /** Desglose por curso, de mayor a menor uso — para saber qué curso "pesa" si hay que liberar espacio. */
+  byCourse: StorageUsageByCourse[];
+}
+
+export interface StorageUsageByCourse {
+  courseId: string;
+  courseName: string;
+  bytes: number;
 }
 
 export type ReportRange = '7 días' | '30 días' | 'Trimestre' | 'Año';

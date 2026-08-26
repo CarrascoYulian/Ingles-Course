@@ -72,6 +72,18 @@ export interface CoursesPort {
   remove(id: string): Promise<void>;
   /** Intercambia la posición del curso con la del vecino inmediato. */
   reorder(id: string, direction: -1 | 1): Promise<Course[]>;
+  /**
+   * Unidades del curso sin ningún bloque o sin evaluación — para advertir
+   * antes de publicar, no para bloquear (el docente puede publicar igual).
+   */
+  getPublishWarnings(courseId: string): Promise<PublishWarning[]>;
+}
+
+export interface PublishWarning {
+  moduleId: string;
+  title: string;
+  empty: boolean;
+  missingQuiz: boolean;
 }
 
 export interface AttachUploadInput {

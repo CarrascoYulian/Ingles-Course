@@ -80,6 +80,17 @@ export function useTogglePublished() {
   });
 }
 
+/**
+ * Consulta bajo demanda (no una `query` normal: sólo se necesita en el
+ * instante de publicar) qué unidades del curso quedarían vacías o sin
+ * evaluación si se publica ahora — para advertir, no para bloquear.
+ */
+export function usePublishWarnings() {
+  return useMutation({
+    mutationFn: (courseId: string) => backend.courses.getPublishWarnings(courseId),
+  });
+}
+
 export function useReorderCourse() {
   const queryClient = useQueryClient();
 

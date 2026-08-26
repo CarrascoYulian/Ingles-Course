@@ -39,6 +39,20 @@ export function StorageUsageWidget() {
       <p className="text-micro text-ink-fg-dim">
         {formatBytes(data.usedBytes)} de {formatBytes(data.limitBytes)} usados
       </p>
+
+      {data.byCourse.length > 0 && (
+        <ul className="flex flex-col gap-1 border-t border-white/10 pt-2">
+          {data.byCourse.slice(0, 3).map((course) => (
+            <li
+              key={course.courseId}
+              className="flex items-center justify-between gap-2 text-micro text-ink-fg-dim"
+            >
+              <span className="min-w-0 truncate">{course.courseName}</span>
+              <span className="shrink-0 tabular-nums">{formatBytes(course.bytes)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
