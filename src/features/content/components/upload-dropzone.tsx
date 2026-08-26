@@ -9,7 +9,13 @@ import { cn } from '@/lib/utils';
 import { uploadFile, type UploadResult } from '@/features/content/upload';
 
 const ACCEPTED = '.mp4,.mp3,.pdf,.docx,.png,.jpg,.jpeg,.webp';
-const MAX_BYTES = 2 * 1024 * 1024 * 1024; // 2 GB
+/**
+ * 5 GB: el techo real de un `PutObject` sin multipart contra S3/R2 (por
+ * encima de eso, R2 exige subida multiparte — no implementada). Antes el
+ * límite era 2 GB por una elección arbitraria, no por esta restricción real;
+ * un video largo en buena calidad ya la superaba.
+ */
+const MAX_BYTES = 5 * 1024 * 1024 * 1024;
 
 export interface UploadDropzoneProps {
   courseId: string;
@@ -61,8 +67,8 @@ export function UploadDropzone({ courseId, moduleId, onUploaded, className }: Up
       if (tooLarge.length > 0) {
         toast.error(
           tooLarge.length === 1
-            ? `“${tooLarge[0]!.name}” supera los 2 GB permitidos`
-            : `${tooLarge.length} archivos superan los 2 GB permitidos`,
+            ? `“${tooLarge[0]!.name}” supera los 5 GB permitidos por archivo`
+            : `${tooLarge.length} archivos superan los 5 GB permitidos por archivo`,
         );
       }
 
@@ -145,7 +151,7 @@ export function UploadDropzone({ courseId, moduleId, onUploaded, className }: Up
             : `Subiendo ${queue.index + 1}/${queue.total} · “${queue.fileName}” — ${Math.round(queue.percent)} %`}
         </span>
         <span className="mt-[3px] block text-tiny font-semibold text-fg-disabled">
-          MP4, MP3, PDF, DOCX o imágenes · hasta 2 GB por archivo
+          MP4, MP3, PDF, DOCX o imágenes · hasta 5 GB por archivo
         </span>
       </button>
 

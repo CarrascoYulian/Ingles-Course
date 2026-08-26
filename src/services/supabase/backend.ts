@@ -291,6 +291,18 @@ export const supabaseBackend: Backend = {
       return supabaseBackend.content.listModules(row.course_id);
     },
 
+    async duplicateModule(moduleId) {
+      // Copiar objetos en R2 sólo es posible server-side (`storage.ts` es
+      // `server-only`) — este backend corre en el navegador, así que la
+      // duplicación entera vive en una ruta API, no acá.
+      const response = await fetch(`/api/modules/${moduleId}/duplicate`, { method: 'POST' });
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(body?.error ?? 'No se pudo duplicar la unidad');
+      }
+      return (await response.json()) as { id: string };
+    },
+
     async listBlocks(moduleId) {
       return supabaseBackend.learning.listLessons(moduleId);
     },

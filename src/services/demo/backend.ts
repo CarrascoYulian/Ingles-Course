@@ -212,6 +212,12 @@ export const demoBackend: Backend = {
       // real cuando `from`/`to` caen fuera de rango.
       latency(moduleId === DEMO_MODULE.id ? [DEMO_MODULE] : []),
 
+    duplicateModule: () =>
+      // Mismo motivo que `removeModule`: el fixture sólo modela una unidad
+      // de referencia por curso, y duplicar copia binarios reales en R2 vía
+      // una ruta API que no tiene sentido sin Supabase configurado.
+      Promise.reject(new Error('El modo demo no permite duplicar unidades')),
+
     listBlocks: (moduleId) =>
       latency(
         store.lessons

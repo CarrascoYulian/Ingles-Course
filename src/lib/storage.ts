@@ -1,6 +1,7 @@
 import 'server-only';
 
 import {
+  CopyObjectCommand,
   DeleteObjectsCommand,
   HeadObjectCommand,
   ListObjectsV2Command,
@@ -168,6 +169,43 @@ function buildMediaKey({
   const base = `cursos/${courseId}/modulos/${moduleId}`;
   const prefix = studentId ? `${base}/entregas/${studentId}` : base;
   return `${prefix}/${crypto.randomUUID()}-${safeName}`;
+}
+
+/**
+ * Copia server-side un objeto ya existente a una clave nueva bajo otro
+ * módulo — usado por "Duplicar unidad": clonar el binario de verdad (en vez
+ * de apuntar dos lecciones al mismo `media_key`) es lo que evita que borrar
+ * la unidad original se lleve puesto el archivo de la copia (`removeBlock`
+ * borra por `media_key` sin ref-count). `CopyObjectCommand` corre entero
+ * dentro de R2 — el binario nunca pasa por este servidor ni por el
+ * navegador, sin importar su tamaño.
+ */
+export async function duplicateMediaObject(oldKey: string, newModuleId: string): Promise<string | null> {
+  const r2 = getR2Client();
+  if (!r2) return null;
+
+  const segments = oldKey.split('/');
+  const originalFileSegment = segments.pop();
+  if (!originalFileSegment) return null;
+  // El segmento final es "{uuid}-{nombre-seguro}" (ver `buildMediaKey`); se
+  // conserva el nombre pero se genera un uuid nuevo para la copia.
+  const fileName = originalFileSegment.replace(/^[0-9a-f-]{36}-/, '');
+  segments[3] = newModuleId; // cursos/{courseId}/modulos/{moduleId}/...
+  const newKey = [...segments, `${crypto.randomUUID()}-${fileName}`].join('/');
+
+  try {
+    await r2.client.send(
+      new CopyObjectCommand({
+        Bucket: r2.bucket,
+        CopySource: `${r2.bucket}/${encodeURIComponent(oldKey)}`,
+        Key: newKey,
+      }),
+    );
+    return newKey;
+  } catch (error) {
+    console.error(`No se pudo duplicar el objeto "${oldKey}"`, error);
+    return null;
+  }
 }
 
 /** Quita acentos y caracteres no seguros para una ruta de objeto. */

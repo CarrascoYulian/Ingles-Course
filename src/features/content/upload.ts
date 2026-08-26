@@ -41,6 +41,65 @@ function probeVideoDuration(file: File): Promise<number | undefined> {
 }
 
 /**
+ * Transferencia con progreso real byte a byte, vía `XMLHttpRequest` — a
+ * diferencia de `fetch`, sí expone `upload.onprogress`. Antes se reportaba
+ * un salto artificial 0 → 50 % (ticket firmado) → 100 % (subida completa):
+ * en un video pesado, la barra se quedaba clavada en 50 % durante todo el
+ * tiempo real de transferencia, que es la parte lenta, y eso se leía como
+ * que la subida estaba trabada.
+ */
+function xhrTransfer(
+  method: 'PUT' | 'POST',
+  url: string,
+  body: XMLHttpRequestBodyInit,
+  headers: Record<string, string> | undefined,
+  onProgress: (percent: number) => void,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open(method, url);
+    for (const [key, value] of Object.entries(headers ?? {})) xhr.setRequestHeader(key, value);
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) onProgress((event.loaded / event.total) * 100);
+    };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) resolve();
+      else reject(new Error(`La subida terminó con error ${xhr.status}`));
+    };
+    xhr.onerror = () => reject(new Error('Se perdió la conexión durante la subida'));
+    xhr.ontimeout = () => reject(new Error('La subida tardó demasiado y se cortó'));
+    xhr.send(body);
+  });
+}
+
+const RETRY_DELAYS_MS = [1000, 4000];
+
+/**
+ * Reintenta sólo la transferencia del binario (no el ticket ni el sondeo de
+ * duración) — es la parte que de verdad falla en una conexión inestable
+ * cuando el archivo pesa varios GB y tarda minutos. La URL firmada sigue
+ * viva 15 min (`UPLOAD_TTL_SECONDS`), tiempo de sobra para 1-2 reintentos.
+ */
+async function xhrTransferWithRetry(
+  method: 'PUT' | 'POST',
+  url: string,
+  body: XMLHttpRequestBodyInit,
+  headers: Record<string, string> | undefined,
+  onProgress: (percent: number) => void,
+): Promise<void> {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      await xhrTransfer(method, url, body, headers, onProgress);
+      return;
+    } catch (error) {
+      if (attempt >= RETRY_DELAYS_MS.length) throw error;
+      onProgress(0);
+      await new Promise((resolve) => setTimeout(resolve, RETRY_DELAYS_MS[attempt]));
+    }
+  }
+}
+
+/**
  * Subida directa navegador → Cloudflare R2 en dos pasos:
  *
  *  1. El servidor firma una URL de subida (nunca se expone la access key
@@ -48,9 +107,6 @@ function probeVideoDuration(file: File): Promise<number | undefined> {
  *  2. El navegador hace un `PUT` normal contra esa URL — una URL firmada de
  *     S3/R2 ya lleva la autorización embebida, a diferencia del esquema de
  *     dos partes (URL + token) de Supabase Storage.
- *
- * Un `fetch` con `PUT` no expone progreso byte a byte (a diferencia de un
- * XHR crudo): se reporta inicio y fin, no un porcentaje granular inventado.
  */
 export async function uploadFile({
   file,
@@ -79,15 +135,7 @@ export async function uploadFile({
 
   const durationSeconds = await probeVideoDuration(file);
 
-  onProgress(50);
-  const uploadResponse = await fetch(signedUrl, {
-    method: 'PUT',
-    headers: { 'Content-Type': file.type },
-    body: file,
-  });
-
-  if (!uploadResponse.ok) throw new Error('No se pudo subir el archivo');
-  onProgress(100);
+  await xhrTransferWithRetry('PUT', signedUrl, file, { 'Content-Type': file.type }, onProgress);
 
   return { mediaKey, contentType: file.type, durationSeconds };
 }
@@ -111,13 +159,7 @@ async function uploadDemoFile(
 
   const durationSeconds = await probeVideoDuration(file);
 
-  onProgress(30);
-  const response = await fetch('/api/demo-uploads', { method: 'POST', body: formData });
-  if (!response.ok) {
-    const body = (await response.json().catch(() => null)) as { error?: string } | null;
-    throw new Error(body?.error ?? 'No se pudo subir el archivo');
-  }
-  onProgress(100);
+  await xhrTransferWithRetry('POST', '/api/demo-uploads', formData, undefined, onProgress);
 
   return { mediaKey, contentType: file.type, durationSeconds };
 }

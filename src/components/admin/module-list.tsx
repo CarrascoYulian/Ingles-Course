@@ -22,6 +22,8 @@ export interface ModuleListProps {
   onRename: (module: Module) => void;
   onDelete: (module: Module) => void;
   onReorder: (module: Module, direction: -1 | 1) => void;
+  onDuplicate: (module: Module) => void;
+  duplicatePending?: boolean;
   canDelete: boolean;
 }
 
@@ -42,6 +44,8 @@ export function ModuleList({
   onRename,
   onDelete,
   onReorder,
+  onDuplicate,
+  duplicatePending,
   canDelete,
 }: ModuleListProps) {
   return (
@@ -132,6 +136,9 @@ export function ModuleList({
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onSelect={() => onRename(module)}>Renombrar</DropdownMenuItem>
+                    <DropdownMenuItem disabled={duplicatePending} onSelect={() => onDuplicate(module)}>
+                      Duplicar
+                    </DropdownMenuItem>
                     {canDelete && (
                       <DropdownMenuItem variant="danger" onSelect={() => onDelete(module)}>
                         Eliminar

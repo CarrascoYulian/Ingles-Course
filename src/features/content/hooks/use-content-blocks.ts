@@ -67,6 +67,22 @@ export function useReorderModule(courseId: string) {
   });
 }
 
+export function useDuplicateModule(courseId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (moduleId: string) => backend.content.duplicateModule(moduleId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.modules(courseId) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.courses });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.storageUsage });
+      toast('Unidad duplicada');
+    },
+    onError: (error) =>
+      toast.error(error instanceof Error ? error.message : 'No se pudo duplicar la unidad.'),
+  });
+}
+
 export function useContentBlocks(moduleId: string) {
   return useQuery({
     queryKey: QUERY_KEYS.blocks(moduleId),

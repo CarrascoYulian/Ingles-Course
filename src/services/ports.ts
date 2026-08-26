@@ -107,6 +107,12 @@ export interface ContentPort {
   removeModule(moduleId: string): Promise<void>;
   /** Intercambia la posición de la unidad con la de su vecina inmediata. */
   reorderModule(moduleId: string, direction: -1 | 1): Promise<Module[]>;
+  /**
+   * Clona la unidad entera (lecciones con copia real del binario en R2 +
+   * evaluación) al final del mismo curso. No clona tareas — ver la ruta
+   * `/api/modules/[moduleId]/duplicate` para el motivo.
+   */
+  duplicateModule(moduleId: string): Promise<{ id: string }>;
   listBlocks(moduleId: string): Promise<Lesson[]>;
   addBlock(moduleId: string, type: BlockType): Promise<Lesson>;
   moveBlock(moduleId: string, blockId: string, direction: -1 | 1): Promise<Lesson[]>;

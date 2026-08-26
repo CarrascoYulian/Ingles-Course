@@ -46,6 +46,7 @@ import { cn } from '@/lib/utils';
 import {
   useAttachUpload,
   useContentBlocks,
+  useDuplicateModule,
   useModules,
   useMoveBlock,
   useOpenFile,
@@ -127,6 +128,7 @@ export function ContentView() {
   const updateModule = useUpdateModule(courseId);
   const removeModule = useRemoveModule(courseId);
   const reorderModule = useReorderModule(courseId);
+  const duplicateModule = useDuplicateModule(courseId);
   const confirmDialog = useConfirmDialog();
   const createModule = useCreateModule();
   const [createModuleOpen, setCreateModuleOpen] = useState(false);
@@ -263,6 +265,10 @@ export function ContentView() {
             onCreate={() => setCreateModuleOpen(true)}
             onRename={(m) => setEditingModuleId(m.id)}
             onReorder={(m, direction) => reorderModule.mutate({ moduleId: m.id, direction })}
+            onDuplicate={(m) =>
+              duplicateModule.mutateAsync(m.id).then(({ id }) => setSelectedModuleId(id))
+            }
+            duplicatePending={duplicateModule.isPending}
             canDelete={canDeleteBlock}
             onDelete={(m) =>
               confirmDialog.confirm({
