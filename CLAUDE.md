@@ -44,6 +44,18 @@ Supabase (Postgres, Auth) + Cloudflare R2 (binarios grandes).
     `course-files` + políticas RLS de `storage.objects`) queda como
     histórico — no se edita ni se borra, pero ya no se usa para binarios
     nuevos.
+  - Tope de 5 GB por archivo subido (`MAX_BYTES` en `upload-dropzone.tsx`):
+    es el techo real de un `PutObject` sin multipart contra S3/R2, no una
+    elección arbitraria — subir más requeriría implementar subida
+    multiparte. La subida usa `XMLHttpRequest` (no `fetch`) para progreso
+    real byte a byte, con hasta 2 reintentos automáticos de la
+    transferencia si falla a mitad de camino (`src/features/content/upload.ts`).
+  - Cualquier mutación sobre R2 (borrar, copiar) sólo se puede hacer
+    server-side, vía una ruta API — `storage.ts` es `server-only` y el
+    backend de Supabase corre en el navegador. Patrón ya usado en
+    `/api/uploads` (firmar subida), `/api/storage/delete` (borrar al
+    instante) y `/api/modules/[moduleId]/duplicate` (`CopyObjectCommand`
+    para clonar una unidad completa, incluida su evaluación).
 - **Vercel:** proyecto `berthocommunity` (id `prj_R3IAEGlk5Lsj92zmSVlcDqNpVl9a`, team
   `bertho-community-team1` / `team_PdSs2OVZpugZsloTLvynHuh9` — antes
   `ingles-course` / `carrasco-team1`, migrado a la cuenta `berthocommunity@gmail.com`).
@@ -113,9 +125,21 @@ Postgres/Supabase (ver infraestructura arriba). `content_blocks` y
 `lessons` es la única tabla de contenido de un módulo — cualquier tipo
 (Video/PDF/Ejercicio/Audio/Evaluación), un solo `media_key` por fila, el
 mismo orden que arma el docente en el editor es el que recorre el alumno.
-Borrar una lección borra también el objeto real en R2 (issue #37); un cron
-semanal (`/api/storage/reconcile`, issue #38) limpia huérfanos de más de
-48h que se hayan colado.
+Borrar una lección, unidad o curso borra también el/los objeto(s) real(es)
+en R2 al instante, vía `/api/storage/delete` (issue #37) — un cron semanal
+(`/api/storage/reconcile`, issue #38) sigue existiendo como red de
+seguridad para huérfanos que se hayan colado (subida interrumpida, etc.),
+no como el mecanismo principal de limpieza.
+
+Los módulos (`modules`) se pueden crear, renombrar, borrar, reordenar y
+duplicar desde el panel (`ModuleList` + `EditModuleDialog`,
+`ContentPort.updateModule/removeModule/reorderModule/duplicateModule`).
+Duplicar clona lecciones y evaluación con copia real del binario en R2
+(nunca comparte `media_key` con el original — si no, borrar la unidad
+original se llevaría puesto el archivo de la copia); no duplica tareas
+(`assignments`), que llevan fecha límite propia. El modo demo sólo modela
+una unidad de referencia por curso, así que `removeModule`/`duplicateModule`
+ahí son un rechazo explícito en vez de fingir la operación.
 
 ## Testing
 
@@ -153,6 +177,10 @@ npm run build       # como CI
 - El widget de sidebar "Almacenamiento" del panel admin (issue #39) no
   existía en el código pese a que el diseño lo daba por hecho — se
   construyó desde cero (`src/components/admin/storage-usage-widget.tsx`).
+  Además del total, muestra los 3 cursos que más pesan
+  (`StorageUsage.byCourse`, calculado en `/api/storage/usage` a partir del
+  propio prefijo `cursos/{courseId}/...` del `media_key`, sin cruzar contra
+  Postgres).
 - `/login` redirige directo al panel si ya hay sesión activa (cookie de
   Supabase Auth) — es el comportamiento esperado del middleware
   (`src/middleware.ts`), no una falla de autenticación. Para probar el
@@ -169,6 +197,20 @@ npm run build       # como CI
   `src/app/api/analytics/performance/route.ts`). `/admin/estudiantes` sigue
   mostrando progreso individual porque es gestión de matrícula, no
   reportería — no confundir los tres.
+- `removeStorageObjects` en `src/services/supabase/backend.ts` llamó
+  durante un tiempo a `db().storage.from('course-files').remove()` — la API
+  de Supabase Storage sobre el bucket viejo, previo a la migración a R2
+  (`0003_storage.sql`). No lanzaba error visible (`console.error` en
+  silencio) porque esos objetos ya no viven en ese bucket: el huérfano
+  igual se limpiaba, pero recién con el cron semanal, nunca al momento de
+  borrar. Corregido para que llame a `/api/storage/delete`, que sí opera
+  sobre R2. Si "borrar" algo con archivo real no hace bajar el uso del
+  widget de Storage al instante, sospechar primero de este patrón (una
+  llamada directa a `db().storage` en vez de pasar por una ruta API).
+- Publicar un curso con una unidad vacía o sin evaluación no está
+  bloqueado — sólo avisa (`CoursesPort.getPublishWarnings`, confirmación en
+  `courses-view.tsx`) y deja publicar igual. No confundir con un chequeo
+  obligatorio: un curso sólo de lectura sin evaluación es un caso válido.
 - Ninguna página bajo `/admin/*` necesita su propio `<Suspense>` para
   `useSearchParams()` — `AdminShell` ya envuelve `AdminTopbar` (que también
   usa `useSearchParams`) en uno, y ese límite cubre toda la ruta. Agregar
