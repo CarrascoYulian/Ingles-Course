@@ -35,6 +35,8 @@ export interface Course {
   progress: number;
   modules: number;
   published: boolean;
+  /** Estado intermedio antes de eliminar: invisible para alumnos (aunque `published` siga en true) y fuera de la lista normal del panel. */
+  archived: boolean;
   position: number;
 }
 

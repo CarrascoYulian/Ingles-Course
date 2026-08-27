@@ -24,6 +24,7 @@ import {
   useDeleteCourse,
   usePublishWarnings,
   useReorderCourse,
+  useToggleArchived,
   useTogglePublished,
   useUpdateCourse,
 } from '../hooks/use-courses';
@@ -33,6 +34,7 @@ const LEVEL_FILTERS: Array<CefrLevel | 'Todos'> = ['Todos', ...CEFR_LEVELS];
 export function CoursesView() {
   const router = useRouter();
   const [levelFilter, setLevelFilter] = useState<CefrLevel | 'Todos'>('Todos');
+  const [showArchived, setShowArchived] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [ratingsCourse, setRatingsCourse] = useState<Course | null>(null);
@@ -45,6 +47,7 @@ export function CoursesView() {
   const deleteCourse = useDeleteCourse();
   const reorderCourse = useReorderCourse();
   const publishWarnings = usePublishWarnings();
+  const toggleArchived = useToggleArchived();
   const confirmDialog = useConfirmDialog();
   const undoableCourses = useUndoableDelete();
 
@@ -87,9 +90,11 @@ export function CoursesView() {
   );
 
   const needle = appliedQuery.trim().toLocaleLowerCase();
+  const archivedCount = courses?.filter((c) => c.archived).length ?? 0;
   const visible = courses?.filter(
     (course) =>
       !undoableCourses.isHidden(course.id) &&
+      course.archived === showArchived &&
       (levelFilter === 'Todos' || course.level === levelFilter) &&
       (needle === '' || course.name.toLocaleLowerCase().includes(needle)),
   );
@@ -108,9 +113,16 @@ export function CoursesView() {
             </Chip>
           ))}
         </ChipRow>
-        <p className="hidden shrink-0 text-meta font-bold text-fg-ghost xl:block">
-          Usa las flechas para reordenar · toca un curso para editar sus unidades
-        </p>
+        <div className="flex shrink-0 items-center gap-3">
+          <p className="hidden text-meta font-bold text-fg-ghost xl:block">
+            Usa las flechas para reordenar · toca un curso para editar sus unidades
+          </p>
+          {(archivedCount > 0 || showArchived) && (
+            <Chip active={showArchived} onClick={() => setShowArchived((v) => !v)}>
+              Archivados ({archivedCount})
+            </Chip>
+          )}
+        </div>
       </div>
 
       {isPending && (
@@ -122,7 +134,7 @@ export function CoursesView() {
         </>
       )}
 
-      {visible?.length === 0 && (
+      {visible?.length === 0 && !showArchived && (
         <EmptyState
           title="No hay cursos en este nivel"
           description="Cambia el filtro o crea un curso nuevo para empezar."
@@ -134,21 +146,35 @@ export function CoursesView() {
         />
       )}
 
+      {visible?.length === 0 && showArchived && (
+        <EmptyState compact title="Sin cursos archivados en este nivel" description="Cambia el filtro para ver otros." />
+      )}
+
       {visible?.map((course, index) => (
         <CourseCard
           key={course.id}
           course={course}
-          pending={togglePublished.isPending || deleteCourse.isPending || publishWarnings.isPending}
+          pending={
+            togglePublished.isPending ||
+            deleteCourse.isPending ||
+            publishWarnings.isPending ||
+            toggleArchived.isPending
+          }
           onToggle={(target) => void handleTogglePublish(target)}
+          onToggleArchived={(target) =>
+            toggleArchived.mutate({ id: target.id, archived: !target.archived })
+          }
           onEdit={() => router.push(ROUTES.admin.contenidoDeCurso(course.id))}
           onRename={setEditingCourse}
           onViewRatings={setRatingsCourse}
           onReorder={(target, direction) => reorderCourse.mutate({ id: target.id, direction })}
           // El orden real es global (`position`); con un filtro de nivel
           // activo, el vecino visible no es necesariamente el vecino real
-          // — se deshabilita el reordenamiento para no confundir.
-          isFirst={levelFilter !== 'Todos' || index === 0}
-          isLast={levelFilter !== 'Todos' || index === visible.length - 1}
+          // — se deshabilita el reordenamiento para no confundir. La vista
+          // de archivados tampoco reordena (no comparte orden con la lista
+          // activa, así que "subir/bajar" no tendría un vecino real).
+          isFirst={levelFilter !== 'Todos' || showArchived || index === 0}
+          isLast={levelFilter !== 'Todos' || showArchived || index === visible.length - 1}
           onDelete={(target) =>
             confirmDialog.confirm({
               title: 'Eliminar definitivamente',

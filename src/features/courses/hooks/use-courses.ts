@@ -80,6 +80,36 @@ export function useTogglePublished() {
   });
 }
 
+/** Estado intermedio antes de borrar — un curso archivado deja de ser visible para alumnos, sin importar `published`. */
+export function useToggleArchived() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, archived }: { id: string; archived: boolean }) =>
+      backend.courses.setArchived(id, archived),
+
+    onMutate: async ({ id, archived }) => {
+      await queryClient.cancelQueries({ queryKey: QUERY_KEYS.courses });
+      const previous = queryClient.getQueryData<Course[]>(QUERY_KEYS.courses);
+      queryClient.setQueryData<Course[]>(QUERY_KEYS.courses, (courses) =>
+        courses?.map((course) => (course.id === id ? { ...course, archived } : course)),
+      );
+      return { previous };
+    },
+
+    onError: (_error, _variables, context) => {
+      if (context?.previous) queryClient.setQueryData(QUERY_KEYS.courses, context.previous);
+      toast.error('No se pudo archivar el curso.');
+    },
+
+    onSuccess: (course) => {
+      toast(course.archived ? `“${course.name}” archivado` : `“${course.name}” restaurado del archivo`);
+    },
+
+    onSettled: () => queryClient.invalidateQueries({ queryKey: QUERY_KEYS.courses }),
+  });
+}
+
 /**
  * Consulta bajo demanda (no una `query` normal: sólo se necesita en el
  * instante de publicar) qué unidades del curso quedarían vacías o sin

@@ -299,6 +299,7 @@ export type Database = {
       }
       courses: {
         Row: {
+          archived: boolean
           created_at: string
           created_by: string | null
           id: string
@@ -308,6 +309,7 @@ export type Database = {
           published: boolean
         }
         Insert: {
+          archived?: boolean
           created_at?: string
           created_by?: string | null
           id?: string
@@ -317,6 +319,7 @@ export type Database = {
           published?: boolean
         }
         Update: {
+          archived?: boolean
           created_at?: string
           created_by?: string | null
           id?: string

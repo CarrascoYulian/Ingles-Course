@@ -51,6 +51,7 @@ export const DEMO_COURSES: Course[] = [
     progress: 78,
     modules: 8,
     published: true,
+    archived: false,
     position: 0,
   },
   {
@@ -61,6 +62,7 @@ export const DEMO_COURSES: Course[] = [
     progress: 54,
     modules: 12,
     published: true,
+    archived: false,
     position: 1,
   },
   {
@@ -71,6 +73,7 @@ export const DEMO_COURSES: Course[] = [
     progress: 0,
     modules: 8,
     published: false,
+    archived: false,
     position: 2,
   },
   {
@@ -81,6 +84,7 @@ export const DEMO_COURSES: Course[] = [
     progress: 41,
     modules: 6,
     published: true,
+    archived: false,
     position: 3,
   },
 ];

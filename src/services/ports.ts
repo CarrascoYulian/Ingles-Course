@@ -70,6 +70,8 @@ export interface CoursesPort {
   create(input: CreateCourseInput): Promise<Course>;
   update(id: string, input: CreateCourseInput): Promise<Course>;
   setPublished(id: string, published: boolean): Promise<Course>;
+  /** Estado intermedio antes de borrar — un curso archivado deja de ser visible para alumnos y sale de la lista normal del panel. */
+  setArchived(id: string, archived: boolean): Promise<Course>;
   remove(id: string): Promise<void>;
   /** Intercambia la posición del curso con la del vecino inmediato. */
   reorder(id: string, direction: -1 | 1): Promise<Course[]>;

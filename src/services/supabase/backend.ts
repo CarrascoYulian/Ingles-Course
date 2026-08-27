@@ -209,6 +209,17 @@ export const supabaseBackend: Backend = {
       return toCourse(row, { students: 0, progress: 0, modules: 0 }) as Course;
     },
 
+    async setArchived(id, archived) {
+      const row = unwrap<Row<'courses'>>(
+        await db().from('courses').update({ archived }).eq('id', id).select().single(),
+      );
+      await logActivity(archived ? 'warning' : 'info', [
+        { text: archived ? 'Curso archivado · ' : 'Curso restaurado del archivo · ' },
+        { text: row.name, strong: true },
+      ]);
+      return toCourse(row, { students: 0, progress: 0, modules: 0 }) as Course;
+    },
+
     async remove(id) {
       // Igual que en `removeBlock`: hay que leer las claves antes de borrar,
       // porque el cascade de Postgres se lleva `modules` → `lessons` en el

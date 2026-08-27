@@ -19,6 +19,7 @@ export function toCourse(
     name: row.name,
     level: row.level,
     published: row.published,
+    archived: row.archived,
     position: row.position,
     students: aggregates.students,
     progress: Math.round(aggregates.progress),

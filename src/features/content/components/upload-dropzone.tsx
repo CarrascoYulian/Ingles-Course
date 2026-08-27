@@ -17,6 +17,17 @@ const ACCEPTED = '.mp4,.mp3,.pdf,.docx,.png,.jpg,.jpeg,.webp';
  */
 const MAX_BYTES = 5 * 1024 * 1024 * 1024;
 
+/**
+ * Comprimir video de verdad requiere transcodificar (ffmpeg o un servicio
+ * dedicado como Cloudflare Stream) — no algo que se pueda hacer bien en el
+ * navegador para un archivo de varios GB sin arriesgar que el tab se
+ * cuelgue. En vez de fingir una compresión que no existe, se avisa cuando
+ * el video es grande y se sugiere comprimirlo antes con una herramienta
+ * externa (HandBrake es gratis) — más rápido de subir y consume menos de
+ * la cuota de 10 GB de R2.
+ */
+const LARGE_VIDEO_WARNING_BYTES = 500 * 1024 * 1024; // 500 MB
+
 export interface UploadDropzoneProps {
   courseId: string;
   moduleId: string;
@@ -69,6 +80,18 @@ export function UploadDropzone({ courseId, moduleId, onUploaded, className }: Up
           tooLarge.length === 1
             ? `“${tooLarge[0]!.name}” supera los 5 GB permitidos por archivo`
             : `${tooLarge.length} archivos superan los 5 GB permitidos por archivo`,
+        );
+      }
+
+      const largeVideos = toUpload.filter(
+        (f) => f.type.startsWith('video/') && f.size > LARGE_VIDEO_WARNING_BYTES,
+      );
+      if (largeVideos.length > 0) {
+        toast(
+          largeVideos.length === 1
+            ? `“${largeVideos[0]!.name}” pesa ${formatBytes(largeVideos[0]!.size)} — comprimirlo antes (p. ej. con HandBrake, gratis) sube más rápido y gasta menos cuota`
+            : `${largeVideos.length} videos pesan varios cientos de MB — comprimirlos antes (p. ej. con HandBrake, gratis) sube más rápido y gasta menos cuota`,
+          { duration: 8000 },
         );
       }
 

@@ -17,6 +17,7 @@ export interface CourseCardProps {
   onDelete: (course: Course) => void;
   onReorder: (course: Course, direction: -1 | 1) => void;
   onViewRatings: (course: Course) => void;
+  onToggleArchived: (course: Course) => void;
   isFirst?: boolean;
   isLast?: boolean;
   pending?: boolean;
@@ -37,16 +38,18 @@ export function CourseCard({
   onDelete,
   onReorder,
   onViewRatings,
+  onToggleArchived,
   isFirst,
   isLast,
   pending,
 }: CourseCardProps) {
-  const { name, level, modules, students, progress, published } = course;
+  const { name, level, modules, students, progress, published, archived } = course;
 
   return (
     <article
       className={cn(
         'rounded-6xl border bg-surface p-4 md:flex md:items-center md:gap-4 md:px-[18px]',
+        archived ? 'opacity-60' : '',
         published ? 'border-line' : 'border-line-dashed',
       )}
     >
@@ -60,9 +63,15 @@ export function CourseCard({
             <h3 className="truncate text-body font-bold tracking-tight-2 text-fg md:text-title-xs">
               {name}
             </h3>
-            <Badge tone={published ? 'success' : 'warning'} className="hidden md:inline-flex">
-              {published ? 'Publicado' : 'Borrador'}
-            </Badge>
+            {archived ? (
+              <Badge tone="neutral" className="hidden md:inline-flex">
+                Archivado
+              </Badge>
+            ) : (
+              <Badge tone={published ? 'success' : 'warning'} className="hidden md:inline-flex">
+                {published ? 'Publicado' : 'Borrador'}
+              </Badge>
+            )}
           </div>
 
           <p className="mt-0.5 text-caption font-semibold text-fg-ghost md:mt-[3px] md:text-meta">
@@ -82,9 +91,15 @@ export function CourseCard({
           </div>
         </div>
 
-        <Badge tone={published ? 'success' : 'warning'} className="md:hidden">
-          {published ? 'Publicado' : 'Borrador'}
-        </Badge>
+        {archived ? (
+          <Badge tone="neutral" className="md:hidden">
+            Archivado
+          </Badge>
+        ) : (
+          <Badge tone={published ? 'success' : 'warning'} className="md:hidden">
+            {published ? 'Publicado' : 'Borrador'}
+          </Badge>
+        )}
       </div>
 
       <Progress
@@ -115,9 +130,11 @@ export function CourseCard({
         >
           <ArrowDown aria-hidden size={13} strokeWidth={2.4} />
         </Button>
-        <Button variant="ghost" size="sm" onClick={() => onToggle(course)} disabled={pending}>
-          {published ? 'Ocultar' : 'Publicar'}
-        </Button>
+        {!archived && (
+          <Button variant="ghost" size="sm" onClick={() => onToggle(course)} disabled={pending}>
+            {published ? 'Ocultar' : 'Publicar'}
+          </Button>
+        )}
         <Button variant="ghost" size="sm" onClick={() => onRename(course)}>
           Editar curso
         </Button>
@@ -127,6 +144,9 @@ export function CourseCard({
         <Button variant="ghost" size="sm" onClick={() => onEdit(course)}>
           <span className="md:hidden">Unidades</span>
           <span className="hidden md:inline">Editar unidades</span>
+        </Button>
+        <Button variant="ghost" size="sm" onClick={() => onToggleArchived(course)} disabled={pending}>
+          {archived ? 'Restaurar' : 'Archivar'}
         </Button>
         <Button variant="danger" size="sm" onClick={() => onDelete(course)} disabled={pending}>
           Eliminar

@@ -145,6 +145,7 @@ export const demoBackend: Backend = {
         progress: 0,
         modules: 0,
         published: false,
+        archived: false,
         position: store.courses.length,
       };
       store.courses = [...store.courses, course];
@@ -160,6 +161,13 @@ export const demoBackend: Backend = {
 
     setPublished: (id, published) => {
       store.courses = store.courses.map((c) => (c.id === id ? { ...c, published } : c));
+      const updated = store.courses.find((c) => c.id === id);
+      if (!updated) throw new Error(`Curso ${id} no encontrado`);
+      return latency(updated);
+    },
+
+    setArchived: (id, archived) => {
+      store.courses = store.courses.map((c) => (c.id === id ? { ...c, archived } : c));
       const updated = store.courses.find((c) => c.id === id);
       if (!updated) throw new Error(`Curso ${id} no encontrado`);
       return latency(updated);
