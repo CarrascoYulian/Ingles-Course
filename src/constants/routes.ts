@@ -13,6 +13,8 @@ export const ROUTES = {
     contenidoDeCurso: (courseId: string) => `/admin/contenido?courseId=${courseId}`,
     estudiantes: '/admin/estudiantes',
     reportes: '/admin/reportes',
+    cuenta: '/admin/cuenta',
+    actividad: '/admin/actividad',
   },
 
   student: {

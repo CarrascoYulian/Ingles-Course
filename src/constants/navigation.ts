@@ -66,4 +66,6 @@ export const ADMIN_PAGE_META: Record<string, { title: string; action?: string }>
   [ROUTES.admin.contenido]: { title: 'Constructor de contenido' },
   [ROUTES.admin.estudiantes]: { title: 'Estudiantes', action: 'Nuevo estudiante' },
   [ROUTES.admin.reportes]: { title: 'Reportes', action: 'Exportar CSV' },
+  [ROUTES.admin.cuenta]: { title: 'Mi cuenta' },
+  [ROUTES.admin.actividad]: { title: 'Actividad' },
 };

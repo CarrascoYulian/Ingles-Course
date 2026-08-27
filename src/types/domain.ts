@@ -256,6 +256,25 @@ export interface StudentSummary {
   avatarColor: string;
 }
 
+export interface StaffMember {
+  id: string;
+  fullName: string;
+  email: string;
+  role: UserRole;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface AuditLogEntry {
+  id: string;
+  actorName: string;
+  action: string;
+  entityType: string;
+  entityId: string | null;
+  entityLabel: string | null;
+  createdAt: string;
+}
+
 export interface Badge {
   id: string;
   name: string;

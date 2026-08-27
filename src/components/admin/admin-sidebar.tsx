@@ -1,5 +1,6 @@
 'use client';
 
+import { UserRound } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -73,7 +74,24 @@ export function AdminSidebar({ teacherName }: AdminSidebarProps) {
 
       <div className="mt-auto flex flex-col gap-3">
         <StorageUsageWidget />
-        <LogoutButton onInk className="justify-center" />
+        <div className="flex flex-col gap-[3px]">
+          <Link
+            href={ROUTES.admin.cuenta}
+            aria-current={pathname.startsWith(ROUTES.admin.cuenta) ? 'page' : undefined}
+            className={cn(
+              'flex items-center gap-[11px] rounded-xl px-3 py-2.5',
+              'text-body-sm font-semibold',
+              'transition-[background-color,color,transform] duration-[160ms] ease-[cubic-bezier(0.23,1,0.32,1)]',
+              pathname.startsWith(ROUTES.admin.cuenta)
+                ? 'bg-ink-elevated text-white'
+                : 'text-ink-nav hover:bg-ink-raised hover:text-white',
+            )}
+          >
+            <UserRound aria-hidden size={17} strokeWidth={1.8} />
+            Mi cuenta
+          </Link>
+          <LogoutButton onInk className="justify-center" />
+        </div>
       </div>
     </aside>
   );

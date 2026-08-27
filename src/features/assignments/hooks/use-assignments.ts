@@ -80,6 +80,16 @@ export function useGradeSubmission(moduleId: string) {
   });
 }
 
+/** Cuenta global de entregas sin calificar, de todos los módulos — para la campana de notificaciones. */
+export function useUngradedCount(enabled = true) {
+  return useQuery({
+    queryKey: ['assignments-ungraded-count'],
+    queryFn: () => backend.assignments.getUngradedCount(),
+    refetchInterval: 20_000,
+    enabled,
+  });
+}
+
 /** Lado alumno — tareas de todos los módulos con acceso en ese curso. */
 export function useMyAssignments(courseId: string) {
   return useQuery({

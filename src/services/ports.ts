@@ -10,6 +10,7 @@ import type {
   ActivityEvent,
   Assignment,
   AssignmentSubmission,
+  AuditLogEntry,
   Badge,
   BlockType,
   CefrLevel,
@@ -32,6 +33,7 @@ import type {
   QuizDraft,
   ReportRange,
   ReportSnapshot,
+  StaffMember,
   StorageUsage,
   StudentPerformanceSummary,
   StudentProgress,
@@ -337,6 +339,37 @@ export interface AssignmentPort {
    */
   listSubmissionsForModule(moduleId: string): Promise<AssignmentSubmission[]>;
   gradeSubmission(submissionId: string, grade: number, feedback: string): Promise<AssignmentSubmission>;
+  /** Cuenta global de entregas todavía sin calificar, de todos los módulos — para la campana de notificaciones. */
+  getUngradedCount(): Promise<number>;
+}
+
+/**
+ * Cuenta propia del docente/admin autenticado — nombre y contraseña.
+ * Separado de `StaffPort` (que gestiona OTROS miembros del equipo) por la
+ * misma razón que `LearningPort` está separado de `StudentsPort`: acá el
+ * usuario sólo puede tocar su propio perfil, nunca el de otro.
+ */
+export interface AccountPort {
+  updateProfile(fullName: string): Promise<void>;
+  changePassword(newPassword: string): Promise<void>;
+}
+
+export interface InviteStaffInput {
+  fullName: string;
+  email: string;
+}
+
+/** Gestión de OTROS miembros del staff — sólo admin, ver `PERMISSIONS['staff:invite']`. */
+export interface StaffPort {
+  list(): Promise<StaffMember[]>;
+  invite(input: InviteStaffInput): Promise<{ email: string }>;
+  /** Pausa/reactiva: inactivo no puede iniciar sesión ni mantener una sesión abierta. */
+  setActive(id: string, active: boolean): Promise<StaffMember>;
+}
+
+export interface AuditPort {
+  /** Página del log de auditoría, más reciente primero. */
+  list(page: number): Promise<{ items: AuditLogEntry[]; hasMore: boolean }>;
 }
 
 export interface PracticePort {
@@ -362,4 +395,7 @@ export interface Backend {
   storage: StoragePort;
   quiz: QuizPort;
   assignments: AssignmentPort;
+  account: AccountPort;
+  staff: StaffPort;
+  audit: AuditPort;
 }

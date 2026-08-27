@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { badRequest, guard, isDenied } from '../../_lib/guard';
+import { logAuditEvent } from '@/lib/audit';
 import { derivePinPassword } from '@/lib/auth/student-pin';
 import { getSupabaseAdminClient } from '@/lib/supabase/server';
 
@@ -57,6 +58,8 @@ export async function POST(request: Request) {
   });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 502 });
+
+  await logAuditEvent(result.profile, 'invite', 'student', null, parsed.data.fullName);
 
   return NextResponse.json({ enrollmentCode });
 }

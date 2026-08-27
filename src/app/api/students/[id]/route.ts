@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { badRequest, guard, isDenied } from '../../_lib/guard';
+import { logAuditEvent } from '@/lib/audit';
 import { derivePinPassword } from '@/lib/auth/student-pin';
 import { getSupabaseAdminClient } from '@/lib/supabase/server';
 
@@ -83,7 +84,7 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
 
   const { data: profile } = await admin
     .from('profiles')
-    .select('role')
+    .select('role, full_name')
     .eq('id', id)
     .single();
   if (!profile || profile.role !== 'student') {
@@ -92,6 +93,8 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
 
   const { error } = await admin.auth.admin.deleteUser(id);
   if (error) return NextResponse.json({ error: error.message }, { status: 502 });
+
+  await logAuditEvent(result.profile, 'delete', 'student', id, profile.full_name);
 
   return NextResponse.json({ ok: true });
 }

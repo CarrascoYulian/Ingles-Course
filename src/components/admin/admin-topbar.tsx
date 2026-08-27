@@ -1,6 +1,7 @@
 'use client';
 
 import { Search } from 'lucide-react';
+import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 
@@ -10,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { ADMIN_PAGE_META } from '@/constants/navigation';
 import { ROUTES } from '@/constants/routes';
 import { useAdminSearch } from '@/features/students/hooks/use-admin-search';
+import { NotificationBell } from './notification-bell';
 
 /** Páginas donde el buscador global filtra algo — en el resto se oculta. */
 const SEARCHABLE_PATHS: readonly string[] = [ROUTES.admin.estudiantes, ROUTES.admin.cursos];
@@ -56,8 +58,11 @@ export function AdminTopbar({ subtitle, teacherName, action }: AdminTopbarProps)
               className="hidden w-[230px] lg:flex"
             />
           )}
+          <NotificationBell />
           <div className="hidden lg:block">{action}</div>
-          <Avatar name={teacherName} color="#0F5257" size={34} className="lg:hidden" />
+          <Link href={ROUTES.admin.cuenta} aria-label="Mi cuenta" className="lg:hidden">
+            <Avatar name={teacherName} color="#0F5257" size={34} />
+          </Link>
           <LogoutButton iconOnly className="lg:hidden" />
         </div>
       </div>

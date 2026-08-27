@@ -22,6 +22,7 @@ import {
 import type {
   Assignment,
   AssignmentSubmission,
+  AuditLogEntry,
   Badge,
   BlockType,
   Course,
@@ -36,6 +37,7 @@ import type {
   QuizAttempt,
   QuizDraft,
   ReportRange,
+  StaffMember,
   StudentPerformanceSummary,
   StudentSummary,
 } from '@/types';
@@ -51,6 +53,17 @@ const demoRatings = new Map<string, CourseRating>();
 let demoQuizDraft: QuizDraft | null = structuredClone(DEMO_QUIZ_DRAFT);
 let demoAssignments: Assignment[] = [structuredClone(DEMO_ASSIGNMENT)];
 let demoSubmissions: AssignmentSubmission[] = [];
+let demoStaff: StaffMember[] = [
+  {
+    id: DEMO_TEACHER.id,
+    fullName: DEMO_TEACHER.fullName,
+    email: 'docente@ejemplo.com',
+    role: 'admin',
+    isActive: true,
+    createdAt: new Date().toISOString(),
+  },
+];
+const demoAuditLog: AuditLogEntry[] = [];
 
 /**
  * El propio `Backend` no expone un método de "enviar intento": la
@@ -796,6 +809,54 @@ export const demoBackend: Backend = {
       const graded = demoSubmissions.find((s) => s.id === submissionId);
       if (!graded) throw new Error(`Entrega ${submissionId} no encontrada`);
       return latency(graded);
+    },
+    getUngradedCount: () => latency(demoSubmissions.filter((s) => s.grade == null).length),
+  },
+
+  account: {
+    updateProfile: (fullName: string) => {
+      // Best-effort: `demoBackend` corre en el bundle del navegador, un
+      // realm de módulos distinto del que usa `getCurrentProfile()` en el
+      // servidor (`src/lib/auth/session.ts`) — mutar `DEMO_TEACHER` acá no
+      // se refleja en el nombre que renderiza `AdminShell` (server
+      // component) tras `router.refresh()`. Sin backend real detrás, el
+      // modo demo no tiene dónde persistir esto entre servidor y cliente;
+      // el campo sí queda actualizado dentro de esta misma pestaña.
+      DEMO_TEACHER.fullName = fullName;
+      return latency(undefined);
+    },
+    // No hay contraseña real en modo demo — se simula el éxito.
+    changePassword: () => latency(undefined),
+  },
+
+  staff: {
+    list: () => latency(structuredClone(demoStaff)),
+    invite: (input: { fullName: string; email: string }) => {
+      const member: StaffMember = {
+        id: newId(),
+        fullName: input.fullName,
+        email: input.email,
+        role: 'admin',
+        isActive: true,
+        createdAt: new Date().toISOString(),
+      };
+      demoStaff = [...demoStaff, member];
+      return latency({ email: input.email });
+    },
+    setActive: (id: string, active: boolean) => {
+      demoStaff = demoStaff.map((s) => (s.id === id ? { ...s, isActive: active } : s));
+      const updated = demoStaff.find((s) => s.id === id);
+      if (!updated) throw new Error(`Miembro del staff ${id} no encontrado`);
+      return latency(updated);
+    },
+  },
+
+  audit: {
+    list: (page: number) => {
+      const pageSize = 30;
+      const start = (page - 1) * pageSize;
+      const items = demoAuditLog.slice(start, start + pageSize);
+      return latency({ items, hasMore: start + pageSize < demoAuditLog.length });
     },
   },
 };

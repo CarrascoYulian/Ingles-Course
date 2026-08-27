@@ -10,14 +10,12 @@ export const runtime = 'nodejs';
 const activeSchema = z.object({ active: z.boolean() });
 
 /**
- * Pausa/reactiva a un estudiante. No toca Auth ni el PIN: sólo
- * `profiles.is_active`, que ya bloquea escritura vía RLS
- * (`is_active_student()`) y que el login y el middleware usan para negar
- * sesión — ver `src/app/api/auth/login/route.ts` y
- * `src/lib/supabase/middleware.ts`.
+ * Pausa/reactiva a un miembro del staff — mismo mecanismo que
+ * `students/[id]/active`: sólo `profiles.is_active`, que ya bloquea el
+ * login (ver `src/app/api/auth/login/route.ts`).
  */
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const result = await guard('student:update');
+  const result = await guard('staff:invite');
   if (isDenied(result)) return result.response;
 
   const { id } = await params;
@@ -25,17 +23,15 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (!parsed.success) return badRequest('Datos inválidos');
 
   const admin = getSupabaseAdminClient();
-  if (!admin) {
-    return NextResponse.json({ error: 'Esta acción no está configurada' }, { status: 503 });
-  }
+  if (!admin) return NextResponse.json({ error: 'No configurado' }, { status: 503 });
 
   const { data: profile } = await admin
     .from('profiles')
     .select('role, full_name')
     .eq('id', id)
     .single();
-  if (!profile || profile.role !== 'student') {
-    return NextResponse.json({ error: 'Estudiante no encontrado' }, { status: 404 });
+  if (!profile || profile.role === 'student') {
+    return NextResponse.json({ error: 'Miembro del staff no encontrado' }, { status: 404 });
   }
 
   const { error } = await admin
@@ -47,7 +43,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   await logAuditEvent(
     result.profile,
     parsed.data.active ? 'activate' : 'deactivate',
-    'student',
+    'staff',
     id,
     profile.full_name,
   );

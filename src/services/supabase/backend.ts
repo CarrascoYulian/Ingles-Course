@@ -5,7 +5,7 @@ import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { DEMO_QUESTION } from '../demo/data';
 import type { AttachUploadInput, Backend, CreateAssignmentInput } from '../ports';
 import { toAssignment, toAssignmentSubmission, toCourse, toLesson, toModule, toStudentSummary } from './mappers';
-import type { Course, PracticeSession, ReportRange, UserRole } from '@/types';
+import type { Course, PracticeSession, ReportRange, StaffMember, UserRole } from '@/types';
 import type { Database } from '@/types';
 
 type Row<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Row'];
@@ -1798,6 +1798,106 @@ export const supabaseBackend: Backend = {
           .single(),
       );
       return toAssignmentSubmission(row);
+    },
+
+    async getUngradedCount() {
+      const response = await fetch('/api/assignments/ungraded-count');
+      if (!response.ok) return 0;
+      const { count } = (await response.json()) as { count: number };
+      return count;
+    },
+  },
+
+  account: {
+    async updateProfile(fullName) {
+      const {
+        data: { user },
+      } = await db().auth.getUser();
+      if (!user) throw new Error('No autenticado');
+
+      const { error } = await db().from('profiles').update({ full_name: fullName }).eq('id', user.id);
+      if (error) throw new Error(error.message);
+    },
+
+    async changePassword(newPassword) {
+      const { error } = await db().auth.updateUser({ password: newPassword });
+      if (error) throw new Error(error.message);
+    },
+  },
+
+  staff: {
+    async list() {
+      const response = await fetch('/api/staff');
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(body?.error ?? 'No se pudo cargar el equipo');
+      }
+      const { staff } = (await response.json()) as { staff: StaffMember[] };
+      return staff;
+    },
+
+    async invite(input) {
+      const response = await fetch('/api/staff/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      });
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(body?.error ?? 'No se pudo invitar al administrador');
+      }
+      return (await response.json()) as { email: string };
+    },
+
+    async setActive(id, active) {
+      const response = await fetch(`/api/staff/${id}/active`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ active }),
+      });
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(body?.error ?? 'No se pudo cambiar el estado');
+      }
+
+      const staffList = await supabaseBackend.staff.list();
+      const found = staffList.find((s) => s.id === id);
+      if (!found) throw new Error('Miembro del staff no encontrado');
+      return found;
+    },
+  },
+
+  audit: {
+    async list(page) {
+      const response = await fetch(`/api/audit?page=${page}`);
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(body?.error ?? 'No se pudo cargar la actividad');
+      }
+      const { items, hasMore } = (await response.json()) as {
+        items: Array<{
+          id: string;
+          actor_name: string;
+          action: string;
+          entity_type: string;
+          entity_id: string | null;
+          entity_label: string | null;
+          created_at: string;
+        }>;
+        hasMore: boolean;
+      };
+      return {
+        items: items.map((row) => ({
+          id: row.id,
+          actorName: row.actor_name,
+          action: row.action,
+          entityType: row.entity_type,
+          entityId: row.entity_id,
+          entityLabel: row.entity_label,
+          createdAt: row.created_at,
+        })),
+        hasMore,
+      };
     },
   },
 };
