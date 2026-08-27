@@ -1,222 +1,26 @@
 # CLAUDE.md
 
-Guía de orientación rápida para trabajar en este repo sin tener que
-re-explorarlo desde cero. Complementa (no reemplaza) `README.md` y
-`docs/AUDITORIA.md`.
+Guía rápida. Complementa `README.md` y `docs/AUDITORIA.md`.
 
 ## Qué es esto
 
-Plataforma de cursos de inglés: panel docente (admin/instructor), vista del
-alumno y un modo de práctica gamificado estilo Duolingo (XP, corazones,
-racha). Next.js 15 (App Router) + React 19 + TypeScript + Tailwind v4 +
-Supabase (Postgres, Auth) + Cloudflare R2 (binarios grandes).
+Plataforma de cursos de inglés: panel docente (admin), vista del alumno y modo de práctica gamificado (XP, corazones, racha). Tech stack: Next.js 15 (App Router) + React 19 + TypeScript + Tailwind v4 + Supabase (Postgres, Auth) + Cloudflare R2 (binarios grandes).
 
-## Infraestructura real (no asumir, verificar si algo no cuadra)
+**GitHub**: `CarrascoYulian/Ingles-Course`, rama base `main`.
 
-- **Repo GitHub:** `CarrascoYulian/Ingles-Course`. Rama base: `main`.
-- **Supabase:** proyecto `berthocommunity@gmail.com's Project` (id `bbiipfzsicasespoqcqj`,
-  org `vrekndkatftvqesdfruk`), región `us-east-2`. Se migró desde el proyecto
-  viejo `ingles-con-metodo` (`uowupbmydcmhqkayzfwy`) a esta cuenta nueva
-  (`berthocommunity@gmail.com`) — si algo de infraestructura no cuadra con
-  este id, verificar de nuevo con el MCP de Supabase antes de asumir.
-  - **Plan Free.** Su límite de Storage (1 GB total, 50 MB por archivo —
-    ver `storage.buckets` en `0003_storage.sql`) ya NO aplica a los
-    binarios grandes desde que se migraron a R2 (ver abajo); sigue siendo
-    el plan de Postgres/Auth. Verificar con el MCP de Supabase
-    (`get_organization` sobre el org id `vrekndkatftvqesdfruk`) antes de
-    asumir que esto cambió.
-- **Cloudflare R2** (compatible con S3): almacena los binarios grandes
-  (video, imagen, audio, PDF, documentos) que suben docentes y alumnos —
-  migrado desde Supabase Storage el 2026-08-19 porque el límite de 50
-  MB/archivo del plan Free de Supabase lo hacía inviable para video real
-  (ver `docs/guia-subida-de-videos.md`). Postgres sigue siendo la única
-  base de datos: guarda solo la ruta (`media_key`), nunca el binario ni
-  una URL. Credenciales en `R2_ACCOUNT_ID` / `R2_ACCESS_KEY_ID` /
-  `R2_SECRET_ACCESS_KEY` / `R2_BUCKET_NAME` (ver `.env.example`);
-  implementación en `src/lib/storage.ts` vía `@aws-sdk/client-s3` +
-  `@aws-sdk/s3-request-presigner`. Bucket privado, URLs firmadas — R2 no
-  tiene RLS propia, así que la autorización de lectura/escritura la decide
-  `guard()` en el Route Handler (`content:edit` para subir, `course:read`
-  para leer), no una política a nivel de objeto como antes en Supabase.
-  Cuota gratuita: 10 GB de almacenamiento, sin cobro de egress
-  (`STORAGE_PLAN_LIMIT_BYTES` en `src/lib/storage.ts`).
-  - La migración `supabase/migrations/0003_storage.sql` (bucket
-    `course-files` + políticas RLS de `storage.objects`) queda como
-    histórico — no se edita ni se borra, pero ya no se usa para binarios
-    nuevos.
-  - Tope de 5 GB por archivo subido (`MAX_BYTES` en `upload-dropzone.tsx`):
-    es el techo real de un `PutObject` sin multipart contra S3/R2, no una
-    elección arbitraria — subir más requeriría implementar subida
-    multiparte. La subida usa `XMLHttpRequest` (no `fetch`) para progreso
-    real byte a byte, con hasta 2 reintentos automáticos de la
-    transferencia si falla a mitad de camino (`src/features/content/upload.ts`).
-  - Cualquier mutación sobre R2 (borrar, copiar) sólo se puede hacer
-    server-side, vía una ruta API — `storage.ts` es `server-only` y el
-    backend de Supabase corre en el navegador. Patrón ya usado en
-    `/api/uploads` (firmar subida), `/api/storage/delete` (borrar al
-    instante) y `/api/modules/[moduleId]/duplicate` (`CopyObjectCommand`
-    para clonar una unidad completa, incluida su evaluación).
-- **Vercel:** proyecto `berthocommunity` (id `prj_R3IAEGlk5Lsj92zmSVlcDqNpVl9a`, team
-  `bertho-community-team1` / `team_PdSs2OVZpugZsloTLvynHuh9` — antes
-  `ingles-course` / `carrasco-team1`, migrado a la cuenta `berthocommunity@gmail.com`).
-  Deploys automáticos por PR vía integración de GitHub; merge a `main` dispara
-  producción.
-- **CI:** GitHub Actions (`.github/workflows/ci.yml`) — lint → typecheck → test → build, en cada PR/push a `main`.
+## Documentación modular
 
-## Arquitectura: puertos + dos adaptadores
+- [**Infraestructura**](docs/infraestructura.md) — Supabase, R2, Vercel, CI
+- [**Arquitectura**](docs/arquitectura.md) — Puertos, adaptadores, `server-only`, rutas API, storage
+- [**Testing**](docs/testing.md) — Vitest + funciones puras
+- [**Migraciones**](docs/migraciones.md) — Convención SQL, RLS
+- [**Gotchas**](docs/gotchas.md) — Trampas encontradas y cómo evitarlas
+- [**Comandos**](docs/comandos.md) — npm run dev/typecheck/lint/test/build
 
-Todo el acceso a datos pasa por interfaces en `src/services/ports.ts`
-(`Backend` con sub-puertos `courses`, `content`, `students`, `analytics`,
-`learning`, `practice`, `storage`). Hay **dos implementaciones
-intercambiables**:
+## Regla crítica
 
-- `src/services/demo/backend.ts` — datos en memoria, fixtures en
-  `src/services/demo/data.ts`. Se usa cuando `IS_DEMO_MODE` es `true`
-  (`src/lib/env.ts`: faltan `NEXT_PUBLIC_SUPABASE_URL`/`ANON_KEY`).
-- `src/services/supabase/backend.ts` — Postgres real bajo RLS, corre en el
-  navegador con el cliente anon (`getSupabaseBrowserClient`). Cada query
-  confía en que RLS ya filtró lo que el usuario puede ver — no repetir
-  comprobaciones de autorización aquí.
+Al agregar un método a `src/services/ports.ts`, **implementarlo en LOS DOS backends**:
+- `src/services/demo/backend.ts` (datos en memoria)
+- `src/services/supabase/backend.ts` (Postgres real)
 
-**Al agregar un método a un puerto, hay que implementarlo en LOS DOS
-backends o `tsc` (y por lo tanto el build/CI) truena.** Ya pasó una vez
-(ver `git log` del commit `043c545`): se agregó `LearningPort.listComments`
-sin implementarlo en ninguno de los dos adaptadores y tumbó CI + el deploy
-de Vercel.
-
-Componentes y hooks importan `backend` desde `@/services`, nunca Supabase
-directamente.
-
-## `server-only` — límite real, no decorativo
-
-Archivos marcados `import 'server-only'` (ej. `src/lib/storage.ts`,
-`src/app/api/practice/_constants.ts`, `_missions.ts`) literalmente **no se
-pueden importar** en código que corre en el navegador (`services/supabase/backend.ts`,
-cualquier hook `'use client'`) ni en tests de Vitest — el paquete
-`server-only` ni siquiera está instalado como dependencia normal; Next lo
-resuelve con un alias especial en su propio bundler. Si necesitás la misma
-constante/lógica en ambos lados, extraela a un módulo sin ese import (ver
-`src/app/api/practice/logic.ts` o `src/features/learning/video-progress-math.ts`
-como ejemplo del patrón: lógica pura sin `server-only`, importada tanto por
-la ruta del servidor como por el test).
-
-## Convención de rutas API (Route Handlers)
-
-Casi todas empiezan igual:
-
-```ts
-const result = await guard('permiso:especifico');
-if (isDenied(result)) return result.response;
-```
-
-`guard()` (en `src/app/api/_lib/guard.ts`) valida sesión + permiso RBAC
-(`src/lib/auth/rbac.ts`, tabla `PERMISSIONS`) y devuelve el perfil o ya la
-`NextResponse` de error — así cada ruta es un solo `if`. Rutas invocadas
-por Vercel Cron (ej. `/api/storage/reconcile`) son la excepción: se
-autentican con `CRON_SECRET` en el header `Authorization`, no con `guard()`,
-porque no hay sesión de usuario en una invocación programada.
-
-## Storage: contrato importante
-
-Postgres guarda **sólo la ruta** del objeto (`media_key`), nunca URLs — las
-URLs firmadas expiran. El binario en sí vive en **Cloudflare R2**, no en
-Postgres/Supabase (ver infraestructura arriba). `content_blocks` y
-`course_resources` ya no existen (migración `0035_unify_lessons.sql`):
-`lessons` es la única tabla de contenido de un módulo — cualquier tipo
-(Video/PDF/Ejercicio/Audio/Evaluación), un solo `media_key` por fila, el
-mismo orden que arma el docente en el editor es el que recorre el alumno.
-Borrar una lección, unidad o curso borra también el/los objeto(s) real(es)
-en R2 al instante, vía `/api/storage/delete` (issue #37) — un cron semanal
-(`/api/storage/reconcile`, issue #38) sigue existiendo como red de
-seguridad para huérfanos que se hayan colado (subida interrumpida, etc.),
-no como el mecanismo principal de limpieza.
-
-Los módulos (`modules`) se pueden crear, renombrar, borrar, reordenar y
-duplicar desde el panel (`ModuleList` + `EditModuleDialog`,
-`ContentPort.updateModule/removeModule/reorderModule/duplicateModule`).
-Duplicar clona lecciones y evaluación con copia real del binario en R2
-(nunca comparte `media_key` con el original — si no, borrar la unidad
-original se llevaría puesto el archivo de la copia); no duplica tareas
-(`assignments`), que llevan fecha límite propia. El modo demo sólo modela
-una unidad de referencia por curso, así que `removeModule`/`duplicateModule`
-ahí son un rechazo explícito en vez de fingir la operación.
-
-## Testing
-
-`npm test` = Vitest, **entorno `node`** (sin jsdom, sin
-`@testing-library/react` instalados). Sólo se testean **funciones puras**
-— nada que dependa de renderizar un componente o de un DOM real. Patrón:
-extraer el cálculo a un módulo sin `server-only` ni dependencias de React,
-testear ese módulo (`src/app/api/practice/logic.ts`,
-`src/features/learning/video-progress-math.ts`,
-`src/services/supabase/mappers.ts`, `src/lib/auth/rbac.ts`). Si algún día
-hace falta testear un componente/hook de verdad, primero hay que instalar
-`@testing-library/react` + un entorno DOM y decidir eso explícitamente —
-no asumir que ya está disponible.
-
-## Migraciones
-
-`supabase/migrations/NNNN_descripcion.sql`, numeradas secuencialmente,
-nunca se editan una vez mergeadas — un cambio nuevo es una migración
-nueva. RLS habilitado en toda tabla nueva desde el día uno; `is_staff()` y
-`is_active_student()` (definidas en `0002_rls.sql`) son las funciones base
-que casi todas las políticas reutilizan.
-
-## Comandos
-
-```bash
-npm run dev         # servidor de desarrollo
-npm run typecheck   # tsc --noEmit — correr esto antes de dar nada por terminado
-npm run lint
-npm test            # vitest run
-npm run build       # como CI
-```
-
-## Gotchas ya encontrados (para no repetir la investigación)
-
-- El widget de sidebar "Almacenamiento" del panel admin (issue #39) no
-  existía en el código pese a que el diseño lo daba por hecho — se
-  construyó desde cero (`src/components/admin/storage-usage-widget.tsx`).
-  Además del total, muestra los 3 cursos que más pesan
-  (`StorageUsage.byCourse`, calculado en `/api/storage/usage` a partir del
-  propio prefijo `cursos/{courseId}/...` del `media_key`, sin cruzar contra
-  Postgres).
-- `/login` redirige directo al panel si ya hay sesión activa (cookie de
-  Supabase Auth) — es el comportamiento esperado del middleware
-  (`src/middleware.ts`), no una falla de autenticación. Para probar el
-  formulario de login de verdad, hace falta una sesión limpia (sin cookies).
-- No hay forma de loguearse en el navegador sin contraseña — para
-  verificar UI sin credenciales, se puede levantar una página temporal
-  fuera de `PROTECTED_PREFIXES` (`src/constants/routes.ts`), o comentar
-  temporalmente `NEXT_PUBLIC_SUPABASE_URL`/`ANON_KEY` en `.env.local` para
-  forzar modo demo (recordar restaurar después).
-- El dashboard general (`/admin`) sólo muestra KPIs agregados — el docente
-  no puede ver el rendimiento de un alumno individual ahí. Esa vista
-  individual (calificaciones acumuladas de `quiz_attempts` por alumno) vive
-  exclusivamente en Reportes (`/admin/reportes`,
-  `src/app/api/analytics/performance/route.ts`). `/admin/estudiantes` sigue
-  mostrando progreso individual porque es gestión de matrícula, no
-  reportería — no confundir los tres.
-- `removeStorageObjects` en `src/services/supabase/backend.ts` llamó
-  durante un tiempo a `db().storage.from('course-files').remove()` — la API
-  de Supabase Storage sobre el bucket viejo, previo a la migración a R2
-  (`0003_storage.sql`). No lanzaba error visible (`console.error` en
-  silencio) porque esos objetos ya no viven en ese bucket: el huérfano
-  igual se limpiaba, pero recién con el cron semanal, nunca al momento de
-  borrar. Corregido para que llame a `/api/storage/delete`, que sí opera
-  sobre R2. Si "borrar" algo con archivo real no hace bajar el uso del
-  widget de Storage al instante, sospechar primero de este patrón (una
-  llamada directa a `db().storage` en vez de pasar por una ruta API).
-- Publicar un curso con una unidad vacía o sin evaluación no está
-  bloqueado — sólo avisa (`CoursesPort.getPublishWarnings`, confirmación en
-  `courses-view.tsx`) y deja publicar igual. No confundir con un chequeo
-  obligatorio: un curso sólo de lectura sin evaluación es un caso válido.
-- Ninguna página bajo `/admin/*` necesita su propio `<Suspense>` para
-  `useSearchParams()` — `AdminShell` ya envuelve `AdminTopbar` (que también
-  usa `useSearchParams`) en uno, y ese límite cubre toda la ruta. Agregar
-  un segundo `<Suspense>` anidado localmente (como tenía
-  `estudiantes/page.tsx`) deja ese sub-árbol colgado en el placeholder de
-  streaming de RSC — nunca hidrata en el cliente, sin error visible en
-  consola ni en la red. Si una página del panel se queda pegada en su
-  estado de carga inicial para siempre, comprobar primero si tiene un
-  `<Suspense>` propio de más.
+Si no, `tsc` truena y CI/deploy fallan. Ya pasó: se agregó `LearningPort.listComments` solo en uno → tumbó el build.
