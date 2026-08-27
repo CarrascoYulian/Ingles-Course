@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 import { badRequest, guard, isDenied } from '../../_lib/guard';
 import { logAuditEvent } from '@/lib/audit';
+import { clientEnv } from '@/lib/env';
 import { getSupabaseAdminClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
@@ -31,8 +32,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'La invitación de staff no está configurada' }, { status: 503 });
   }
 
+  // Sin `redirectTo` explícito, Supabase usa el "Site URL" configurado en
+  // el dashboard de Auth — si ese valor quedó en localhost (entorno de
+  // desarrollo), la invitación manda al destinatario a una URL que no
+  // puede abrir en su propia máquina. Acá se fuerza siempre al dominio
+  // real de la app.
   const { error } = await admin.auth.admin.inviteUserByEmail(parsed.data.email, {
     data: { full_name: parsed.data.fullName, role: 'admin' },
+    redirectTo: `${clientEnv.NEXT_PUBLIC_SITE_URL}/aceptar-invitacion`,
   });
   if (error) return NextResponse.json({ error: error.message }, { status: 502 });
 

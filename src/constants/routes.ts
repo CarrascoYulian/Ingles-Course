@@ -3,6 +3,8 @@ import type { UserRole } from '@/types';
 export const ROUTES = {
   home: '/',
   login: '/login',
+  /** Destino de `redirectTo` en la invitación de staff (`/api/staff/invite`) — pública, sin sesión previa. */
+  aceptarInvitacion: '/aceptar-invitacion',
 
   admin: {
     root: '/admin',
