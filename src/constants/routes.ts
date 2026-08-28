@@ -13,6 +13,9 @@ export const ROUTES = {
     contenido: '/admin/contenido',
     /** Constructor de contenido de un curso concreto. */
     contenidoDeCurso: (courseId: string) => `/admin/contenido?courseId=${courseId}`,
+    /** Deep link a las tareas de un módulo concreto — usado por la campana de notificaciones. */
+    tareasDeModulo: (courseId: string, moduleId: string) =>
+      `/admin/contenido?courseId=${courseId}&moduleId=${moduleId}&tab=tareas`,
     estudiantes: '/admin/estudiantes',
     reportes: '/admin/reportes',
     cuenta: '/admin/cuenta',

@@ -67,7 +67,12 @@ import { useQuizDraft, useRemoveQuiz, useSaveQuizDraft } from '../hooks/use-quiz
 import { UploadDropzone } from './upload-dropzone';
 
 export function ContentView() {
-  const courseId = useSearchParams().get('courseId') ?? '';
+  const searchParams = useSearchParams();
+  const courseId = searchParams.get('courseId') ?? '';
+  // Deep link desde la campana de notificaciones ("Entregas sin calificar")
+  // — sólo se usan una vez al cargar, no se vuelven a leer después.
+  const initialModuleId = useRef(searchParams.get('moduleId'));
+  const initialTareas = useRef(searchParams.get('tab') === 'tareas');
 
   // Antes esta pantalla resolvía "el" módulo global (`getCurrentModule`) sin
   // importar desde qué curso se llegaba — con más de un curso, todos los
@@ -87,7 +92,10 @@ export function ContentView() {
   useEffect(() => {
     if (!modules || syncedFor.current === courseId) return;
     syncedFor.current = courseId;
-    setSelectedModuleId(modules[0]?.id ?? '');
+    const deepLinked = initialModuleId.current;
+    setSelectedModuleId(
+      (deepLinked && modules.some((m) => m.id === deepLinked) ? deepLinked : modules[0]?.id) ?? '',
+    );
   }, [modules, courseId]);
 
   // Si la unidad seleccionada se borró (o cambió de curso), cae a la
@@ -146,7 +154,7 @@ export function ContentView() {
   const [editingModuleId, setEditingModuleId] = useState<string | null>(null);
   const [commentsLessonId, setCommentsLessonId] = useState<string | null>(null);
   const [quizDialogOpen, setQuizDialogOpen] = useState(false);
-  const [assignmentsOpen, setAssignmentsOpen] = useState(false);
+  const [assignmentsOpen, setAssignmentsOpen] = useState(initialTareas.current);
   const [mediaLibraryOpen, setMediaLibraryOpen] = useState(false);
   const [selectedBlockIds, setSelectedBlockIds] = useState<Set<string>>(new Set());
   const { data: quizDraft } = useQuizDraft(moduleId);

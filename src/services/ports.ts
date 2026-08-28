@@ -339,8 +339,13 @@ export interface AssignmentPort {
    */
   listSubmissionsForModule(moduleId: string): Promise<AssignmentSubmission[]>;
   gradeSubmission(submissionId: string, grade: number, feedback: string): Promise<AssignmentSubmission>;
-  /** Cuenta global de entregas todavía sin calificar, de todos los módulos — para la campana de notificaciones. */
-  getUngradedCount(): Promise<number>;
+  /**
+   * Cuenta global de entregas todavía sin calificar, de todos los módulos —
+   * para la campana de notificaciones. `target` ubica la entrega más
+   * antigua sin calificar (curso + módulo) para que la notificación pueda
+   * llevar directo ahí; `null` si no hay ninguna.
+   */
+  getUngradedCount(): Promise<{ count: number; target: { courseId: string; moduleId: string } | null }>;
 }
 
 /**

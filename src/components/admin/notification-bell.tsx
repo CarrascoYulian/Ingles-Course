@@ -23,7 +23,8 @@ import { cn } from '@/lib/utils';
 export function NotificationBell() {
   const role = useAdminRole();
   const { data: unreadMessages = 0 } = useUnreadStaffMessageCount();
-  const { data: ungraded = 0 } = useUngradedCount();
+  const { data: ungradedData } = useUngradedCount();
+  const ungraded = ungradedData?.count ?? 0;
   const total = unreadMessages + ungraded;
 
   return (
@@ -51,7 +52,15 @@ export function NotificationBell() {
           label="Mensajes sin leer"
           count={unreadMessages}
         />
-        <NotificationRow label="Entregas sin calificar" count={ungraded} />
+        <NotificationRow
+          href={
+            ungradedData?.target
+              ? ROUTES.admin.tareasDeModulo(ungradedData.target.courseId, ungradedData.target.moduleId)
+              : undefined
+          }
+          label="Entregas sin calificar"
+          count={ungraded}
+        />
         {total === 0 && (
           <p className="px-2.5 py-2 text-meta font-medium text-fg-faint">Sin novedades</p>
         )}

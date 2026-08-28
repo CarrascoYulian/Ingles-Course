@@ -80,7 +80,11 @@ export function useGradeSubmission(moduleId: string) {
   });
 }
 
-/** Cuenta global de entregas sin calificar, de todos los módulos — para la campana de notificaciones. */
+/**
+ * Cuenta global de entregas sin calificar, de todos los módulos — para la
+ * campana de notificaciones. Incluye `target` (curso + módulo de la entrega
+ * más antigua sin calificar) para que la notificación pueda navegar ahí.
+ */
 export function useUngradedCount(enabled = true) {
   return useQuery({
     queryKey: ['assignments-ungraded-count'],

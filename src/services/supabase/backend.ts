@@ -1802,9 +1802,11 @@ export const supabaseBackend: Backend = {
 
     async getUngradedCount() {
       const response = await fetch('/api/assignments/ungraded-count');
-      if (!response.ok) return 0;
-      const { count } = (await response.json()) as { count: number };
-      return count;
+      if (!response.ok) return { count: 0, target: null };
+      return (await response.json()) as {
+        count: number;
+        target: { courseId: string; moduleId: string } | null;
+      };
     },
   },
 

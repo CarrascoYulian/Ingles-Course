@@ -811,7 +811,19 @@ export const demoBackend: Backend = {
       if (!graded) throw new Error(`Entrega ${submissionId} no encontrada`);
       return latency(graded);
     },
-    getUngradedCount: () => latency(demoSubmissions.filter((s) => s.grade == null).length),
+    getUngradedCount: () => {
+      const ungraded = demoSubmissions.filter((s) => s.grade == null);
+      const oldest = ungraded.find((s) =>
+        demoAssignments.some((a) => a.id === s.assignmentId),
+      );
+      const assignment = oldest
+        ? demoAssignments.find((a) => a.id === oldest.assignmentId)
+        : undefined;
+      return latency({
+        count: ungraded.length,
+        target: assignment ? { courseId: DEMO_MODULE.courseId, moduleId: assignment.moduleId } : null,
+      });
+    },
   },
 
   account: {
