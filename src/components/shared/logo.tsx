@@ -18,19 +18,12 @@ export function LogoMark({
   return (
     <span
       className={cn(
-        'relative grid shrink-0 place-items-center overflow-hidden rounded-full bg-white shadow-xs border border-border/40',
+        'relative grid shrink-0 place-items-center overflow-hidden rounded-full',
         MARK_SIZE[size],
         className,
       )}
     >
-      <Image
-        src="/login/logo.png"
-        alt="Bertho Community"
-        aria-hidden
-        fill
-        sizes="32px"
-        className="object-contain p-0.5"
-      />
+      <Image src="/login/logo.jpeg" alt="" aria-hidden fill sizes="32px" className="object-cover" />
     </span>
   );
 }
