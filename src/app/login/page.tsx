@@ -83,12 +83,12 @@ export default function LoginPage() {
               className="absolute left-1/2 top-0 size-[clamp(100px,14vh,140px)] -translate-x-1/2 -translate-y-1/2 rounded-full bg-canvas"
             />
             {/* Logo: la "pieza" que encaja en el hueco, ligeramente más chica y por encima. */}
-            <div className="absolute left-1/2 top-0 z-10 size-[clamp(80px,11vh,112px)] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full">
+            <div className="absolute left-1/2 top-0 z-10 size-[clamp(80px,11vh,112px)] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full bg-white shadow-md border border-border/40">
               <Image
-                src="/login/logo.jpeg"
+                src="/login/logo.png"
                 alt="Bertho Community"
                 fill
-                className="object-cover"
+                className="object-contain p-2"
                 priority
               />
             </div>
