@@ -64,3 +64,16 @@ export function useSetStaffActive() {
     onError: (error) => toast.error(error instanceof Error ? error.message : 'No se pudo cambiar el estado.'),
   });
 }
+
+export function useRemoveStaff() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id }: { id: string; name: string }) => backend.staff.remove(id),
+    onSuccess: (_data, { name }) => {
+      queryClient.invalidateQueries({ queryKey: ['staff'] });
+      toast(`${name} eliminado`);
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : 'No se pudo eliminar al miembro del staff.'),
+  });
+}

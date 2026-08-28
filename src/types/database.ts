@@ -924,6 +924,7 @@ export type Database = {
           full_name: string
           id: string
           is_active: boolean
+          is_super_admin: boolean
           level: Database["public"]["Enums"]["cefr_level"] | null
           role: Database["public"]["Enums"]["user_role"]
         }
@@ -934,6 +935,7 @@ export type Database = {
           full_name: string
           id: string
           is_active?: boolean
+          is_super_admin?: boolean
           level?: Database["public"]["Enums"]["cefr_level"] | null
           role?: Database["public"]["Enums"]["user_role"]
         }
@@ -944,6 +946,7 @@ export type Database = {
           full_name?: string
           id?: string
           is_active?: boolean
+          is_super_admin?: boolean
           level?: Database["public"]["Enums"]["cefr_level"] | null
           role?: Database["public"]["Enums"]["user_role"]
         }

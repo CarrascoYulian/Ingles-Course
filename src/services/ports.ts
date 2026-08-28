@@ -365,6 +365,8 @@ export interface StaffPort {
   invite(input: InviteStaffInput): Promise<{ email: string }>;
   /** Pausa/reactiva: inactivo no puede iniciar sesión ni mantener una sesión abierta. */
   setActive(id: string, active: boolean): Promise<StaffMember>;
+  /** Borra la cuenta por completo — libera el correo para volver a invitarlo. */
+  remove(id: string): Promise<void>;
 }
 
 export interface AuditPort {

@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
-import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { changePasswordSchema, type ChangePasswordValues } from '@/features/account/schemas';
 import { LANDING_BY_ROLE } from '@/constants/routes';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
@@ -105,12 +105,12 @@ export function AcceptInvitationForm() {
 
       <Field label="Contraseña" error={form.formState.errors.password?.message}>
         {(fieldProps) => (
-          <Input {...fieldProps} {...form.register('password')} type="password" autoComplete="new-password" autoFocus />
+          <PasswordInput {...fieldProps} {...form.register('password')} autoComplete="new-password" autoFocus />
         )}
       </Field>
       <Field label="Confirmar contraseña" error={form.formState.errors.confirmPassword?.message}>
         {(fieldProps) => (
-          <Input {...fieldProps} {...form.register('confirmPassword')} type="password" autoComplete="new-password" />
+          <PasswordInput {...fieldProps} {...form.register('confirmPassword')} autoComplete="new-password" />
         )}
       </Field>
 

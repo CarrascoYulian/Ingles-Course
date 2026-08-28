@@ -5,16 +5,26 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import Link from 'next/link';
 
-import { useAdminRole } from '@/components/admin/admin-shell';
+import { useAdminRole, useIsSuperAdmin } from '@/components/admin/admin-shell';
+import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Field } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
+import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
 import { ROLE_LABEL } from '@/lib/auth/rbac';
 import { ROUTES } from '@/constants/routes';
-import { useChangePassword, useInviteStaff, useSetStaffActive, useStaffList, useUpdateProfile } from '../hooks/use-account';
+import {
+  useChangePassword,
+  useInviteStaff,
+  useRemoveStaff,
+  useSetStaffActive,
+  useStaffList,
+  useUpdateProfile,
+} from '../hooks/use-account';
 import { changePasswordSchema, updateProfileSchema, type ChangePasswordValues, type UpdateProfileValues } from '../schemas';
 import { InviteStaffDialog } from './invite-staff-dialog';
 
@@ -92,15 +102,14 @@ function PasswordSection() {
       <form onSubmit={submit} noValidate className="mt-5 flex flex-col gap-4">
         <Field label="Nueva contraseña" error={form.formState.errors.password?.message}>
           {(fieldProps) => (
-            <Input {...fieldProps} {...form.register('password')} type="password" autoComplete="new-password" />
+            <PasswordInput {...fieldProps} {...form.register('password')} autoComplete="new-password" />
           )}
         </Field>
         <Field label="Confirmar contraseña" error={form.formState.errors.confirmPassword?.message}>
           {(fieldProps) => (
-            <Input
+            <PasswordInput
               {...fieldProps}
               {...form.register('confirmPassword')}
-              type="password"
               autoComplete="new-password"
             />
           )}
@@ -115,21 +124,30 @@ function PasswordSection() {
 }
 
 function TeamSection() {
+  const isSuperAdmin = useIsSuperAdmin();
   const { data: staff, isLoading } = useStaffList();
   const inviteStaff = useInviteStaff();
   const setStaffActive = useSetStaffActive();
+  const removeStaff = useRemoveStaff();
   const [inviteOpen, setInviteOpen] = useState(false);
+  const confirmDialog = useConfirmDialog();
 
   return (
     <Card padding="lg">
       <CardHeader>
         <div>
           <CardTitle>Equipo</CardTitle>
-          <CardDescription>Administradores con acceso al panel.</CardDescription>
+          <CardDescription>
+            {isSuperAdmin
+              ? 'Administradores con acceso al panel.'
+              : 'Administradores con acceso al panel. Sólo el dueño de la cuenta puede invitar, activar o eliminar.'}
+          </CardDescription>
         </div>
-        <Button size="sm" onClick={() => setInviteOpen(true)}>
-          Invitar admin
-        </Button>
+        {isSuperAdmin && (
+          <Button size="sm" onClick={() => setInviteOpen(true)}>
+            Invitar admin
+          </Button>
+        )}
       </CardHeader>
 
       <div className="mt-5 flex flex-col gap-2.5">
@@ -144,19 +162,40 @@ function TeamSection() {
               <p className="truncate text-body-sm font-bold text-fg">{member.fullName}</p>
               <p className="truncate text-tiny font-medium text-fg-faint">{member.email}</p>
             </div>
+            {member.isSuperAdmin && <Badge tone="brand">Dueño</Badge>}
             <Badge tone={member.isActive ? 'success' : 'neutral'}>
               {member.isActive ? 'Activo' : 'Inactivo'}
             </Badge>
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={setStaffActive.isPending}
-              onClick={() =>
-                setStaffActive.mutate({ id: member.id, name: member.fullName, active: !member.isActive })
-              }
-            >
-              {member.isActive ? 'Desactivar' : 'Activar'}
-            </Button>
+            {isSuperAdmin && !member.isSuperAdmin && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={setStaffActive.isPending}
+                  onClick={() =>
+                    setStaffActive.mutate({ id: member.id, name: member.fullName, active: !member.isActive })
+                  }
+                >
+                  {member.isActive ? 'Desactivar' : 'Activar'}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-danger-strong hover:text-danger-strong"
+                  disabled={removeStaff.isPending}
+                  onClick={() =>
+                    confirmDialog.confirm({
+                      title: 'Eliminar administrador',
+                      body: `Se borrará la cuenta de ${member.fullName} de forma permanente y quedará libre su correo para volver a invitarlo. Esta acción no se puede deshacer.`,
+                      confirmLabel: 'Sí, eliminar',
+                      onConfirm: () => removeStaff.mutateAsync({ id: member.id, name: member.fullName }),
+                    })
+                  }
+                >
+                  Eliminar
+                </Button>
+              </>
+            )}
           </div>
         ))}
       </div>
@@ -168,11 +207,21 @@ function TeamSection() {
         Ver actividad →
       </Link>
 
-      <InviteStaffDialog
-        open={inviteOpen}
-        onOpenChange={setInviteOpen}
-        pending={inviteStaff.isPending}
-        onSubmit={(values) => inviteStaff.mutateAsync(values)}
+      {isSuperAdmin && (
+        <InviteStaffDialog
+          open={inviteOpen}
+          onOpenChange={setInviteOpen}
+          pending={inviteStaff.isPending}
+          onSubmit={(values) => inviteStaff.mutateAsync(values)}
+        />
+      )}
+
+      <ConfirmDialog
+        request={confirmDialog.request}
+        open={confirmDialog.isOpen}
+        pending={confirmDialog.pending}
+        onCancel={confirmDialog.dismiss}
+        onConfirm={confirmDialog.accept}
       />
     </Card>
   );

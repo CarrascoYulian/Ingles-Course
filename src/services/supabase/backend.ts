@@ -1865,6 +1865,14 @@ export const supabaseBackend: Backend = {
       if (!found) throw new Error('Miembro del staff no encontrado');
       return found;
     },
+
+    async remove(id) {
+      const response = await fetch(`/api/staff/${id}`, { method: 'DELETE' });
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(body?.error ?? 'No se pudo eliminar al miembro del staff');
+      }
+    },
   },
 
   audit: {

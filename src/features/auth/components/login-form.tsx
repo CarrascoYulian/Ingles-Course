@@ -9,6 +9,7 @@ import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { IS_DEMO_MODE } from '@/lib/env';
 import { loginSchema, type LoginValues } from '../schemas';
 
@@ -112,10 +113,9 @@ export function LoginForm() {
       <div>
         <Field label="Contraseña" error={form.formState.errors.password?.message}>
           {(fieldProps) => (
-            <Input
+            <PasswordInput
               {...fieldProps}
               {...form.register('password')}
-              type="password"
               autoComplete="current-password"
               placeholder="••••••••"
             />

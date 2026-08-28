@@ -36,7 +36,7 @@ export const getCurrentProfile = cache(async (): Promise<Profile | null> => {
 
   const { data } = await supabase
     .from('profiles')
-    .select('id, role, full_name, enrollment_code, level, avatar_color')
+    .select('id, role, full_name, enrollment_code, level, avatar_color, is_super_admin')
     .eq('id', user.id)
     .single();
 
@@ -49,6 +49,7 @@ export const getCurrentProfile = cache(async (): Promise<Profile | null> => {
     enrollmentCode: data.enrollment_code,
     level: data.level,
     avatarColor: data.avatar_color,
+    isSuperAdmin: data.is_super_admin,
   };
 });
 

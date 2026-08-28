@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
-import { badRequest, guard, isDenied } from '../../../_lib/guard';
+import { badRequest, forbidden, guard, isDenied } from '../../../_lib/guard';
 import { logAuditEvent } from '@/lib/audit';
 import { getSupabaseAdminClient } from '@/lib/supabase/server';
 
@@ -17,6 +17,9 @@ const activeSchema = z.object({ active: z.boolean() });
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const result = await guard('staff:invite');
   if (isDenied(result)) return result.response;
+  if (!result.profile.isSuperAdmin) {
+    return forbidden('Sólo el dueño de la cuenta puede activar o desactivar administradores');
+  }
 
   const { id } = await params;
   const parsed = activeSchema.safeParse(await request.json().catch(() => null));
@@ -27,11 +30,14 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   const { data: profile } = await admin
     .from('profiles')
-    .select('role, full_name')
+    .select('role, full_name, is_super_admin')
     .eq('id', id)
     .single();
   if (!profile || profile.role === 'student') {
     return NextResponse.json({ error: 'Miembro del staff no encontrado' }, { status: 404 });
+  }
+  if (profile.is_super_admin) {
+    return forbidden('No se puede desactivar al dueño de la cuenta');
   }
 
   const { error } = await admin

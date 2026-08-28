@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
-import { badRequest, guard, isDenied } from '../../_lib/guard';
+import { badRequest, forbidden, guard, isDenied } from '../../_lib/guard';
 import { logAuditEvent } from '@/lib/audit';
 import { clientEnv } from '@/lib/env';
 import { getSupabaseAdminClient } from '@/lib/supabase/server';
@@ -23,6 +23,9 @@ const requestSchema = z.object({
 export async function POST(request: Request) {
   const result = await guard('staff:invite');
   if (isDenied(result)) return result.response;
+  if (!result.profile.isSuperAdmin) {
+    return forbidden('Sólo el dueño de la cuenta puede invitar administradores');
+  }
 
   const parsed = requestSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return badRequest('Datos inválidos');

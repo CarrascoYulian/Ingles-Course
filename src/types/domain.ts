@@ -23,6 +23,8 @@ export interface Profile {
   enrollmentCode: string | null;
   level: CefrLevel | null;
   avatarColor: string | null;
+  /** Dueño del sistema — único que puede invitar, borrar y desactivar a otros admins. */
+  isSuperAdmin: boolean;
 }
 
 export interface Course {
@@ -262,6 +264,7 @@ export interface StaffMember {
   email: string;
   role: UserRole;
   isActive: boolean;
+  isSuperAdmin: boolean;
   createdAt: string;
 }
 

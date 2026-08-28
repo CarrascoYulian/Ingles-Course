@@ -60,6 +60,7 @@ let demoStaff: StaffMember[] = [
     email: 'docente@ejemplo.com',
     role: 'admin',
     isActive: true,
+    isSuperAdmin: true,
     createdAt: new Date().toISOString(),
   },
 ];
@@ -838,6 +839,7 @@ export const demoBackend: Backend = {
         email: input.email,
         role: 'admin',
         isActive: true,
+        isSuperAdmin: false,
         createdAt: new Date().toISOString(),
       };
       demoStaff = [...demoStaff, member];
@@ -848,6 +850,10 @@ export const demoBackend: Backend = {
       const updated = demoStaff.find((s) => s.id === id);
       if (!updated) throw new Error(`Miembro del staff ${id} no encontrado`);
       return latency(updated);
+    },
+    remove: (id: string) => {
+      demoStaff = demoStaff.filter((s) => s.id !== id);
+      return latency(undefined);
     },
   },
 

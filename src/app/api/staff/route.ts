@@ -20,7 +20,7 @@ export async function GET() {
 
   const { data: profiles, error } = await admin
     .from('profiles')
-    .select('id, full_name, role, is_active, created_at')
+    .select('id, full_name, role, is_active, is_super_admin, created_at')
     .in('role', ['admin', 'instructor'])
     .order('created_at', { ascending: true });
   if (error) return NextResponse.json({ error: error.message }, { status: 502 });
@@ -36,6 +36,7 @@ export async function GET() {
     email: emailById.get(p.id) ?? '',
     role: p.role,
     isActive: p.is_active,
+    isSuperAdmin: p.is_super_admin,
     createdAt: p.created_at,
   }));
 

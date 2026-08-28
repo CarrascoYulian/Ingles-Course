@@ -28,6 +28,7 @@ const AdminHeaderContext = createContext<{
   query: string;
   setQuery: (query: string) => void;
   role: UserRole;
+  isSuperAdmin: boolean;
 } | null>(null);
 
 /**
@@ -40,6 +41,12 @@ const AdminHeaderContext = createContext<{
 export function useAdminRole(): UserRole {
   const context = useContext(AdminHeaderContext);
   return context?.role ?? 'instructor';
+}
+
+/** Dueño del sistema — único que puede invitar, borrar y desactivar a otros admins. */
+export function useIsSuperAdmin(): boolean {
+  const context = useContext(AdminHeaderContext);
+  return context?.isSuperAdmin ?? false;
 }
 
 /**
@@ -76,14 +83,18 @@ export function useSharedSearchQuery(): [string, (query: string) => void] {
 export interface AdminShellProps {
   teacherName: string;
   role: UserRole;
+  isSuperAdmin: boolean;
   children: ReactNode;
 }
 
-export function AdminShell({ teacherName, role, children }: AdminShellProps) {
+export function AdminShell({ teacherName, role, isSuperAdmin, children }: AdminShellProps) {
   const pathname = usePathname();
   const [header, setHeader] = useState<AdminHeaderState>({ subtitle: '', onAction: null });
   const [query, setQuery] = useState('');
-  const contextValue = useMemo(() => ({ set: setHeader, query, setQuery, role }), [query, role]);
+  const contextValue = useMemo(
+    () => ({ set: setHeader, query, setQuery, role, isSuperAdmin }),
+    [query, role, isSuperAdmin],
+  );
 
   const actionLabel = ADMIN_PAGE_META[pathname]?.action ?? 'Nuevo curso';
 

@@ -45,3 +45,8 @@ export function isDenied(result: GuardResult): result is { response: NextRespons
 export function badRequest(message: string) {
   return NextResponse.json({ error: message }, { status: 400 });
 }
+
+/** Respuesta 403 para acciones que exigen ser el dueño del sistema (`profiles.is_super_admin`). */
+export function forbidden(message: string) {
+  return NextResponse.json({ error: message }, { status: 403 });
+}

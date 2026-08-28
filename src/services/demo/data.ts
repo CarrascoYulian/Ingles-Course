@@ -31,6 +31,7 @@ export const DEMO_TEACHER: Profile = {
   enrollmentCode: null,
   level: null,
   avatarColor: '#0F5257',
+  isSuperAdmin: true,
 };
 
 export const DEMO_STUDENT: Profile = {
@@ -40,6 +41,7 @@ export const DEMO_STUDENT: Profile = {
   enrollmentCode: 'ING-000072',
   level: 'B1',
   avatarColor: '#2F6BFF',
+  isSuperAdmin: false,
 };
 
 export const DEMO_COURSES: Course[] = [
