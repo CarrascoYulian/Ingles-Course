@@ -73,6 +73,7 @@ export function ContentView() {
   // — sólo se usan una vez al cargar, no se vuelven a leer después.
   const initialModuleId = useRef(searchParams.get('moduleId'));
   const initialTareas = useRef(searchParams.get('tab') === 'tareas');
+  const initialAssignmentId = useRef(searchParams.get('assignmentId'));
 
   // Antes esta pantalla resolvía "el" módulo global (`getCurrentModule`) sin
   // importar desde qué curso se llegaba — con más de un curso, todos los
@@ -509,7 +510,12 @@ export function ContentView() {
         />
 
         {assignmentsOpen && (
-          <ModuleAssignmentsPanel moduleId={moduleId} moduleTitle={activeModule.title} courseId={courseId} />
+          <ModuleAssignmentsPanel
+            moduleId={moduleId}
+            moduleTitle={activeModule.title}
+            courseId={courseId}
+            initialAssignmentId={initialAssignmentId.current ?? undefined}
+          />
         )}
 
       </div>

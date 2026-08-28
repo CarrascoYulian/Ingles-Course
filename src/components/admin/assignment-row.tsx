@@ -3,6 +3,7 @@
 import { ClipboardList, Pencil, Trash2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import type { Assignment } from '@/types';
 
 export interface AssignmentRowProps {
@@ -12,6 +13,8 @@ export interface AssignmentRowProps {
   onOpen: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  /** Resalta un instante esta fila — llegada desde la campana de notificaciones. */
+  highlighted?: boolean;
 }
 
 /** Fila de tarea en la lista del módulo — mismo lenguaje visual que `QuizBlockRow`. */
@@ -22,6 +25,7 @@ export function AssignmentRow({
   onOpen,
   onEdit,
   onDelete,
+  highlighted,
 }: AssignmentRowProps) {
   const dueLabel = new Date(assignment.dueAt).toLocaleDateString('es-DO', {
     day: '2-digit',
@@ -29,7 +33,12 @@ export function AssignmentRow({
   });
 
   return (
-    <li className="flex items-center gap-4 rounded-5xl border border-line bg-surface p-4">
+    <li
+      className={cn(
+        'flex items-center gap-4 rounded-5xl border border-line bg-surface p-4',
+        highlighted && 'animate-highlight-flash',
+      )}
+    >
       <button
         type="button"
         onClick={onOpen}

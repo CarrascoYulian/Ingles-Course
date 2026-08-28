@@ -84,6 +84,23 @@
   }
 }
 
+/* Sombreado momentáneo para marcar el destino de un deep link (p. ej. la
+ * entrega sin calificar que llevó hasta acá) — se sostiene ~1s y se
+ * desvanece, sin dejar rastro permanente en el estilo de la fila. */
+@utility animate-highlight-flash {
+  animation: highlight-flash 1800ms var(--ease-out-strong) both;
+}
+
+@keyframes highlight-flash {
+  0%,
+  55% {
+    background-color: var(--color-accent-soft, #fef3c7);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
 /* Solo visible para lectores de pantalla. */
 @utility sr-only-focusable {
   position: absolute;

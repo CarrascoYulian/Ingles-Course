@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation } from '@tanstack/react-query';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { AssignmentEditorDialog } from '@/components/admin/assignment-editor-dialog';
 import { AssignmentRow } from '@/components/admin/assignment-row';
@@ -28,10 +28,13 @@ export function ModuleAssignmentsPanel({
   moduleId,
   moduleTitle,
   courseId,
+  initialAssignmentId,
 }: {
   moduleId: string;
   moduleTitle: string;
   courseId: string;
+  /** Deep link desde la campana de notificaciones — abre y resalta esta tarea al cargar. */
+  initialAssignmentId?: string;
 }) {
   const { data: assignments, isPending: isAssignmentsPending } = useAssignments(moduleId);
   const createAssignment = useCreateAssignment(moduleId);
@@ -42,6 +45,20 @@ export function ModuleAssignmentsPanel({
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingAssignmentId, setEditingAssignmentId] = useState<string | null>(null);
   const [openAssignmentId, setOpenAssignmentId] = useState<string | null>(null);
+  // Sólo se auto-abre y resalta una vez, la primera vez que las tareas
+  // llegan — si el docente cierra el panel y lo vuelve a abrir a mano no
+  // debe repetirse el destello.
+  const deepLinkHandled = useRef(false);
+  const [highlightAssignmentId, setHighlightAssignmentId] = useState<string | null>(null);
+  useEffect(() => {
+    if (deepLinkHandled.current || !initialAssignmentId || !assignments) return;
+    deepLinkHandled.current = true;
+    if (!assignments.some((a) => a.id === initialAssignmentId)) return;
+    setOpenAssignmentId(initialAssignmentId);
+    setHighlightAssignmentId(initialAssignmentId);
+    const timeout = setTimeout(() => setHighlightAssignmentId(null), 1800);
+    return () => clearTimeout(timeout);
+  }, [assignments, initialAssignmentId]);
   const [gradingSubmission, setGradingSubmission] = useState<AssignmentSubmission | null>(null);
   const [fileUrl, setFileUrl] = useState<string | null>(null);
   // `fileUrlMutation` es una sola instancia compartida por todas las filas:
@@ -105,12 +122,14 @@ export function ModuleAssignmentsPanel({
             const theseSubmissions = (moduleSubmissions ?? []).filter(
               (s) => s.assignmentId === assignment.id,
             );
+            const isHighlighted = assignment.id === highlightAssignmentId;
             return (
               <div key={assignment.id} className="flex flex-col gap-2">
                 <AssignmentRow
                   assignment={assignment}
                   submissionCount={theseSubmissions.length}
                   gradedCount={theseSubmissions.filter((s) => s.gradedAt).length}
+                  highlighted={isHighlighted}
                   onOpen={() => setOpenAssignmentId(isOpen ? null : assignment.id)}
                   onEdit={() => {
                     setEditingAssignmentId(assignment.id);
@@ -133,6 +152,7 @@ export function ModuleAssignmentsPanel({
                       <AssignmentSubmissionsTable
                         assignment={assignment}
                         submissions={theseSubmissions}
+                        highlightUngraded={isHighlighted}
                         onGrade={(submission) => {
                           setGradingSubmission(submission);
                           setFileUrl(null);

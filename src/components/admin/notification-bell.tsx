@@ -55,7 +55,11 @@ export function NotificationBell() {
         <NotificationRow
           href={
             ungradedData?.target
-              ? ROUTES.admin.tareasDeModulo(ungradedData.target.courseId, ungradedData.target.moduleId)
+              ? ROUTES.admin.tareasDeModulo(
+                  ungradedData.target.courseId,
+                  ungradedData.target.moduleId,
+                  ungradedData.target.assignmentId,
+                )
               : undefined
           }
           label="Entregas sin calificar"

@@ -1805,7 +1805,7 @@ export const supabaseBackend: Backend = {
       if (!response.ok) return { count: 0, target: null };
       return (await response.json()) as {
         count: number;
-        target: { courseId: string; moduleId: string } | null;
+        target: { courseId: string; moduleId: string; assignmentId: string } | null;
       };
     },
   },

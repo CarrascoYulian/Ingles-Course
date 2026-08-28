@@ -26,7 +26,7 @@ export async function GET() {
 
   const { data: oldest, error: oldestError } = await supabase
     .from('assignment_submissions')
-    .select('assignments(module_id, modules(course_id))')
+    .select('assignment_id, assignments(module_id, modules(course_id))')
     .is('grade', null)
     .order('submitted_at', { ascending: true })
     .limit(1)
@@ -34,12 +34,17 @@ export async function GET() {
   if (oldestError) return NextResponse.json({ error: oldestError.message }, { status: 502 });
 
   const oldestRow = oldest as unknown as {
+    assignment_id: string;
     assignments: { module_id: string; modules: { course_id: string } | null } | null;
   } | null;
   const assignment = oldestRow?.assignments;
   const target =
-    assignment && assignment.modules
-      ? { courseId: assignment.modules.course_id, moduleId: assignment.module_id }
+    assignment && assignment.modules && oldestRow
+      ? {
+          courseId: assignment.modules.course_id,
+          moduleId: assignment.module_id,
+          assignmentId: oldestRow.assignment_id,
+        }
       : null;
 
   return NextResponse.json({ count: count ?? 0, target });

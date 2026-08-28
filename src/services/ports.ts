@@ -342,10 +342,14 @@ export interface AssignmentPort {
   /**
    * Cuenta global de entregas todavía sin calificar, de todos los módulos —
    * para la campana de notificaciones. `target` ubica la entrega más
-   * antigua sin calificar (curso + módulo) para que la notificación pueda
-   * llevar directo ahí; `null` si no hay ninguna.
+   * antigua sin calificar (curso + módulo + tarea) para que la notificación
+   * pueda llevar directo ahí y abrir esa tarea puntual; `null` si no hay
+   * ninguna.
    */
-  getUngradedCount(): Promise<{ count: number; target: { courseId: string; moduleId: string } | null }>;
+  getUngradedCount(): Promise<{
+    count: number;
+    target: { courseId: string; moduleId: string; assignmentId: string } | null;
+  }>;
 }
 
 /**

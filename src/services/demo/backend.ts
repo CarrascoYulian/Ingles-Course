@@ -821,7 +821,9 @@ export const demoBackend: Backend = {
         : undefined;
       return latency({
         count: ungraded.length,
-        target: assignment ? { courseId: DEMO_MODULE.courseId, moduleId: assignment.moduleId } : null,
+        target: assignment
+          ? { courseId: DEMO_MODULE.courseId, moduleId: assignment.moduleId, assignmentId: assignment.id }
+          : null,
       });
     },
   },

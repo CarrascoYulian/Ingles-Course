@@ -1,12 +1,15 @@
 'use client';
 
 import { computeAssignmentStatus, type AssignmentStatus } from '@/features/assignments/submission-rules';
+import { cn } from '@/lib/utils';
 import type { Assignment, AssignmentSubmission } from '@/types';
 
 export interface AssignmentSubmissionsTableProps {
   assignment: Assignment;
   submissions: AssignmentSubmission[];
   onGrade: (submission: AssignmentSubmission) => void;
+  /** Resalta un instante las filas sin calificar — llegada desde la campana de notificaciones. */
+  highlightUngraded?: boolean;
 }
 
 const STATUS_LABEL: Record<AssignmentStatus, string> = {
@@ -33,6 +36,7 @@ export function AssignmentSubmissionsTable({
   assignment,
   submissions,
   onGrade,
+  highlightUngraded,
 }: AssignmentSubmissionsTableProps) {
   const now = new Date();
 
@@ -64,7 +68,13 @@ export function AssignmentSubmissionsTable({
               now,
             );
             return (
-              <tr key={submission.id} className="border-t border-line">
+              <tr
+                key={submission.id}
+                className={cn(
+                  'border-t border-line',
+                  highlightUngraded && !submission.gradedAt && 'animate-highlight-flash',
+                )}
+              >
                 <td className="px-4 py-3 font-semibold text-fg">{submission.studentName ?? 'Alumno'}</td>
                 <td className="px-4 py-3">
                   <span className={`rounded-full px-2.5 py-1 text-tiny font-bold ${STATUS_TONE[status]}`}>
