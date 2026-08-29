@@ -13,10 +13,45 @@ export interface AudioRecorderProps {
 type RecorderState = 'idle' | 'recording' | 'recorded' | 'denied';
 
 /**
+ * Orden de preferencia de formatos: Chrome/Android soportan `audio/webm`,
+ * pero Safari/iOS no lo soporta y graba `audio/mp4` (AAC) por defecto — si
+ * se le pide `audio/webm` a un `MediaRecorder` que no lo soporta, el
+ * constructor tira. Hay que sondear con `isTypeSupported` y usar lo que el
+ * navegador realmente puede grabar, nunca asumir un formato fijo.
+ */
+const AUDIO_MIME_CANDIDATES = [
+  'audio/webm;codecs=opus',
+  'audio/webm',
+  'audio/mp4',
+  'audio/mp4;codecs=mp4a.40.2',
+  'audio/ogg;codecs=opus',
+  'audio/ogg',
+];
+
+function pickSupportedMimeType(): string | undefined {
+  if (typeof MediaRecorder === 'undefined' || typeof MediaRecorder.isTypeSupported !== 'function') {
+    return undefined;
+  }
+  return AUDIO_MIME_CANDIDATES.find((type) => MediaRecorder.isTypeSupported(type));
+}
+
+function extensionForMimeType(mimeType: string): string {
+  if (mimeType.includes('mp4')) return 'm4a';
+  if (mimeType.includes('ogg')) return 'ogg';
+  return 'webm';
+}
+
+/**
  * Graba audio con `MediaRecorder`/`getUserMedia` — no existe ningún otro
  * componente de grabación en el repo, así que este es el único punto donde
  * se pide permiso de micrófono. Sólo funciona en HTTPS o `localhost` (API
  * del navegador), probar en `npm run dev` alcanza para desarrollo local.
+ *
+ * El `Blob`/`File` resultante SIEMPRE se etiqueta con el mimeType real que
+ * `MediaRecorder` terminó usando (nunca uno hardcodeado): antes se forzaba
+ * `audio/webm` sin importar el formato real, y en iPhone/Safari eso subía
+ * un archivo MP4/AAC declarado como WebM — el navegador confiaba en la
+ * etiqueta al reproducirlo y fallaba al decodificar.
  */
 export function AudioRecorder({ onRecorded }: AudioRecorderProps) {
   const [state, setState] = useState<RecorderState>('idle');
@@ -39,13 +74,18 @@ export function AudioRecorder({ onRecorded }: AudioRecorderProps) {
       streamRef.current = stream;
       chunksRef.current = [];
 
-      const recorder = new MediaRecorder(stream);
+      const preferredMimeType = pickSupportedMimeType();
+      const recorder = preferredMimeType
+        ? new MediaRecorder(stream, { mimeType: preferredMimeType })
+        : new MediaRecorder(stream);
       recorder.ondataavailable = (event) => {
         if (event.data.size > 0) chunksRef.current.push(event.data);
       };
       recorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
-        const file = new File([blob], `entrega-${Date.now()}.webm`, { type: 'audio/webm' });
+        const mimeType = (recorder.mimeType || preferredMimeType || 'audio/webm').split(';')[0] ?? 'audio/webm';
+        const extension = extensionForMimeType(mimeType);
+        const blob = new Blob(chunksRef.current, { type: mimeType });
+        const file = new File([blob], `entrega-${Date.now()}.${extension}`, { type: mimeType });
         setPreviewUrl(URL.createObjectURL(blob));
         onRecorded(file);
         stream.getTracks().forEach((track) => track.stop());

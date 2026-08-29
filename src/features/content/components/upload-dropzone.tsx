@@ -8,7 +8,14 @@ import { formatBytes } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { uploadFile, type UploadResult } from '@/features/content/upload';
 
-const ACCEPTED = '.mp4,.mp3,.pdf,.docx,.png,.jpg,.jpeg,.webp';
+/**
+ * El servidor (`/api/uploads`) acepta cualquier `video/*`, `audio/*` o
+ * `image/*`, así que esta lista es sólo el filtro del selector nativo — pero
+ * si le faltan los formatos que un celular genera por defecto (`.mov` de la
+ * cámara del iPhone, `.m4a` de Voice Memos, `.heic`/`.heif` de Fotos), el
+ * selector los oculta antes de que el usuario llegue a elegirlos.
+ */
+const ACCEPTED = '.mp4,.mov,.mp3,.m4a,.pdf,.docx,.png,.jpg,.jpeg,.webp,.heic,.heif';
 /**
  * 5 GB: el techo real de un `PutObject` sin multipart contra S3/R2 (por
  * encima de eso, R2 exige subida multiparte — no implementada). Antes el

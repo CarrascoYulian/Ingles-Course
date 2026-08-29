@@ -15,6 +15,39 @@ export interface UploadResult {
 }
 
 /**
+ * Algunos selectores de archivo móviles (gestores de archivos de Android,
+ * ciertas apps de terceros) entregan `file.type` vacío en vez del MIME real
+ * — el navegador de escritorio casi siempre lo completa, por eso esto no se
+ * nota probando sólo en PC. El servidor rechaza `contentType` vacío antes de
+ * siquiera mirar la lista blanca (`z.string().min(1)`), así que sin este
+ * fallback por extensión la subida fallaba con un error genérico.
+ */
+const EXTENSION_FALLBACK: Record<string, string> = {
+  mp4: 'video/mp4',
+  mov: 'video/quicktime',
+  mp3: 'audio/mpeg',
+  m4a: 'audio/mp4',
+  wav: 'audio/wav',
+  webm: 'audio/webm',
+  ogg: 'audio/ogg',
+  pdf: 'application/pdf',
+  doc: 'application/msword',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  webp: 'image/webp',
+  heic: 'image/heic',
+  heif: 'image/heif',
+};
+
+function resolveContentType(file: File): string {
+  if (file.type) return file.type;
+  const extension = file.name.split('.').pop()?.toLowerCase();
+  return (extension && EXTENSION_FALLBACK[extension]) || 'application/octet-stream';
+}
+
+/**
  * Lee la duración real de un video desde el propio archivo, sin subirlo
  * todavía. Antes las lecciones nunca guardaban duración real (quedaba en
  * 0), así que el reproductor caía siempre al valor de referencia "08:24".
@@ -114,12 +147,15 @@ export async function uploadFile({
   moduleId,
   onProgress,
 }: UploadParams): Promise<UploadResult> {
-  if (IS_DEMO_MODE) return uploadDemoFile(file, moduleId, onProgress);
+  const contentType = resolveContentType(file);
+  const bodyFile = file.type ? file : new File([file], file.name, { type: contentType });
+
+  if (IS_DEMO_MODE) return uploadDemoFile(bodyFile, moduleId, onProgress);
 
   const ticketResponse = await fetch('/api/uploads', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ courseId, moduleId, fileName: file.name, contentType: file.type }),
+    body: JSON.stringify({ courseId, moduleId, fileName: file.name, contentType }),
   });
 
   if (!ticketResponse.ok) {
@@ -135,9 +171,9 @@ export async function uploadFile({
 
   const durationSeconds = await probeVideoDuration(file);
 
-  await xhrTransferWithRetry('PUT', signedUrl, file, { 'Content-Type': file.type }, onProgress);
+  await xhrTransferWithRetry('PUT', signedUrl, bodyFile, { 'Content-Type': contentType }, onProgress);
 
-  return { mediaKey, contentType: file.type, durationSeconds };
+  return { mediaKey, contentType, durationSeconds };
 }
 
 /**
@@ -161,5 +197,5 @@ async function uploadDemoFile(
 
   await xhrTransferWithRetry('POST', '/api/demo-uploads', formData, undefined, onProgress);
 
-  return { mediaKey, contentType: file.type, durationSeconds };
+  return { mediaKey, contentType: resolveContentType(file), durationSeconds };
 }

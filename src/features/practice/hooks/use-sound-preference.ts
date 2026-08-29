@@ -9,14 +9,23 @@ export function useSoundPreference() {
   const [enabled, setEnabled] = useState(true);
 
   useEffect(() => {
-    const stored = window.localStorage.getItem(STORAGE_KEY);
-    if (stored !== null) setEnabled(stored === 'true');
+    try {
+      const stored = window.localStorage.getItem(STORAGE_KEY);
+      if (stored !== null) setEnabled(stored === 'true');
+    } catch {
+      // Safari en modo privado (o cuota agotada) tira al leer localStorage — se
+      // mantiene el valor por defecto en memoria sin persistir la preferencia.
+    }
   }, []);
 
   const toggle = useCallback(() => {
     setEnabled((prev) => {
       const next = !prev;
-      window.localStorage.setItem(STORAGE_KEY, String(next));
+      try {
+        window.localStorage.setItem(STORAGE_KEY, String(next));
+      } catch {
+        // Igual que arriba: si falla la escritura, el toggle sigue funcionando en memoria.
+      }
       return next;
     });
   }, []);
