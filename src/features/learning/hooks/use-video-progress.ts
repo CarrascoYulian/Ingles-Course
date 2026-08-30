@@ -98,7 +98,11 @@ export function useVideoProgress(
       const now = Date.now();
       if (now - lastSavedAt.current >= SAVE_THROTTLE_MS) {
         lastSavedAt.current = now;
-        save.mutate({ lessonId, percent: nextMax });
+        // Silencioso: es sólo un checkpoint de avance en vivo, no un
+        // momento que la UI necesite reflejar de inmediato (ver por qué en
+        // `useSaveWatchedPercent`). Pausar, terminar o salir de la lección
+        // sí disparan la invalidación normal más abajo.
+        save.mutate({ lessonId, percent: nextMax, silent: true });
       }
     },
     [lessonId, save],

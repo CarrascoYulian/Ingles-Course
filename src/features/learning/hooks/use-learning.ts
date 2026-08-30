@@ -110,7 +110,7 @@ export function useSaveWatchedPercent() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ lessonId, percent }: { lessonId: string; percent: number }) =>
+    mutationFn: ({ lessonId, percent }: { lessonId: string; percent: number; silent?: boolean }) =>
       backend.learning.saveWatchedPercent(lessonId, percent),
     retry: 3,
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
@@ -125,7 +125,18 @@ export function useSaveWatchedPercent() {
     // "Tu progreso" (ProgressCard) y el estado done/current de la lista de
     // lecciones se quedaban con el valor de antes de ver el video hasta
     // recargar la página entera.
-    onSuccess: () => {
+    //
+    // `silent` (usado por el guardado periódico de cada 5 s mientras el
+    // video corre, ver `useVideoProgress`) se salta esto a propósito: antes
+    // cada tick disparaba un refetch de TODO el progreso, lecciones y cursos
+    // del alumno — con varios alumnos viendo video a la vez eso multiplicaba
+    // las consultas a Supabase varias veces por segundo y llegó a saturarla
+    // lo suficiente para que el middleware (que también consulta Supabase en
+    // cada request) superara el timeout de 25 s de Vercel. Los momentos que
+    // sí importan para refrescar la UI (pausa, fin de video, salir de la
+    // lección) no pasan `silent` y siguen invalidando igual que antes.
+    onSuccess: (_data, variables) => {
+      if (variables.silent) return;
       queryClient.invalidateQueries({ queryKey: ['my-progress'] });
       queryClient.invalidateQueries({ queryKey: ['lessons'] });
       queryClient.invalidateQueries({ queryKey: ['my-courses'] });
