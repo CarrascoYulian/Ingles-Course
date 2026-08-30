@@ -1,7 +1,24 @@
 'use client';
 
-import { Maximize, Minimize, MessageCircle, Pause, Play, RotateCcw, RotateCw, Volume2, VolumeX } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import {
+  Check,
+  Maximize,
+  MessageCircle,
+  Minimize,
+  Pause,
+  PictureInPicture2,
+  Play,
+  RotateCcw,
+  RotateCw,
+  Settings,
+  SkipBack,
+  SkipForward,
+  Subtitles,
+  Volume1,
+  Volume2,
+  VolumeX,
+} from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -10,6 +27,8 @@ export interface VideoPlayerProps {
   /** Etiqueta de contexto: «Lección 5 de 9 · Módulo 4». */
   contextLabel: string;
   contextLabelShort: string;
+  lessonTitle?: string;
+  nextLessonTitle?: string;
   watched: number;
   /** Punto más lejano alcanzado (0-100) — nunca baja. Limita hasta dónde se
    * puede saltar hacia adelante; retroceder no tiene límite. */
@@ -20,47 +39,46 @@ export interface VideoPlayerProps {
   onToggle: () => void;
   onPrevious?: () => void;
   onNext: () => void;
-  /** URL firmada de Supabase Storage. Si falta, no hay nada que reproducir. */
+  /** URL firmada de Supabase Storage/R2. Si falta, no hay nada que reproducir. */
   src?: string | null;
   poster?: string | null;
-  /** `timeupdate` real del `<video>`, ya convertido a 0-100 (sin redondear: redondear aquí es lo que causaba los saltos en la barra). */
+  /** `timeupdate` real del `<video>`, ya convertido a 0-100 sin redondear. */
   onProgress?: (percent: number) => void;
   onEnded?: () => void;
   /** Posiciones (0-100) de las notas del alumno — señaladas sobre la barra. */
   markers?: number[];
-  /** Cambia (incluso al mismo valor, con `nonce`) para saltar el video a ese segundo. */
+  /** Cambia para saltar el video a ese segundo. */
   seekRequest?: { seconds: number; nonce: number } | null;
-  /** Hay comentarios de otra persona más nuevos que la última vez que el alumno los vio. */
+  /** Hay comentarios de otra persona más nuevos. */
   hasUnseenComments?: boolean;
+  /** Modo Cine / Teatro. */
+  isTheater?: boolean;
+  onToggleTheater?: () => void;
+  /** Pestaña de subtítulos / transcripción / notas. */
+  onOpenTranscript?: () => void;
 }
 
-const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2] as const;
+const SPEEDS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2] as const;
 const SKIP_SECONDS = 10;
+const HIDE_CONTROLS_DELAY_MS = 2500;
+const COUNTDOWN_SECONDS = 5;
 
 function formatSeconds(seconds: number): string {
   const total = Math.max(0, Math.round(seconds));
-  const m = String(Math.floor(total / 60)).padStart(2, '0');
-  const s = String(total % 60).padStart(2, '0');
-  return `${m}:${s}`;
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  if (h > 0) {
+    return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  }
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-/**
- * Reproductor de la lección.
- *
- * Antes renderizaba un `<video>` decorativo — se pintaba en pantalla pero
- * nada lo conectaba con play/pausa ni con el progreso, que en realidad
- * venía de un temporizador simulado (`useVideoProgress`). Ahora el `<video>`
- * es real: `playing` controla `.play()/.pause()` vía `ref`, y su propio
- * `timeupdate`/`ended` es la única fuente de `watched`.
- *
- * Antes `onTimeUpdate` redondeaba a entero antes de subir el valor — con
- * eso, la barra "saltaba" en escalones de 1 % en vez de moverse fluida
- * como en YouTube. Ahora sube el porcentaje real sin redondear; sólo se
- * redondea al mostrarlo como texto.
- */
 export function VideoPlayer({
   contextLabel,
   contextLabelShort,
+  lessonTitle,
+  nextLessonTitle,
   watched,
   maxWatched,
   playing,
@@ -76,37 +94,136 @@ export function VideoPlayer({
   markers = [],
   seekRequest,
   hasUnseenComments,
+  isTheater = false,
+  onToggleTheater,
+  onOpenTranscript,
 }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const barRef = useRef<HTMLDivElement>(null);
   const sectionRef = useRef<HTMLElement>(null);
+  const hideControlsTimer = useRef<number | null>(null);
+  const countdownTimer = useRef<number | null>(null);
+
   const hasVideo = Boolean(src);
-  const [speed, setSpeed] = useState(1);
+
+  // Preferencias persistentes en localStorage
+  const [speed, setSpeed] = useState<number>(1);
   const [muted, setMuted] = useState(false);
   const [volume, setVolume] = useState(1);
+  const [autoplay, setAutoplay] = useState(true);
+
+  // Estados visuales e interactivos
   const [isFullscreen, setIsFullscreen] = useState(false);
-  // Posición (0-100) que el mouse/dedo está tocando en la barra ahora mismo
-  // — se usa tanto para el tooltip de tiempo como, mientras se arrastra,
-  // para la posición visual del relleno: antes la barra sólo saltaba al
-  // soltar el mouse (el `onClick` corría en el `mouseup`), así que
-  // arrastrar hacia atrás no mostraba nada hasta soltar.
+  const [isPipAvailable, setIsPipAvailable] = useState(false);
+  const [controlsVisible, setControlsVisible] = useState(true);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [previewPercent, setPreviewPercent] = useState<number | null>(null);
   const [scrubbing, setScrubbing] = useState(false);
+  const [bufferedEndPercent, setBufferedEndPercent] = useState(0);
+  const [videoDuration, setVideoDuration] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
 
+  // Feedback de animación en el centro (Play / Pause / Double Tap)
+  const [centerAction, setCenterAction] = useState<{ type: 'play' | 'pause' | 'skip-fwd' | 'skip-bwd'; nonce: number } | null>(null);
+
+  // Cuenta regresiva de fin de lección (YouTube / Coursera autoplay card)
+  const [countdownRemaining, setCountdownRemaining] = useState<number | null>(null);
+
+  // Carga inicial de preferencias
+  useEffect(() => {
+    try {
+      const savedSpeed = localStorage.getItem('player_playback_speed');
+      if (savedSpeed) setSpeed(Number(savedSpeed));
+      const savedVolume = localStorage.getItem('player_volume');
+      if (savedVolume) setVolume(Number(savedVolume));
+      const savedMuted = localStorage.getItem('player_muted');
+      if (savedMuted) setMuted(savedMuted === 'true');
+      const savedAutoplay = localStorage.getItem('player_autoplay');
+      if (savedAutoplay !== null) setAutoplay(savedAutoplay === 'true');
+    } catch {
+      // Ignore localStorage errors
+    }
+
+    if (typeof document !== 'undefined' && 'pictureInPictureEnabled' in document) {
+      setIsPipAvailable(document.pictureInPictureEnabled);
+    }
+  }, []);
+
+  const handleSpeedChange = (nextSpeed: number) => {
+    setSpeed(nextSpeed);
+    if (videoRef.current) videoRef.current.playbackRate = nextSpeed;
+    try {
+      localStorage.setItem('player_playback_speed', String(nextSpeed));
+    } catch {}
+    setSettingsOpen(false);
+  };
+
+  const handleAutoplayToggle = () => {
+    setAutoplay((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('player_autoplay', String(next));
+      } catch {}
+      return next;
+    });
+  };
+
+  const handleVolumeChange = (nextVolume: number) => {
+    setVolume(nextVolume);
+    setMuted(nextVolume === 0);
+    try {
+      localStorage.setItem('player_volume', String(nextVolume));
+      localStorage.setItem('player_muted', String(nextVolume === 0));
+    } catch {}
+  };
+
+  const toggleMute = () => {
+    setMuted((m) => {
+      const next = !m;
+      try {
+        localStorage.setItem('player_muted', String(next));
+      } catch {}
+      return next;
+    });
+  };
+
+  // Auto-ocultado de controles estilo YouTube
+  const resetControlsTimeout = useCallback(() => {
+    setControlsVisible(true);
+    if (hideControlsTimer.current) window.clearTimeout(hideControlsTimer.current);
+    if (playing && !settingsOpen && !scrubbing) {
+      hideControlsTimer.current = window.setTimeout(() => {
+        setControlsVisible(false);
+      }, HIDE_CONTROLS_DELAY_MS);
+    }
+  }, [playing, settingsOpen, scrubbing]);
+
+  const handleMouseMove = () => {
+    resetControlsTimeout();
+  };
+
+  const handleMouseLeave = () => {
+    if (playing && !settingsOpen && !scrubbing) {
+      setControlsVisible(false);
+    }
+  };
+
+  // Sincronización del elemento `<video>` con el estado playing
   useEffect(() => {
     const el = videoRef.current;
     if (!el) return;
     if (playing) {
-      // Al terminar, `currentTime` se queda en el final — sin esto, pedir
-      // play de nuevo en un video ya visto no hacía nada visible (ya
-      // estaba en el último frame).
       if (el.ended) el.currentTime = 0;
       el.play().catch(() => undefined);
+      resetControlsTimeout();
     } else {
       el.pause();
+      setControlsVisible(true);
+      if (hideControlsTimer.current) window.clearTimeout(hideControlsTimer.current);
     }
-  }, [playing]);
+  }, [playing, resetControlsTimeout]);
 
+  // Manejo de peticiones de salto de tiempo (notas, timestamps)
   useEffect(() => {
     const el = videoRef.current;
     if (!el || !seekRequest) return;
@@ -114,8 +231,7 @@ export function VideoPlayer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seekRequest?.nonce]);
 
-  // La velocidad se resetea sola si el navegador reemplaza el elemento
-  // (cambio de lección) — se reaplica cuando cambia `src`.
+  // Sincronización de velocidad, volumen y mute
   useEffect(() => {
     if (videoRef.current) videoRef.current.playbackRate = speed;
   }, [src, speed]);
@@ -127,6 +243,7 @@ export function VideoPlayer({
     }
   }, [volume, muted]);
 
+  // Detección de Fullscreen
   useEffect(() => {
     const onFullscreenChange = () => setIsFullscreen(document.fullscreenElement === sectionRef.current);
     document.addEventListener('fullscreenchange', onFullscreenChange);
@@ -141,24 +258,39 @@ export function VideoPlayer({
     }
   };
 
-  const toggleMute = () => setMuted((m) => !m);
-
-  // Tope de avance: el segundo que corresponde a `maxWatched`. Retroceder
-  // (`deltaSeconds`/click negativo) nunca se limita — sólo adelantar más
-  // allá de lo que el alumno ya vio de verdad.
-  const maxWatchedSeconds = (el: HTMLVideoElement) => (maxWatched / 100) * el.duration;
-
-  const skip = (deltaSeconds: number) => {
+  const togglePiP = async () => {
     const el = videoRef.current;
-    if (!el || !el.duration) return;
-    const target = el.currentTime + deltaSeconds;
-    const cap = deltaSeconds > 0 ? Math.min(el.duration, maxWatchedSeconds(el)) : el.duration;
-    el.currentTime = Math.min(cap, Math.max(0, target));
+    if (!el) return;
+    try {
+      if (document.pictureInPictureElement) {
+        await document.exitPictureInPicture();
+      } else {
+        await el.requestPictureInPicture();
+      }
+    } catch {
+      // PiP no soportado o bloqueado
+    }
   };
 
-  // Convierte una posición horizontal del mouse/dedo en el % (0-100) que le
-  // corresponde en la barra, ya recortado al tope de "adelantar" permitido
-  // — retroceder (percent menor a `maxWatched`) nunca se limita.
+  // Tope de avance honesto
+  const maxWatchedSeconds = useCallback(
+    (el: HTMLVideoElement) => (maxWatched / 100) * (el.duration || videoDuration),
+    [maxWatched, videoDuration],
+  );
+
+  const skip = useCallback(
+    (deltaSeconds: number) => {
+      const el = videoRef.current;
+      if (!el || !el.duration) return;
+      const target = el.currentTime + deltaSeconds;
+      const cap = deltaSeconds > 0 ? Math.min(el.duration, maxWatchedSeconds(el)) : el.duration;
+      el.currentTime = Math.min(cap, Math.max(0, target));
+      setCenterAction({ type: deltaSeconds > 0 ? 'skip-fwd' : 'skip-bwd', nonce: Date.now() });
+      resetControlsTimeout();
+    },
+    [maxWatchedSeconds, resetControlsTimeout],
+  );
+
   const percentFromClientX = (clientX: number): number | null => {
     const bar = barRef.current;
     if (!bar) return null;
@@ -168,343 +300,592 @@ export function VideoPlayer({
     return Math.min(targetPercent, maxWatched);
   };
 
-  // `commit` mueve el video de verdad; sin `commit` sólo actualiza el
-  // tooltip/preview (hover sin arrastrar) sin tocar la reproducción.
   const updatePreview = (clientX: number, commit: boolean) => {
     const el = videoRef.current;
     const percent = percentFromClientX(clientX);
     if (percent === null) return;
     setPreviewPercent(percent);
-    if (commit && el?.duration) el.currentTime = (percent / 100) * el.duration;
+    if (commit && el && el.duration) {
+      el.currentTime = (percent / 100) * el.duration;
+    }
   };
 
-  const cycleSpeed = () => {
-    const next = SPEEDS[(SPEEDS.indexOf(speed as (typeof SPEEDS)[number]) + 1) % SPEEDS.length]!;
-    setSpeed(next);
+  // Atajos de teclado completos estilo YouTube
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignorar si el usuario está escribiendo en un input, textarea o dialog
+      const target = e.target as HTMLElement;
+      if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return;
+      if (target && target.isContentEditable) return;
+
+      switch (e.key.toLowerCase()) {
+        case ' ':
+        case 'k':
+          e.preventDefault();
+          onToggle();
+          setCenterAction({ type: playing ? 'pause' : 'play', nonce: Date.now() });
+          break;
+        case 'j':
+          e.preventDefault();
+          skip(-SKIP_SECONDS);
+          break;
+        case 'l':
+          e.preventDefault();
+          skip(SKIP_SECONDS);
+          break;
+        case 'arrowleft':
+          e.preventDefault();
+          skip(-5);
+          break;
+        case 'arrowright':
+          e.preventDefault();
+          skip(5);
+          break;
+        case 'arrowup':
+          e.preventDefault();
+          handleVolumeChange(Math.min(1, volume + 0.05));
+          break;
+        case 'arrowdown':
+          e.preventDefault();
+          handleVolumeChange(Math.max(0, volume - 0.05));
+          break;
+        case 'm':
+          e.preventDefault();
+          toggleMute();
+          break;
+        case 'f':
+          e.preventDefault();
+          toggleFullscreen();
+          break;
+        case 't':
+          if (onToggleTheater) {
+            e.preventDefault();
+            onToggleTheater();
+          }
+          break;
+        case 'c':
+          if (onOpenTranscript) {
+            e.preventDefault();
+            onOpenTranscript();
+          }
+          break;
+        default:
+          // Teclas 0-9 para saltar a porcentajes
+          if (e.key >= '0' && e.key <= '9') {
+            const digit = Number(e.key);
+            const targetPercent = digit * 10;
+            const el = videoRef.current;
+            if (el && el.duration) {
+              const allowedPercent = Math.min(targetPercent, maxWatched);
+              el.currentTime = (allowedPercent / 100) * el.duration;
+            }
+          }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onToggle, playing, skip, volume, onToggleTheater, onOpenTranscript, maxWatched]);
+
+  // Actualización de buffer cacheado
+  const updateBufferProgress = () => {
+    const el = videoRef.current;
+    if (!el || el.buffered.length === 0 || !el.duration) return;
+    try {
+      const bufferedEnd = el.buffered.end(el.buffered.length - 1);
+      setBufferedEndPercent((bufferedEnd / el.duration) * 100);
+    } catch {}
   };
 
-  const playLabel = !hasVideo ? 'NO DISPONIBLE' : playing ? 'PAUSA' : watched >= 100 ? 'VISTO' : 'VER';
+  // Manejo de fin de video con auto-avance (Autoplay countdown)
+  const handleEnded = () => {
+    if (onEnded) onEnded();
+    if (autoplay && canAdvance) {
+      setCountdownRemaining(COUNTDOWN_SECONDS);
+      if (countdownTimer.current) window.clearInterval(countdownTimer.current);
+      countdownTimer.current = window.setInterval(() => {
+        setCountdownRemaining((prev) => {
+          if (prev === null || prev <= 1) {
+            if (countdownTimer.current) window.clearInterval(countdownTimer.current);
+            onNext();
+            return null;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+  };
+
+  const cancelCountdown = () => {
+    if (countdownTimer.current) window.clearInterval(countdownTimer.current);
+    setCountdownRemaining(null);
+  };
+
+  const currentDisplayTime = formatSeconds(currentTime);
+  const totalDisplayTime =
+    videoDuration > 0
+      ? formatSeconds(videoDuration)
+      : videoRef.current?.duration
+        ? formatSeconds(videoRef.current.duration)
+        : timeLabel
+          ? timeLabel.split('/')[1]?.trim() ?? '00:00'
+          : '00:00';
 
   return (
     <section
       ref={sectionRef}
-      aria-label="Reproductor de la lección"
-      className="overflow-hidden bg-ink shadow-player md:rounded-9xl"
+      aria-label="Reproductor de video"
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      className={cn(
+        'group relative overflow-hidden bg-black text-white shadow-2xl select-none',
+        isFullscreen ? 'size-full rounded-none' : 'w-full rounded-2xl md:rounded-3xl',
+        'aspect-video md:aspect-[16/9]',
+      )}
     >
-      <div
-        className={cn(
-          'relative grid place-items-center',
-          'aspect-[16/10] md:aspect-video',
-          'bg-[radial-gradient(circle_at_50%_42%,#16303C_0%,#0B1620_72%)]',
-        )}
-      >
-        {hasVideo && (
-          <video
-            ref={videoRef}
-            className="absolute inset-0 size-full object-cover"
-            src={src!}
-            poster={poster ?? undefined}
-            preload="metadata"
-            playsInline
-            onTimeUpdate={(event) => {
-              const el = event.currentTarget;
-              if (el.duration > 0) onProgress?.((el.currentTime / el.duration) * 100);
-            }}
-            onEnded={() => onEnded?.()}
-          />
-        )}
-
-        {!hasVideo && (
-          <p className="absolute inset-x-4 top-1/2 -translate-y-1/2 text-center text-tiny font-bold text-ink-fg-faint md:text-meta">
+      {/* Video Element */}
+      {hasVideo ? (
+        <video
+          ref={videoRef}
+          src={src!}
+          poster={poster ?? undefined}
+          preload="metadata"
+          playsInline
+          onClick={() => {
+            onToggle();
+            setCenterAction({ type: playing ? 'pause' : 'play', nonce: Date.now() });
+          }}
+          onDoubleClick={toggleFullscreen}
+          onLoadedMetadata={(e) => {
+            const dur = e.currentTarget.duration;
+            if (dur && Number.isFinite(dur)) {
+              setVideoDuration(dur);
+            }
+          }}
+          onTimeUpdate={(e) => {
+            const el = e.currentTarget;
+            setCurrentTime(el.currentTime);
+            if (el.duration > 0) {
+              onProgress?.((el.currentTime / el.duration) * 100);
+            }
+            updateBufferProgress();
+          }}
+          onProgress={updateBufferProgress}
+          onEnded={handleEnded}
+          className="size-full object-contain cursor-pointer"
+        />
+      ) : (
+        <div className="grid size-full place-items-center bg-[radial-gradient(circle_at_50%_42%,#1a2a36_0%,#081018_85%)] p-6 text-center">
+          <p className="text-body font-bold text-white/70 md:text-title-sm">
             Video no disponible todavía
           </p>
+        </div>
+      )}
+
+      {/* Ripple de feedback central de Play/Pause/Skip */}
+      {centerAction && (
+        <div
+          key={centerAction.nonce}
+          className="pointer-events-none absolute inset-0 grid place-items-center"
+        >
+          <div className="grid size-20 place-items-center rounded-full bg-black/60 shadow-2xl backdrop-blur-sm animate-ping duration-300">
+            {centerAction.type === 'play' && <Play size={36} fill="white" className="translate-x-0.5 text-white" />}
+            {centerAction.type === 'pause' && <Pause size={36} fill="white" className="text-white" />}
+            {centerAction.type === 'skip-fwd' && <RotateCw size={36} className="text-white" />}
+            {centerAction.type === 'skip-bwd' && <RotateCcw size={36} className="text-white" />}
+          </div>
+        </div>
+      )}
+
+      {/* Overlay Superior (Contexto, Unidad, Comentarios y % Visto) */}
+      <div
+        className={cn(
+          'pointer-events-none absolute inset-x-0 top-0 flex items-center justify-between p-4 md:p-5',
+          'bg-gradient-to-b from-black/80 via-black/30 to-transparent',
+          'transition-opacity duration-300',
+          controlsVisible || !playing ? 'opacity-100' : 'opacity-0',
         )}
+      >
+        <div className="flex items-center gap-2.5">
+          <span className="rounded-lg bg-black/50 px-3 py-1 text-tiny font-bold text-white/90 backdrop-blur-md">
+            <span className="md:hidden">{contextLabelShort}</span>
+            <span className="hidden md:inline">{contextLabel}</span>
+          </span>
 
-        <div className="flex items-center gap-5 md:gap-7">
-          <button
-            type="button"
-            onClick={() => skip(-SKIP_SECONDS)}
-            disabled={!hasVideo}
-            aria-label={`Retroceder ${SKIP_SECONDS} segundos`}
-            className={cn(
-              'grid size-10 place-items-center rounded-full border border-white/30 bg-black/35 text-white',
-              'transition-[background-color,transform] duration-[160ms] ease-[cubic-bezier(0.23,1,0.32,1)]',
-              hasVideo ? 'cursor-pointer hover:bg-black/55 active:scale-[0.94]' : 'cursor-not-allowed opacity-40',
-            )}
-          >
-            <RotateCcw aria-hidden size={18} strokeWidth={2.1} />
-          </button>
-
-          <button
-            type="button"
-            onClick={onToggle}
-            disabled={!hasVideo}
-            aria-pressed={playing}
-            aria-label={playing ? 'Pausar la lección' : 'Reproducir la lección'}
-            className={cn(
-              'relative grid size-[60px] place-items-center rounded-full md:size-[74px]',
-              // Fondo oscuro (no blanco translúcido) + sombra propia: un video
-              // real puede tener cualquier color de fondo — incluido blanco,
-              // contra el que un botón blanco translúcido se volvía invisible.
-              'border border-white/40 bg-black/45 shadow-[0_2px_16px_rgba(0,0,0,0.45)] backdrop-blur-[6px]',
-              'transition-[background-color,transform] duration-[160ms] ease-[cubic-bezier(0.23,1,0.32,1)]',
-              hasVideo
-                ? 'cursor-pointer hover:bg-black/60 [@media(hover:hover)_and_(pointer:fine)]:active:scale-[0.96]'
-                : 'cursor-not-allowed opacity-60',
-            )}
-          >
-            {!hasVideo ? (
-              <span className="text-meta font-extrabold tracking-badge text-white md:text-body">
-                {playLabel}
-              </span>
-            ) : playing ? (
-              <Pause aria-hidden size={26} strokeWidth={0} fill="white" className="md:size-8" />
-            ) : (
-              // El triángulo de "play" se ve visualmente descentrado si se
-              // centra por su bounding box — se desplaza un poco a la
-              // derecha, como en cualquier reproductor convencional.
-              <Play
-                aria-hidden
-                size={26}
-                strokeWidth={0}
-                fill="white"
-                className="translate-x-[2px] md:size-8 md:translate-x-[3px]"
-              />
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => skip(SKIP_SECONDS)}
-            disabled={!hasVideo}
-            aria-label={`Adelantar ${SKIP_SECONDS} segundos`}
-            className={cn(
-              'grid size-10 place-items-center rounded-full border border-white/30 bg-black/35 text-white',
-              'transition-[background-color,transform] duration-[160ms] ease-[cubic-bezier(0.23,1,0.32,1)]',
-              hasVideo ? 'cursor-pointer hover:bg-black/55 active:scale-[0.94]' : 'cursor-not-allowed opacity-40',
-            )}
-          >
-            <RotateCw aria-hidden size={18} strokeWidth={2.1} />
-          </button>
+          {hasUnseenComments && (
+            <span className="flex items-center gap-1.5 rounded-lg bg-danger px-2.5 py-1 text-tiny font-bold text-white shadow-sm">
+              <MessageCircle size={12} strokeWidth={2.4} />
+              Comentario nuevo
+            </span>
+          )}
         </div>
 
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-black/55 to-transparent md:h-24"
-        />
-
-        <p className="absolute left-3.5 top-3 rounded-md bg-black/40 px-2.5 py-[5px] text-caption font-bold text-ink-fg-strong backdrop-blur-[2px] md:left-5 md:top-[18px] md:px-[11px] md:py-1.5 md:text-tiny">
-          <span className="md:hidden">{contextLabelShort}</span>
-          <span className="hidden md:inline">{contextLabel}</span>
-        </p>
-
-        {hasUnseenComments && (
-          <p className="absolute left-3.5 top-11 flex items-center gap-1.5 rounded-md bg-danger px-2.5 py-[5px] text-caption font-bold text-white md:left-5 md:top-[52px] md:px-[11px] md:py-1.5 md:text-tiny">
-            <MessageCircle aria-hidden size={11} strokeWidth={2.4} />
-            Comentario nuevo
-          </p>
-        )}
-
-        <p className="absolute right-3.5 top-3 rounded-md bg-black/40 px-2.5 py-[5px] text-caption font-bold text-ink-accent backdrop-blur-[2px] md:right-5 md:top-[18px] md:px-[11px] md:py-1.5 md:text-tiny">
-          {Math.round(maxWatched)} %<span className="hidden md:inline"> visto</span>
-        </p>
+        <span className="rounded-lg bg-black/50 px-3 py-1 text-tiny font-extrabold text-brand-light backdrop-blur-md">
+          {Math.round(maxWatched)}% visto
+        </span>
       </div>
 
-      <div className="px-4 pb-3.5 pt-2.5 md:px-5 md:pb-[18px] md:pt-3.5">
+      {/* Card de Fin de Lección / Autoplay Countdown (Coursera & YouTube Style) */}
+      {countdownRemaining !== null && (
+        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/80 p-6 backdrop-blur-md">
+          <p className="text-tiny font-extrabold tracking-widest text-brand-light uppercase">
+            Siguiente lección
+          </p>
+          <h3 className="mt-2 max-w-md text-center text-heading-sm font-extrabold text-white text-pretty">
+            {nextLessonTitle || 'Siguiente lección'}
+          </h3>
+          <p className="mt-2 text-meta font-medium text-white/70">
+            Iniciando en {countdownRemaining} segundos…
+          </p>
+
+          <div className="mt-6 flex items-center gap-4">
+            <Button
+              variant="outline"
+              size="md"
+              onClick={cancelCountdown}
+              className="border-white/30 text-white hover:bg-white/10"
+            >
+              Cancelar
+            </Button>
+            <Button
+              size="md"
+              onClick={() => {
+                cancelCountdown();
+                onNext();
+              }}
+              className="bg-brand text-brand-fg hover:bg-brand-hover font-bold shadow-lg"
+            >
+              <Play size={16} fill="currentColor" className="mr-2" />
+              Reproducir ahora
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Barra de Controles Inferior (Superpuesta con auto-hide) */}
+      <div
+        className={cn(
+          'absolute inset-x-0 bottom-0 flex flex-col justify-end pt-8 pb-3 px-3.5 md:pb-4 md:px-5',
+          'bg-gradient-to-t from-black/95 via-black/60 to-transparent',
+          'transition-all duration-300',
+          controlsVisible || !playing || scrubbing || settingsOpen
+            ? 'opacity-100 translate-y-0'
+            : 'opacity-0 translate-y-2 pointer-events-none',
+        )}
+      >
+        {/* Scrubber / Progress Bar (YouTube Standard) */}
         <div
           ref={barRef}
           role="slider"
-          aria-label="Saltar a un punto del video"
+          aria-label="Progreso del video"
           aria-valuenow={Math.round(watched)}
           aria-valuemin={0}
           aria-valuemax={100}
           tabIndex={hasVideo ? 0 : -1}
-          onPointerDown={(event) => {
+          onPointerDown={(e) => {
             if (!hasVideo) return;
-            event.currentTarget.setPointerCapture(event.pointerId);
+            e.currentTarget.setPointerCapture(e.pointerId);
             setScrubbing(true);
-            updatePreview(event.clientX, true);
+            updatePreview(e.clientX, true);
           }}
-          onPointerMove={(event) => {
+          onPointerMove={(e) => {
             if (!hasVideo) return;
-            // Mientras se arrastra (botón/dedo abajo) cada movimiento mueve
-            // el video de verdad, no sólo al soltar — es justo lo que antes
-            // faltaba: la barra "caía" recién en el `mouseup`.
-            updatePreview(event.clientX, scrubbing);
+            updatePreview(e.clientX, scrubbing);
           }}
-          onPointerUp={(event) => {
+          onPointerUp={(e) => {
             if (!hasVideo) return;
             setScrubbing(false);
-            event.currentTarget.releasePointerCapture(event.pointerId);
+            e.currentTarget.releasePointerCapture(e.pointerId);
           }}
           onPointerCancel={() => setScrubbing(false)}
           onPointerLeave={() => {
             if (!scrubbing) setPreviewPercent(null);
           }}
-          onKeyDown={(event) => {
-            if (!hasVideo) return;
-            if (event.key === 'ArrowRight') skip(SKIP_SECONDS);
-            if (event.key === 'ArrowLeft') skip(-SKIP_SECONDS);
-          }}
           className={cn(
-            'group relative flex items-center py-2.5',
+            'group/scrubber relative flex w-full items-center py-3',
             hasVideo ? 'cursor-pointer touch-none' : 'cursor-default',
           )}
         >
-          {/* Pista + relleno propios (no el <Progress> compartido): éste
-              anima `width` con una transición de 300 ms, que arrastrando
-              hacía que el relleno fuera a la zaga del mouse en vez de
-              seguirlo al instante. */}
+          {/* Pista de fondo */}
           <div
             className={cn(
-              'relative w-full overflow-hidden rounded-pill bg-ink-line transition-[height] duration-100',
-              scrubbing ? 'h-2' : 'h-[5px] group-hover:h-2',
+              'relative w-full overflow-hidden rounded-full bg-white/20 transition-all duration-150',
+              scrubbing ? 'h-2' : 'h-1 group-hover/scrubber:h-2',
             )}
           >
+            {/* Pista de buffer cacheado */}
             <div
-              className="h-full rounded-pill bg-accent"
+              className="absolute inset-y-0 left-0 bg-white/30 rounded-full transition-all duration-200"
+              style={{ width: `${Math.min(100, Math.max(0, bufferedEndPercent))}%` }}
+            />
+
+            {/* Pista de progreso reproducido (Rojo YouTube / Brand) */}
+            <div
+              className="absolute inset-y-0 left-0 bg-brand rounded-full"
               style={{
                 width: `${scrubbing && previewPercent !== null ? previewPercent : watched}%`,
-                transition: scrubbing ? 'none' : 'width 150ms linear',
+                transition: scrubbing ? 'none' : 'width 100ms linear',
               }}
             />
           </div>
 
-          {markers.map((position, index) => (
+          {/* Marcadores de notas del alumno en la barra */}
+          {markers.map((pos, i) => (
             <span
-              key={index}
-              aria-hidden
-              className="pointer-events-none absolute top-1/2 size-[7px] -translate-y-1/2 -translate-x-1/2 rounded-full bg-warning ring-1 ring-ink"
-              style={{ left: `${Math.min(100, Math.max(0, position))}%` }}
+              key={i}
+              title="Nota marcada aquí"
+              className="pointer-events-none absolute top-1/2 size-2 -translate-y-1/2 -translate-x-1/2 rounded-full bg-warning ring-2 ring-black shadow-sm"
+              style={{ left: `${Math.min(100, Math.max(0, pos))}%` }}
             />
           ))}
 
-          {/* «Perilla» del reproductor: escondida en reposo, visible al
-              pasar el mouse o mientras se arrastra — como en YouTube. */}
+          {/* Perilla del Scrubber (Knob) */}
           {hasVideo && (
             <span
               aria-hidden
               className={cn(
-                'pointer-events-none absolute top-1/2 size-3 -translate-y-1/2 -translate-x-1/2 rounded-full bg-accent shadow-[0_0_0_3px_rgba(0,0,0,0.4)]',
-                'opacity-0 transition-opacity duration-100 group-hover:opacity-100',
-                scrubbing && 'opacity-100',
+                'pointer-events-none absolute top-1/2 size-3.5 -translate-y-1/2 -translate-x-1/2 rounded-full bg-brand shadow-[0_0_8px_rgba(239,68,68,0.8)] ring-2 ring-white',
+                'scale-0 transition-transform duration-150 group-hover/scrubber:scale-100',
+                scrubbing && 'scale-125',
               )}
               style={{ left: `${scrubbing && previewPercent !== null ? previewPercent : watched}%` }}
             />
           )}
 
-          {/* Tooltip con el minuto exacto al que se va a saltar — sólo
-              mientras hay un hover/arrastre real sobre la barra, para saber
-              "por dónde va" antes de soltar. */}
+          {/* Tooltip de tiempo al pasar el cursor */}
           {hasVideo && previewPercent !== null && (
             <span
-              aria-hidden
-              className="pointer-events-none absolute bottom-full mb-2.5 -translate-x-1/2 rounded-md bg-ink px-2 py-1 text-tiny font-bold text-white shadow-[0_2px_10px_rgba(0,0,0,0.4)]"
+              className="pointer-events-none absolute bottom-full mb-3 -translate-x-1/2 rounded-md bg-black/90 px-2 py-1 text-tiny font-bold text-white shadow-xl backdrop-blur-sm border border-white/10"
               style={{ left: `${previewPercent}%` }}
             >
-              {formatSeconds((previewPercent / 100) * (videoRef.current?.duration || 0))}
+              {formatSeconds((previewPercent / 100) * (videoDuration || (videoRef.current?.duration ?? 0)))}
             </span>
           )}
         </div>
 
-        <div className="mt-2.5 flex items-center justify-between gap-3 md:mt-3">
-          <div className="flex items-center gap-2.5 text-tiny font-bold text-ink-fg md:gap-4 md:text-meta">
+        {/* Fila de Botones y Controles (Orden y Estándar YouTube) */}
+        <div className="flex items-center justify-between gap-2 md:gap-3 text-white">
+          {/* Controles Izquierda: Prev, Play, Next, Volumen, Timecode */}
+          <div className="flex items-center gap-1.5 md:gap-2">
+            {/* Lección anterior */}
+            <button
+              type="button"
+              onClick={onPrevious}
+              disabled={!onPrevious}
+              title="Lección anterior (Shift+P)"
+              aria-label="Lección anterior"
+              className={cn(
+                'grid size-8 md:size-9 place-items-center rounded-lg text-white/85 transition-colors',
+                onPrevious ? 'hover:bg-white/15 hover:text-white cursor-pointer' : 'opacity-40 cursor-not-allowed',
+              )}
+            >
+              <SkipBack size={18} strokeWidth={2.2} />
+            </button>
+
+            {/* Play / Pause Toggle */}
             <button
               type="button"
               onClick={onToggle}
               disabled={!hasVideo}
+              title={playing ? 'Pausar (k / Espacio)' : 'Reproducir (k / Espacio)'}
               aria-label={playing ? 'Pausar' : 'Reproducir'}
               className={cn(
-                'grid size-7 shrink-0 place-items-center rounded-full text-ink-fg',
-                hasVideo ? 'cursor-pointer hover:bg-ink-raised hover:text-white' : 'cursor-not-allowed opacity-40',
+                'grid size-9 md:size-10 place-items-center rounded-lg text-white transition-colors',
+                hasVideo ? 'hover:bg-white/15 cursor-pointer active:scale-95' : 'opacity-40 cursor-not-allowed',
               )}
             >
               {playing ? (
-                <Pause aria-hidden size={14} strokeWidth={2.2} />
+                <Pause size={22} fill="white" strokeWidth={0} />
               ) : (
-                <Play aria-hidden size={14} strokeWidth={2.2} />
+                <Play size={22} fill="white" strokeWidth={0} className="translate-x-0.5" />
               )}
             </button>
-            <span>{timeLabel}</span>
+
+            {/* Lección siguiente */}
             <button
               type="button"
-              onClick={cycleSpeed}
-              disabled={!hasVideo}
-              aria-label="Cambiar velocidad de reproducción"
+              onClick={onNext}
+              disabled={!canAdvance}
+              title={canAdvance ? 'Siguiente lección (Shift+N)' : 'Termina el video para avanzar'}
+              aria-label="Siguiente lección"
               className={cn(
-                'hidden rounded-md px-1.5 py-0.5 text-ink-fg-faint md:inline',
-                hasVideo && 'cursor-pointer hover:bg-ink-raised hover:text-white',
+                'grid size-8 md:size-9 place-items-center rounded-lg text-white/85 transition-colors',
+                canAdvance ? 'hover:bg-white/15 hover:text-white cursor-pointer' : 'opacity-40 cursor-not-allowed',
               )}
             >
-              Velocidad {speed}×
+              <SkipForward size={18} strokeWidth={2.2} />
             </button>
+
+            {/* Grupo de Volumen con Slider Expandible al Hover */}
+            <div className="group/vol flex items-center gap-1.5 pl-1">
+              <button
+                type="button"
+                onClick={toggleMute}
+                disabled={!hasVideo}
+                title={muted || volume === 0 ? 'Activar sonido (m)' : 'Silenciar (m)'}
+                aria-label={muted || volume === 0 ? 'Activar sonido' : 'Silenciar'}
+                className="grid size-8 md:size-9 place-items-center rounded-lg text-white/85 hover:bg-white/15 hover:text-white transition-colors"
+              >
+                {muted || volume === 0 ? (
+                  <VolumeX size={19} strokeWidth={2.2} />
+                ) : volume < 0.5 ? (
+                  <Volume1 size={19} strokeWidth={2.2} />
+                ) : (
+                  <Volume2 size={19} strokeWidth={2.2} />
+                )}
+              </button>
+
+              <div className="w-0 overflow-hidden transition-all duration-200 ease-out group-hover/vol:w-20 md:group-hover/vol:w-24 flex items-center">
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.02}
+                  value={muted ? 0 : volume}
+                  onChange={(e) => handleVolumeChange(Number(e.target.value))}
+                  aria-label="Volumen"
+                  className="h-1 w-20 md:w-24 accent-brand cursor-pointer bg-white/30 rounded-full"
+                />
+              </div>
+            </div>
+
+            {/* Timecode actual / total */}
+            <div className="ml-1 text-tiny md:text-meta font-bold tracking-tight text-white/90">
+              <span>{currentDisplayTime}</span>
+              <span className="text-white/40 mx-1">/</span>
+              <span className="text-white/60">{totalDisplayTime}</span>
+            </div>
+          </div>
+
+          {/* Título Central (Opcional en desktop) */}
+          {lessonTitle && (
+            <span className="hidden xl:block max-w-[200px] truncate text-tiny font-semibold text-white/70">
+              {lessonTitle}
+            </span>
+          )}
+
+          {/* Controles Derecha: Autoplay, Subtítulos, Settings, PiP, Teatro, Fullscreen */}
+          <div className="flex items-center gap-1 md:gap-1.5 relative">
+            {/* Toggle Autoplay (Avance automático) */}
             <button
               type="button"
-              onClick={toggleMute}
-              disabled={!hasVideo}
-              aria-label={muted || volume === 0 ? 'Activar sonido' : 'Silenciar'}
+              onClick={handleAutoplayToggle}
+              title={`Avance automático: ${autoplay ? 'Activado' : 'Desactivado'}`}
+              aria-label="Avance automático"
               className={cn(
-                'hidden size-7 place-items-center rounded-full text-ink-fg md:grid',
-                hasVideo ? 'cursor-pointer hover:bg-ink-raised hover:text-white' : 'cursor-not-allowed opacity-40',
+                'relative flex items-center gap-1.5 rounded-full px-2.5 py-1 text-caption font-extrabold transition-colors',
+                autoplay ? 'bg-brand/30 text-brand-light border border-brand/40' : 'bg-white/10 text-white/60 hover:bg-white/20',
               )}
             >
-              {muted || volume === 0 ? (
-                <VolumeX aria-hidden size={14} strokeWidth={2.2} />
-              ) : (
-                <Volume2 aria-hidden size={14} strokeWidth={2.2} />
-              )}
+              <span className="hidden sm:inline">Autoplay</span>
+              <span
+                className={cn(
+                  'size-2 rounded-full transition-all',
+                  autoplay ? 'bg-brand shadow-[0_0_6px_rgba(239,68,68,1)]' : 'bg-white/40',
+                )}
+              />
             </button>
-            <input
-              type="range"
-              min={0}
-              max={1}
-              step={0.05}
-              value={muted ? 0 : volume}
-              disabled={!hasVideo}
-              onChange={(event) => {
-                const next = Number(event.target.value);
-                setVolume(next);
-                if (next > 0) setMuted(false);
-              }}
-              aria-label="Volumen"
-              className="hidden w-16 accent-accent lg:inline-block"
-            />
+
+            {/* Subtítulos / Transcripción */}
+            {onOpenTranscript && (
+              <button
+                type="button"
+                onClick={onOpenTranscript}
+                title="Subtítulos / Transcripción (c)"
+                aria-label="Subtítulos o transcripción"
+                className="grid size-8 md:size-9 place-items-center rounded-lg text-white/85 hover:bg-white/15 hover:text-white transition-colors"
+              >
+                <Subtitles size={18} strokeWidth={2.2} />
+              </button>
+            )}
+
+            {/* Menú de Configuración (Settings / Velocidad) */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setSettingsOpen((s) => !s)}
+                title="Configuración de reproducción"
+                aria-label="Configuración"
+                className={cn(
+                  'grid size-8 md:size-9 place-items-center rounded-lg text-white/85 hover:bg-white/15 hover:text-white transition-colors',
+                  settingsOpen && 'bg-white/20 text-white rotate-45',
+                )}
+              >
+                <Settings size={18} strokeWidth={2.2} className="transition-transform duration-200" />
+              </button>
+
+              {/* Popover de Configuración */}
+              {settingsOpen && (
+                <div
+                  className="absolute bottom-full right-0 mb-3 w-48 rounded-xl bg-black/95 p-2 shadow-2xl backdrop-blur-xl border border-white/15 z-50 animate-in fade-in slide-in-from-bottom-2 duration-150"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <p className="px-2.5 py-1.5 text-caption font-extrabold text-white/40 uppercase tracking-wider">
+                    Velocidad
+                  </p>
+                  <div className="flex flex-col gap-0.5">
+                    {SPEEDS.map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => handleSpeedChange(s)}
+                        className={cn(
+                          'flex items-center justify-between rounded-lg px-2.5 py-1.5 text-tiny font-bold transition-colors text-left',
+                          speed === s ? 'bg-brand/20 text-brand-light font-extrabold' : 'text-white/80 hover:bg-white/10 hover:text-white',
+                        )}
+                      >
+                        <span>{s === 1 ? 'Normal (1×)' : `${s}×`}</span>
+                        {speed === s && <Check size={14} strokeWidth={2.5} />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Picture in Picture (PiP) */}
+            {isPipAvailable && (
+              <button
+                type="button"
+                onClick={togglePiP}
+                title="Pantalla flotante (Picture-in-Picture)"
+                aria-label="Picture in Picture"
+                className="hidden sm:grid size-8 md:size-9 place-items-center rounded-lg text-white/85 hover:bg-white/15 hover:text-white transition-colors"
+              >
+                <PictureInPicture2 size={18} strokeWidth={2.2} />
+              </button>
+            )}
+
+            {/* Modo Cine / Teatro */}
+            {onToggleTheater && (
+              <button
+                type="button"
+                onClick={onToggleTheater}
+                title={isTheater ? 'Vista estándar (t)' : 'Modo Cine (t)'}
+                aria-label={isTheater ? 'Salir de modo cine' : 'Modo cine'}
+                className={cn(
+                  'hidden md:grid size-8 md:size-9 place-items-center rounded-lg text-white/85 hover:bg-white/15 hover:text-white transition-colors',
+                  isTheater && 'text-brand-light bg-white/10',
+                )}
+              >
+                <span className="border-2 border-current rounded-sm w-4 h-3 inline-block" />
+              </button>
+            )}
+
+            {/* Pantalla Completa */}
             <button
               type="button"
               onClick={toggleFullscreen}
-              disabled={!hasVideo}
+              title={isFullscreen ? 'Salir de pantalla completa (f)' : 'Pantalla completa (f)'}
               aria-label={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
-              className={cn(
-                'grid size-7 shrink-0 place-items-center rounded-full text-ink-fg',
-                hasVideo ? 'cursor-pointer hover:bg-ink-raised hover:text-white' : 'cursor-not-allowed opacity-40',
-              )}
+              className="grid size-8 md:size-9 place-items-center rounded-lg text-white/85 hover:bg-white/15 hover:text-white transition-colors"
             >
               {isFullscreen ? (
-                <Minimize aria-hidden size={14} strokeWidth={2.2} />
+                <Minimize size={18} strokeWidth={2.2} />
               ) : (
-                <Maximize aria-hidden size={14} strokeWidth={2.2} />
+                <Maximize size={18} strokeWidth={2.2} />
               )}
             </button>
-          </div>
-
-          <div className="flex shrink-0 gap-[9px]">
-            <Button
-              variant="quiet"
-              size="sm"
-              onClick={onPrevious}
-              disabled={!onPrevious}
-              className="hidden rounded-lg bg-ink-raised px-[15px] py-[9px] text-label text-ink-fg hover:bg-ink-elevated hover:text-white md:inline-flex"
-            >
-              Anterior
-            </Button>
-            <Button
-              size="lg"
-              onClick={onNext}
-              disabled={!canAdvance}
-              className="max-md:px-4 max-md:py-2 max-md:text-meta"
-            >
-              {canAdvance ? 'Siguiente lección' : 'Termina el video'}
-            </Button>
           </div>
         </div>
       </div>

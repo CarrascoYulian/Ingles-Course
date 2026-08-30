@@ -9,12 +9,13 @@ import { LoadingRegion, Skeleton } from '@/components/ui/skeleton';
 import { ROUTES } from '@/constants/routes';
 import { formatInteger } from '@/lib/format';
 import { useBadges } from '../hooks/use-learning';
-
-const TOTAL_XP = 1240;
+import { usePracticeSession } from '@/features/practice/hooks/use-practice';
 
 export function AchievementsView() {
   const { data: badges, isPending } = useBadges();
+  const { data: session } = usePracticeSession();
   const earned = badges?.filter((badge) => badge.earned).length ?? 0;
+  const totalXp = session?.xp ?? 0;
 
   return (
     <div className="flex flex-col gap-3 px-5 py-5 lg:gap-4 lg:px-[30px] lg:py-[26px]">
@@ -22,7 +23,7 @@ export function AchievementsView() {
         title="Tus logros"
         description={
           badges
-            ? `${earned} de ${badges.length} insignias obtenidas · ${formatInteger(TOTAL_XP)} XP acumulados`
+            ? `${earned} de ${badges.length} insignias obtenidas · ${formatInteger(totalXp)} XP acumulados`
             : 'Cargando insignias…'
         }
         actions={

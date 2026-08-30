@@ -16,23 +16,10 @@ import { useCourses, useCreateCourse, useTogglePublished } from '@/features/cour
 import { useDashboardMetrics, useRecentActivity } from '../hooks/use-analytics';
 import { DashboardSkeleton } from './dashboard-skeleton';
 
-const FILTERS = [
-  { id: 'range', label: 'Últimos 30 días', shortLabel: '30 días', initial: true, desktopOnly: false },
-  { id: 'level', label: 'Nivel B1', shortLabel: 'Nivel B1', initial: false, desktopOnly: false },
-  {
-    id: 'course',
-    label: 'Curso: Inglés conversacional',
-    shortLabel: 'Curso',
-    initial: false,
-    desktopOnly: true,
-  },
-  { id: 'active', label: 'Solo activos', shortLabel: 'Activos', initial: true, desktopOnly: false },
-] as const;
-
 export function DashboardView() {
-  const [activeFilters, setActiveFilters] = useState<Record<string, boolean>>(
-    Object.fromEntries(FILTERS.map((f) => [f.id, f.initial])),
-  );
+  const [selectedRange, setSelectedRange] = useState<'30d' | '7d' | 'all'>('30d');
+  const [selectedLevel, setSelectedLevel] = useState<string>('Todos');
+  const [onlyActive, setOnlyActive] = useState<boolean>(true);
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const metrics = useDashboardMetrics();
@@ -41,11 +28,6 @@ export function DashboardView() {
   const createCourse = useCreateCourse();
   const togglePublished = useTogglePublished();
 
-  // Antes decía siempre "342 estudiantes matriculados", sin importar
-  // cuántos hubiera realmente — y "hace 4 minutos" nunca cambiaba. Ahora
-  // usa el total real (`totalStudents`, de la misma consulta agregada que
-  // ya alimenta el resto del dashboard) y omite la marca de tiempo en vez
-  // de inventar una.
   useAdminHeader(
     metrics.data
       ? `${metrics.data.totalStudents} estudiante${metrics.data.totalStudents === 1 ? '' : 's'} matriculado${metrics.data.totalStudents === 1 ? '' : 's'}`
@@ -59,23 +41,32 @@ export function DashboardView() {
 
   return (
     <div className="flex flex-col gap-3.5 px-5 py-4 md:gap-5 lg:px-[30px] lg:py-6">
-      <ChipRow label="Filtros del resumen" className="lg:gap-2">
+      <ChipRow label="Filtros del resumen" className="lg:gap-2 flex-wrap">
         <span className="mr-1 hidden shrink-0 text-meta font-bold text-fg-dim lg:inline">
           Filtros
         </span>
-        {FILTERS.map((filter) => (
+        <Chip active={selectedRange === '30d'} onClick={() => setSelectedRange('30d')}>
+          Últimos 30 días
+        </Chip>
+        <Chip active={selectedRange === '7d'} onClick={() => setSelectedRange('7d')}>
+          Últimos 7 días
+        </Chip>
+        <Chip active={selectedLevel === 'Todos'} onClick={() => setSelectedLevel('Todos')}>
+          Todos los niveles
+        </Chip>
+        {['A1', 'A2', 'B1', 'B2', 'C1'].map((lvl) => (
           <Chip
-            key={filter.id}
-            active={activeFilters[filter.id] ?? false}
-            onClick={() =>
-              setActiveFilters((current) => ({ ...current, [filter.id]: !current[filter.id] }))
-            }
-            className={filter.desktopOnly ? 'hidden lg:inline-flex' : undefined}
+            key={lvl}
+            active={selectedLevel === lvl}
+            onClick={() => setSelectedLevel(selectedLevel === lvl ? 'Todos' : lvl)}
+            className="hidden sm:inline-flex"
           >
-            <span className="lg:hidden">{filter.shortLabel}</span>
-            <span className="hidden lg:inline">{filter.label}</span>
+            Nivel {lvl}
           </Chip>
         ))}
+        <Chip active={onlyActive} onClick={() => setOnlyActive((v) => !v)}>
+          Solo activos
+        </Chip>
       </ChipRow>
 
       <section aria-label="Indicadores clave" className="grid grid-cols-2 gap-[11px] xl:grid-cols-4 xl:gap-3.5">

@@ -22,6 +22,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { LoadingRegion, Skeleton } from '@/components/ui/skeleton';
 import { ROUTES } from '@/constants/routes';
 import { avatarColorFor } from '@/constants/palettes';
+import { cn } from '@/lib/utils';
 import { useModules } from '@/features/content/hooks/use-content-blocks';
 import {
   useAddComment,
@@ -43,73 +44,81 @@ import {
 import { useVideoProgress } from '../hooks/use-video-progress';
 
 export interface CourseViewProps {
+  /** Nivel del curso pedido por la URL (ej. 'b1', 'a1'). */
+  level?: string;
+  /** Id o slug del módulo pedido por la URL. */
+  moduleSlugOrId?: string;
   /** `order` de la lección pedida por la URL — si no llega, se usa la "actual". */
   lessonOrder?: number;
   /** Autor autenticado — decide qué comentarios trae el botón "Borrar". */
   currentUserId?: string | null;
 }
 
-export function CourseView({ lessonOrder, currentUserId = null }: CourseViewProps = {}) {
+export function CourseView({
+  level,
+  moduleSlugOrId,
+  lessonOrder,
+  currentUserId = null,
+}: CourseViewProps = {}) {
   const router = useRouter();
+  const [isTheater, setIsTheater] = useState(false);
 
   // Antes esta pantalla resolvía "el" módulo global sin importar en qué
-  // curso(s) estuviera matriculado el alumno — con más de un curso en la
-  // base, cualquier estudiante podía terminar viendo contenido de un curso
-  // ajeno. Ahora se resuelve primero a qué curso(s) pertenece de verdad.
+  // curso(s) estuviera matriculado el alumno. Ahora se resuelve primero a qué curso(s) pertenece.
   const { data: courses, isPending: isCoursesPending } = useMyCourses();
   const [selectedCourseId, setSelectedCourseId] = useState('');
-  // Un enlace compartido a una lección concreta (`/curso/b1/mod/leccion-5`)
-  // debe entrar directo al contenido — el selector de curso sólo aparece
-  // cuando el alumno llega por la navegación normal ("Mi curso").
   const syncedCourses = useRef(false);
+
   useEffect(() => {
-    if (!courses || syncedCourses.current || lessonOrder === undefined) return;
-    syncedCourses.current = true;
-    setSelectedCourseId(courses[0]?.id ?? '');
-  }, [courses, lessonOrder]);
+    if (!courses || courses.length === 0 || syncedCourses.current) return;
+    if (level) {
+      const match = courses.find((c) => c.level.toLowerCase() === level.toLowerCase());
+      if (match) {
+        syncedCourses.current = true;
+        setSelectedCourseId(match.id);
+        return;
+      }
+    }
+    if (lessonOrder !== undefined || courses.length === 1) {
+      syncedCourses.current = true;
+      setSelectedCourseId(courses[0]?.id ?? '');
+    }
+  }, [courses, level, lessonOrder]);
 
   const course = courses?.find((c) => c.id === selectedCourseId);
   const { data: module, isPending: isModulePending } = useCurrentModule(selectedCourseId);
   const { data: allModules } = useModules(selectedCourseId);
-  // El alumno sólo ve los módulos a los que se le otorgó acceso (RLS +
-  // `allModules` ya vienen filtrados por eso) — `module` es "el actual"
-  // calculado automático, pero si tiene acceso a más de uno puede elegir
-  // cuál mirar en vez de quedar atado siempre al automático.
+
   const [manualModuleId, setManualModuleId] = useState<string | null>(null);
   useEffect(() => setManualModuleId(null), [selectedCourseId]);
+
+  useEffect(() => {
+    if (moduleSlugOrId && allModules && allModules.length > 0) {
+      const match = allModules.find(
+        (m) =>
+          m.id === moduleSlugOrId ||
+          m.title.toLowerCase().replace(/\s+/g, '-') === moduleSlugOrId.toLowerCase(),
+      );
+      if (match) setManualModuleId(match.id);
+    }
+  }, [moduleSlugOrId, allModules]);
+
   const effectiveModule = (manualModuleId && allModules?.find((m) => m.id === manualModuleId)) || module;
   const { data: lessons, isPending } = useModuleLessons(effectiveModule?.id ?? '');
   const { data: progress, isPending: isProgressPending } = useMyProgress(selectedCourseId);
   const [seekRequest, setSeekRequest] = useState<{ seconds: number; nonce: number } | null>(null);
   const [moduleCompleteOpen, setModuleCompleteOpen] = useState(false);
   const [quizTakeOpen, setQuizTakeOpen] = useState(false);
-  // Regla confirmada por el cliente: reprobar (o no haber rendido todavía)
-  // el quiz de un módulo bloquea avanzar al siguiente — `hasPassedModuleQuiz`
-  // decide si "Continuar" navega directo o abre el quiz primero.
+
   const { data: moduleQuiz } = useModuleQuiz(effectiveModule?.id ?? '');
   const { data: moduleQuizAttempts } = useMyQuizAttempts(moduleQuiz?.id ?? '');
   const hasPassedModuleQuiz = moduleQuizAttempts?.some((attempt) => attempt.passed) ?? false;
 
-  // Antes esta pantalla ignoraba por completo el parámetro `leccion-N` de su
-  // propia URL y siempre mostraba "la lección actual" calculada por dentro
-  // — un enlace compartido a la lección 2 abría la lección 5 igual. Si la
-  // URL trae un `order` válido se respeta; si no, se cae a la actual.
-  // Con TODAS las lecciones ya vistas, ninguna queda marcada "current" —
-  // antes eso dejaba `currentLesson` en `undefined` y el reproductor
-  // mostraba "Video no disponible" aunque el módulo estuviera completo.
-  // Cae a la última lección real en vez de a nada.
-  //
-  // `displayLessonId` FIJA qué lección se muestra, en vez de recalcularla en
-  // cada render desde `lesson.state === 'current'`. Antes, en `/curso` (sin
-  // `order` en la URL), terminar un video invalidaba `['lessons']`, el
-  // backend recalculaba `current` sobre la SIGUIENTE lección, y el
-  // reproductor cambiaba de contenido solo — sin que el alumno tocara
-  // "Siguiente lección". Ahora sólo se re-fija cuando cambia el módulo o
-  // cuando la URL trae un `order` explícito (navegación real del alumno).
   const [displayLessonId, setDisplayLessonId] = useState<string | null>(null);
   useEffect(() => {
     setDisplayLessonId(null);
   }, [effectiveModule?.id]);
+
   useEffect(() => {
     if (!lessons || lessons.length === 0) return;
     if (lessonOrder !== undefined) {
@@ -122,6 +131,7 @@ export function CourseView({ lessonOrder, currentUserId = null }: CourseViewProp
     if (fallback) setDisplayLessonId(fallback.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lessons, lessonOrder]);
+
   const currentLesson = lessons?.find((lesson) => lesson.id === displayLessonId);
   const { data: videoUrl, isPending: isVideoUrlPending } = useLessonVideoUrl(currentLesson?.mediaKey ?? null);
   const video = useVideoProgress(
@@ -354,201 +364,235 @@ export function CourseView({ lessonOrder, currentUserId = null }: CourseViewProp
     advance();
   };
 
-  return (
-    <div className="flex flex-col gap-4">
-      {courseSwitcher}
-      <div className="flex flex-col gap-4 lg:flex-row lg:gap-5 lg:px-[30px] lg:py-6">
-        <div className="flex min-w-0 flex-1 flex-col gap-4">
-          {currentLesson?.type === 'Video' || !currentLesson ? (
-            <VideoPlayer
-              contextLabel={`Lección ${lessonPosition} de ${total} · ${moduleLabel}`}
-              contextLabelShort={`Lección ${lessonPosition} · ${moduleLabel}`}
-              watched={video.watched}
-              maxWatched={video.maxWatched}
-              playing={video.playing}
-              timeLabel={video.timeLabel}
-              canAdvance={video.canAdvance}
-              onToggle={video.toggle}
-              src={videoUrl}
-              onProgress={video.onProgress}
-              onEnded={handleVideoEnded}
-              markers={noteMarkers}
-              seekRequest={seekRequest}
-              hasUnseenComments={hasUnseenComments}
-              onPrevious={goToPrevious}
-              onNext={goToNext}
-            />
-          ) : (
-            <LessonFileView
-              contextLabel={`Lección ${lessonPosition} de ${total} · ${moduleLabel}`}
-              contextLabelShort={`Lección ${lessonPosition} · ${moduleLabel}`}
-              type={currentLesson.type}
-              title={currentLesson.title}
-              fileUrl={videoUrl}
-              fileUrlPending={isVideoUrlPending}
-              onPrevious={goToPrevious}
-              onNext={goToNext}
-            />
-          )}
+  const nextLesson =
+    lessons && lessonPosition > 0 && lessonPosition < lessons.length ? lessons[lessonPosition] : undefined;
+  const nextLessonTitle = nextLesson
+    ? nextLesson.title
+    : moduleQuiz && !hasPassedModuleQuiz
+      ? 'Evaluación de la unidad'
+      : undefined;
 
-          <div className="px-5 lg:px-0">
-            <Card
-              padding="none"
-              radius="xl"
-              className="max-lg:border-0 max-lg:bg-transparent lg:px-6 lg:py-[22px]"
-            >
-              <div className="flex items-start gap-3">
-                <span
-                  aria-hidden
-                  className="mt-0.5 hidden size-9 shrink-0 rounded-full sm:block"
-                  style={{
-                    background: `linear-gradient(135deg, ${avatarColorFor(effectiveModule.id)}, ${avatarColorFor(effectiveModule.id)}99)`,
-                  }}
-                />
-                <div className="min-w-0">
-                  <Eyebrow>{moduleLabel.toUpperCase()}</Eyebrow>
-                  <h1 className="mt-[5px] text-heading-sm font-extrabold tracking-heading text-fg text-pretty lg:mt-1.5 lg:text-heading-lg">
-                    {lessonTitle}
-                  </h1>
-                </div>
-              </div>
+  const playerElement =
+    currentLesson?.type === 'Video' || !currentLesson ? (
+      <VideoPlayer
+        contextLabel={`Lección ${lessonPosition} de ${total} · ${moduleLabel}`}
+        contextLabelShort={`Lección ${lessonPosition} · ${moduleLabel}`}
+        lessonTitle={lessonTitle}
+        nextLessonTitle={nextLessonTitle}
+        watched={video.watched}
+        maxWatched={video.maxWatched}
+        playing={video.playing}
+        timeLabel={video.timeLabel}
+        canAdvance={video.canAdvance}
+        onToggle={video.toggle}
+        src={videoUrl}
+        onProgress={video.onProgress}
+        onEnded={handleVideoEnded}
+        markers={noteMarkers}
+        seekRequest={seekRequest}
+        hasUnseenComments={hasUnseenComments}
+        isTheater={isTheater}
+        onToggleTheater={() => setIsTheater((t) => !t)}
+        onPrevious={goToPrevious}
+        onNext={goToNext}
+      />
+    ) : (
+      <LessonFileView
+        contextLabel={`Lección ${lessonPosition} de ${total} · ${moduleLabel}`}
+        contextLabelShort={`Lección ${lessonPosition} · ${moduleLabel}`}
+        type={currentLesson.type}
+        title={currentLesson.title}
+        fileUrl={videoUrl}
+        fileUrlPending={isVideoUrlPending}
+        onPrevious={goToPrevious}
+        onNext={goToNext}
+      />
+    );
 
-              <ul className="mt-3 flex flex-wrap gap-2.5">
-                <li className="rounded-md bg-surface-sunken px-3 py-[7px] text-meta font-bold text-fg-subtle">
-                  Duración {currentLesson?.duration ?? '—'}
-                </li>
-                <li className="rounded-md bg-surface-sunken px-3 py-[7px] text-meta font-bold text-fg-subtle">
-                  Nivel {course.level}
-                </li>
-              </ul>
-
-              <div className="mt-3.5 lg:mt-[18px]">
-                <LessonTabs
-                  description={currentLesson?.description ?? null}
-                  transcript={currentLesson?.transcript ?? null}
-                  notes={notes}
-                  notesPending={notesPending}
-                  currentTimeSeconds={video.elapsedSeconds}
-                  onAddNote={(body) => addNote.mutate({ body, timestampSeconds: video.elapsedSeconds })}
-                  addNotePending={addNote.isPending}
-                  onSeekToNote={(seconds) => setSeekRequest({ seconds, nonce: Date.now() })}
-                  comments={comments}
-                  commentsPending={commentsPending}
-                  onAddComment={(body, parentId) => addComment.mutate({ body, parentId })}
-                  addCommentPending={addComment.isPending}
-                  onDeleteComment={(commentId) => deleteComment.mutate(commentId)}
-                  currentUserId={currentUserId}
-                  hasUnseenComments={hasUnseenComments}
-                  onCommentsTabOpen={() => markCommentsSeen.mutate()}
-                />
-              </div>
-            </Card>
+  const lessonDetailsCard = (
+    <div className={cn('px-5 lg:px-0', isTheater && 'w-full')}>
+      <Card
+        padding="none"
+        radius="xl"
+        className="max-lg:border-0 max-lg:bg-transparent lg:px-6 lg:py-[22px]"
+      >
+        <div className="flex items-start gap-3">
+          <span
+            aria-hidden
+            className="mt-0.5 hidden size-9 shrink-0 rounded-full sm:block"
+            style={{
+              background: `linear-gradient(135deg, ${avatarColorFor(effectiveModule.id)}, ${avatarColorFor(effectiveModule.id)}99)`,
+            }}
+          />
+          <div className="min-w-0">
+            <Eyebrow>{moduleLabel.toUpperCase()}</Eyebrow>
+            <h1 className="mt-[5px] text-heading-sm font-extrabold tracking-heading text-fg text-pretty lg:mt-1.5 lg:text-heading-lg">
+              {lessonTitle}
+            </h1>
           </div>
         </div>
 
-        <aside className="flex flex-col gap-3.5 px-5 pb-5 lg:w-aside lg:shrink-0 lg:px-0 lg:pb-0">
-          {isProgressPending && <Skeleton className="h-[220px] rounded-8xl" />}
-          {progress && (
-            <ProgressCard
-              percent={progress.percent}
-              level={progress.level}
-              hours={progress.hoursStudied}
-              lessons={progress.lessonsCompleted}
-              badges={progress.badgesEarned}
-              courseId={course.id}
-            />
-          )}
+        <ul className="mt-3 flex flex-wrap gap-2.5">
+          <li className="rounded-md bg-surface-sunken px-3 py-[7px] text-meta font-bold text-fg-subtle">
+            Duración {currentLesson?.duration ?? '—'}
+          </li>
+          <li className="rounded-md bg-surface-sunken px-3 py-[7px] text-meta font-bold text-fg-subtle">
+            Nivel {course.level}
+          </li>
+        </ul>
 
-          <Link href={ROUTES.student.foro(course.id)}>
-            <Card
-              padding="md"
-              radius="xl"
-              className="flex items-center gap-2.5 transition-colors duration-[160ms] hover:border-fg-placeholder"
-            >
-              <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-accent-soft text-accent">
-                <MessagesSquare aria-hidden size={16} strokeWidth={2.2} />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-body-sm font-bold text-fg">Foro del curso</span>
-                <span className="block text-tiny font-semibold text-fg-ghost">Preguntas y respuestas con tus compañeros</span>
-              </span>
-            </Card>
-          </Link>
+        <div className="mt-3.5 lg:mt-[18px]">
+          <LessonTabs
+            description={currentLesson?.description ?? null}
+            transcript={currentLesson?.transcript ?? null}
+            notes={notes}
+            notesPending={notesPending}
+            currentTimeSeconds={video.elapsedSeconds}
+            onAddNote={(body) => addNote.mutate({ body, timestampSeconds: video.elapsedSeconds })}
+            addNotePending={addNote.isPending}
+            onSeekToNote={(seconds) => setSeekRequest({ seconds, nonce: Date.now() })}
+            comments={comments}
+            commentsPending={commentsPending}
+            onAddComment={(body, parentId) => addComment.mutate({ body, parentId })}
+            addCommentPending={addComment.isPending}
+            onDeleteComment={(commentId) => deleteComment.mutate(commentId)}
+            currentUserId={currentUserId}
+            hasUnseenComments={hasUnseenComments}
+            onCommentsTabOpen={() => markCommentsSeen.mutate()}
+          />
+        </div>
+      </Card>
+    </div>
+  );
 
-          {allModules && allModules.length > 1 && (
-            <Card padding="md" radius="xl">
-              <p className="mb-2 text-tiny font-bold text-fg-ghost">Tus unidades</p>
-              <ChipRow label="Elegir unidad" className="flex-wrap">
-                {allModules.map((m) => (
-                  <Chip
-                    key={m.id}
-                    active={m.id === effectiveModule.id}
-                    onClick={() => setManualModuleId(m.id)}
-                  >
-                    {m.title}
-                  </Chip>
-                ))}
-              </ChipRow>
-            </Card>
-          )}
+  const sidebarElement = (
+    <aside className="flex flex-col gap-3.5 px-5 pb-5 lg:w-aside lg:shrink-0 lg:px-0 lg:pb-0">
+      {isProgressPending && <Skeleton className="h-[220px] rounded-8xl" />}
+      {progress && (
+        <ProgressCard
+          percent={progress.percent}
+          level={progress.level}
+          hours={progress.hoursStudied}
+          lessons={progress.lessonsCompleted}
+          badges={progress.badgesEarned}
+          courseId={course.id}
+        />
+      )}
 
-          <Card padding="lg" radius="xl">
-            <div className="mb-3 flex items-center justify-between lg:mb-3.5">
-              <h2 className="text-body-lg font-bold text-fg">Contenido de la unidad</h2>
-              <span className="text-tiny font-bold text-fg-ghost">
-                {completed} / {total}
-              </span>
-            </div>
+      <Link href={ROUTES.student.foro(course.id)}>
+        <Card
+          padding="md"
+          radius="xl"
+          className="flex items-center gap-2.5 transition-colors duration-[160ms] hover:border-fg-placeholder"
+        >
+          <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-accent-soft text-accent">
+            <MessagesSquare aria-hidden size={16} strokeWidth={2.2} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-body-sm font-bold text-fg">Foro del curso</span>
+            <span className="block text-tiny font-semibold text-fg-ghost">
+              Preguntas y respuestas con tus compañeros
+            </span>
+          </span>
+        </Card>
+      </Link>
 
-            {isPending && (
-              <div className="flex flex-col gap-1">
-                <LoadingRegion label="Cargando el contenido de la unidad" />
-                {Array.from({ length: 6 }, (_, i) => (
-                  <Skeleton key={i} className="h-12 rounded-2xl" />
-                ))}
-              </div>
-            )}
+      {allModules && allModules.length > 1 && (
+        <Card padding="md" radius="xl">
+          <p className="mb-2 text-tiny font-bold text-fg-ghost">Tus unidades</p>
+          <ChipRow label="Elegir unidad" className="flex-wrap">
+            {allModules.map((m) => (
+              <Chip
+                key={m.id}
+                active={m.id === effectiveModule.id}
+                onClick={() => setManualModuleId(m.id)}
+              >
+                {m.title}
+              </Chip>
+            ))}
+          </ChipRow>
+        </Card>
+      )}
 
-            {lessons && lessons.length > 0 && (
-              <LessonList
-                lessons={lessons}
-                quiz={quizState ? { state: quizState } : null}
-                onSelect={(lesson) => {
-                  if (lesson.id === currentLesson?.id) return;
-                  router.push(
-                    ROUTES.student.leccion(
-                      course?.level.toLowerCase() ?? 'b1',
-                      effectiveModule.id,
-                      lesson.order,
-                    ),
-                  );
-                }}
-                onSelectQuiz={() => setQuizTakeOpen(true)}
-              />
-            )}
+      <Card padding="lg" radius="xl">
+        <div className="mb-3 flex items-center justify-between lg:mb-3.5">
+          <h2 className="text-body-lg font-bold text-fg">Contenido de la unidad</h2>
+          <span className="text-tiny font-bold text-fg-ghost">
+            {completed} / {total}
+          </span>
+        </div>
 
-            {lessons && lessons.length === 0 && !isPending && (
-              <EmptyState
-                compact
-                title="Sin lecciones todavía"
-                description="Esta unidad aún no tiene lecciones publicadas."
-              />
-            )}
+        {isPending && (
+          <div className="flex flex-col gap-1">
+            <LoadingRegion label="Cargando el contenido de la unidad" />
+            {Array.from({ length: 6 }, (_, i) => (
+              <Skeleton key={i} className="h-12 rounded-2xl" />
+            ))}
+          </div>
+        )}
 
-            <p className="mt-3.5 flex items-start gap-[11px] rounded-2xl bg-surface-muted p-[13px]">
-              <Lock
-                aria-hidden
-                size={16}
-                strokeWidth={1.9}
-                className="mt-px shrink-0 text-fg-faint"
-              />
-              <span className="text-meta font-semibold leading-normal text-fg-soft">
-                La siguiente unidad se abre al terminar el 100 % de esta. Tu avance se guarda solo.
-              </span>
-            </p>
-          </Card>
-        </aside>
-      </div>
+        {lessons && lessons.length > 0 && (
+          <LessonList
+            lessons={lessons}
+            quiz={quizState ? { state: quizState } : null}
+            onSelect={(lesson) => {
+              if (lesson.id === currentLesson?.id) return;
+              router.push(
+                ROUTES.student.leccion(
+                  course?.level.toLowerCase() ?? 'b1',
+                  effectiveModule.id,
+                  lesson.order,
+                ),
+              );
+            }}
+            onSelectQuiz={() => setQuizTakeOpen(true)}
+          />
+        )}
+
+        {lessons && lessons.length === 0 && !isPending && (
+          <EmptyState
+            compact
+            title="Sin lecciones todavía"
+            description="Esta unidad aún no tiene lecciones publicadas."
+          />
+        )}
+
+        <p className="mt-3.5 flex items-start gap-[11px] rounded-2xl bg-surface-muted p-[13px]">
+          <Lock
+            aria-hidden
+            size={16}
+            strokeWidth={1.9}
+            className="mt-px shrink-0 text-fg-faint"
+          />
+          <span className="text-meta font-semibold leading-normal text-fg-soft">
+            La siguiente unidad se abre al terminar el 100 % de esta. Tu avance se guarda solo.
+          </span>
+        </p>
+      </Card>
+    </aside>
+  );
+
+  return (
+    <div className="flex flex-col gap-4">
+      {courseSwitcher}
+
+      {isTheater ? (
+        <div className="flex flex-col gap-6">
+          <div className="w-full px-5 lg:px-[30px]">{playerElement}</div>
+          <div className="flex flex-col gap-6 lg:flex-row lg:gap-8 lg:px-[30px] lg:pb-8">
+            <div className="min-w-0 flex-1">{lessonDetailsCard}</div>
+            {sidebarElement}
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-4 lg:flex-row lg:gap-5 lg:px-[30px] lg:py-6">
+          <div className="flex min-w-0 flex-1 flex-col gap-4">
+            {playerElement}
+            {lessonDetailsCard}
+          </div>
+          {sidebarElement}
+        </div>
+      )}
 
       <ModuleCompleteModal
         open={moduleCompleteOpen}

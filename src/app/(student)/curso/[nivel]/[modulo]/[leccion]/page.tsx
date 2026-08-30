@@ -21,11 +21,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
  * URL se pasa de verdad a `CourseView`.
  */
 export default async function LessonPage({ params }: PageProps) {
-  const { leccion } = await params;
+  const { nivel, modulo, leccion } = await params;
   const order = Number(leccion.replace('leccion-', ''));
   const profile = await getCurrentProfile();
   return (
     <CourseView
+      level={nivel}
+      moduleSlugOrId={modulo}
       lessonOrder={Number.isFinite(order) ? order : undefined}
       currentUserId={profile?.id ?? null}
     />
