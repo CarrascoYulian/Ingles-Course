@@ -125,6 +125,21 @@ export function VideoPlayer({
 
   // Feedback de animación en el centro (Play / Pause / Double Tap)
   const [centerAction, setCenterAction] = useState<{ type: 'play' | 'pause' | 'skip-fwd' | 'skip-bwd'; nonce: number } | null>(null);
+  const centerActionTimer = useRef<number | null>(null);
+
+  const triggerCenterAction = useCallback((type: 'play' | 'pause' | 'skip-fwd' | 'skip-bwd') => {
+    setCenterAction({ type, nonce: Date.now() });
+    if (centerActionTimer.current) window.clearTimeout(centerActionTimer.current);
+    centerActionTimer.current = window.setTimeout(() => {
+      setCenterAction(null);
+    }, 500);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (centerActionTimer.current) window.clearTimeout(centerActionTimer.current);
+    };
+  }, []);
 
   // Cuenta regresiva de fin de lección (YouTube / Coursera autoplay card)
   const [countdownRemaining, setCountdownRemaining] = useState<number | null>(null);
@@ -285,10 +300,10 @@ export function VideoPlayer({
       const target = el.currentTime + deltaSeconds;
       const cap = deltaSeconds > 0 ? Math.min(el.duration, maxWatchedSeconds(el)) : el.duration;
       el.currentTime = Math.min(cap, Math.max(0, target));
-      setCenterAction({ type: deltaSeconds > 0 ? 'skip-fwd' : 'skip-bwd', nonce: Date.now() });
+      triggerCenterAction(deltaSeconds > 0 ? 'skip-fwd' : 'skip-bwd');
       resetControlsTimeout();
     },
-    [maxWatchedSeconds, resetControlsTimeout],
+    [maxWatchedSeconds, resetControlsTimeout, triggerCenterAction],
   );
 
   const percentFromClientX = (clientX: number): number | null => {
@@ -323,7 +338,7 @@ export function VideoPlayer({
         case 'k':
           e.preventDefault();
           onToggle();
-          setCenterAction({ type: playing ? 'pause' : 'play', nonce: Date.now() });
+          triggerCenterAction(playing ? 'pause' : 'play');
           break;
         case 'j':
           e.preventDefault();
@@ -385,7 +400,7 @@ export function VideoPlayer({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onToggle, playing, skip, volume, onToggleTheater, onOpenTranscript, maxWatched]);
+  }, [onToggle, playing, skip, volume, onToggleTheater, onOpenTranscript, maxWatched, triggerCenterAction]);
 
   // Actualización de buffer cacheado
   const updateBufferProgress = () => {
@@ -453,7 +468,7 @@ export function VideoPlayer({
           playsInline
           onClick={() => {
             onToggle();
-            setCenterAction({ type: playing ? 'pause' : 'play', nonce: Date.now() });
+            triggerCenterAction(playing ? 'pause' : 'play');
           }}
           onDoubleClick={toggleFullscreen}
           onLoadedMetadata={(e) => {
@@ -482,13 +497,13 @@ export function VideoPlayer({
         </div>
       )}
 
-      {/* Ripple de feedback central de Play/Pause/Skip */}
+      {/* Feedback central de Play/Pause/Skip (desvanece suavemente sin loop) */}
       {centerAction && (
         <div
           key={centerAction.nonce}
           className="pointer-events-none absolute inset-0 grid place-items-center"
         >
-          <div className="grid size-20 place-items-center rounded-full bg-black/60 shadow-2xl backdrop-blur-sm animate-ping duration-300">
+          <div className="grid size-20 place-items-center rounded-full bg-black/70 shadow-2xl backdrop-blur-md transition-all duration-300 animate-in fade-in zoom-in-75 fill-mode-forwards">
             {centerAction.type === 'play' && <Play size={36} fill="white" className="translate-x-0.5 text-white" />}
             {centerAction.type === 'pause' && <Pause size={36} fill="white" className="text-white" />}
             {centerAction.type === 'skip-fwd' && <RotateCw size={36} className="text-white" />}
