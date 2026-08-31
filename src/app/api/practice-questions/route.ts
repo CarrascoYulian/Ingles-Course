@@ -1,17 +1,15 @@
 import { NextResponse } from 'next/server';
-import { z } from 'zod';
 
 import { badRequest, guard, isDenied } from '../_lib/guard';
 import { practiceQuestionInputSchema } from './_schema';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
-import { CEFR_LEVELS, type Database, type PracticeQuestionAdmin } from '@/types';
+import type { Database, PracticeQuestionAdmin } from '@/types';
 
 export const runtime = 'nodejs';
 
 function toAdminQuestion(row: Database['public']['Tables']['practice_questions']['Row']): PracticeQuestionAdmin {
   return {
     id: row.id,
-    cefrTier: row.cefr_tier,
     position: row.position,
     category: row.category,
     xpReward: row.xp_reward,
@@ -25,13 +23,10 @@ function toAdminQuestion(row: Database['public']['Tables']['practice_questions']
   };
 }
 
-/** Banco de un nivel CEFR, ordenado como lo verá el alumno. */
-export async function GET(request: Request) {
+/** Banco completo de preguntas, ordenado como lo verá el alumno. */
+export async function GET() {
   const result = await guard('practice:manage');
   if (isDenied(result)) return result.response;
-
-  const tierParsed = z.enum(CEFR_LEVELS).safeParse(new URL(request.url).searchParams.get('tier'));
-  if (!tierParsed.success) return badRequest('Nivel inválido');
 
   const supabase = await getSupabaseServerClient();
   if (!supabase) return NextResponse.json({ questions: [] });
@@ -39,7 +34,6 @@ export async function GET(request: Request) {
   const { data, error } = await supabase
     .from('practice_questions')
     .select('*')
-    .eq('cefr_tier', tierParsed.data)
     .order('position', { ascending: true });
   if (error) return NextResponse.json({ error: error.message }, { status: 502 });
 
@@ -47,9 +41,9 @@ export async function GET(request: Request) {
 }
 
 /**
- * Crea una pregunta al final del banco de su nivel — la posición no la
- * elige el profesor, se calcula (máxima existente + 1) para que la unicidad
- * `(cefr_tier, position)` nunca choque.
+ * Crea una pregunta al final del banco — la posición no la elige el
+ * profesor, se calcula (máxima existente + 1) para que la unicidad de
+ * `position` nunca choque.
  */
 export async function POST(request: Request) {
   const result = await guard('practice:manage');
@@ -64,7 +58,6 @@ export async function POST(request: Request) {
   const { data: last } = await supabase
     .from('practice_questions')
     .select('position')
-    .eq('cefr_tier', parsed.data.cefrTier)
     .order('position', { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -72,7 +65,6 @@ export async function POST(request: Request) {
   const { data, error } = await supabase
     .from('practice_questions')
     .insert({
-      cefr_tier: parsed.data.cefrTier,
       position: (last?.position ?? 0) + 1,
       category: parsed.data.category,
       xp_reward: parsed.data.xpReward,

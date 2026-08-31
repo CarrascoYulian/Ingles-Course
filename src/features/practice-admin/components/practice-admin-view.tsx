@@ -1,6 +1,6 @@
 'use client';
 
-import { Pencil, Trash2 } from 'lucide-react';
+import { Info, Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
 import { useAdminHeader } from '@/components/admin/admin-shell';
@@ -8,11 +8,10 @@ import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Chip, ChipRow } from '@/components/ui/chip';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton, LoadingRegion } from '@/components/ui/skeleton';
 import { useConfirmDialog } from '@/hooks/use-confirm-dialog';
-import { CEFR_LEVELS, type CefrLevel, type PracticeQuestionAdmin } from '@/types';
+import type { PracticeQuestionAdmin } from '@/types';
 import { PracticeQuestionDialog } from './practice-question-dialog';
 import {
   useCreatePracticeQuestion,
@@ -25,22 +24,23 @@ import {
  * Banco de preguntas de BerthoGo.
  *
  * Antes eran 80 preguntas fijas, escritas por el equipo y cargadas por
- * migración SQL. Ahora el banco arranca vacío por nivel: el profesor lo
- * arma acá, y lo que escriba es lo que el alumno ve al jugar.
+ * migración SQL. Ahora el profesor lo arma acá: un único banco compartido
+ * (BerthoGo nunca estuvo segmentado por nivel de inglés — es el mismo juego
+ * para todos los alumnos), y lo que escriba es lo que ven al jugar,
+ * ciclando en el orden en que se agregaron.
  */
 export function PracticeAdminView() {
-  const [tier, setTier] = useState<CefrLevel>('A1');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<PracticeQuestionAdmin | null>(null);
 
-  const { data: questions, isPending } = usePracticeQuestions(tier);
+  const { data: questions, isPending } = usePracticeQuestions();
   const createQuestion = useCreatePracticeQuestion();
   const updateQuestion = useUpdatePracticeQuestion();
   const deleteQuestion = useDeletePracticeQuestion();
   const confirmDialog = useConfirmDialog();
 
   useAdminHeader(
-    questions ? `${questions.length} pregunta${questions.length === 1 ? '' : 's'} en ${tier}` : 'Cargando…',
+    questions ? `${questions.length} pregunta${questions.length === 1 ? '' : 's'} en el banco` : 'Cargando…',
     () => {
       setEditingQuestion(null);
       setDialogOpen(true);
@@ -49,17 +49,29 @@ export function PracticeAdminView() {
 
   return (
     <div className="flex flex-col gap-3 px-5 py-4 lg:gap-3.5 lg:px-[30px] lg:py-6">
-      <ChipRow label="Filtrar por nivel">
-        {CEFR_LEVELS.map((level) => (
-          <Chip key={level} active={tier === level} onClick={() => setTier(level)}>
-            {level}
-          </Chip>
-        ))}
-      </ChipRow>
+      <Card radius="2xl" padding="none" className="flex items-start gap-3 border-none bg-brand-soft p-4">
+        <span className="grid size-8 shrink-0 place-items-center rounded-xl bg-surface text-brand">
+          <Info aria-hidden size={16} strokeWidth={2.2} />
+        </span>
+        <div className="text-label font-semibold text-fg-soft">
+          <p className="font-bold text-fg-strong">Cómo funciona el banco</p>
+          <p className="mt-1">
+            Todos los alumnos juegan con el mismo banco de preguntas, sin importar su nivel — no
+            hay pestañas por nivel de inglés, sólo la lista en el orden en que las agregás. El
+            juego avanza pregunta por pregunta y, al llegar al final, vuelve a empezar desde la
+            primera.
+          </p>
+          <p className="mt-1.5">
+            Cada pregunta tiene 4 opciones (A-D) y podés marcar 1 o 2 como correctas — cualquiera
+            de las marcadas cuenta como acierto para el alumno. La XP que asignes es lo que gana
+            al acertar.
+          </p>
+        </div>
+      </Card>
 
       {isPending && (
         <>
-          <LoadingRegion label={`Cargando preguntas de ${tier}`} />
+          <LoadingRegion label="Cargando preguntas del banco" />
           {Array.from({ length: 4 }, (_, i) => (
             <Skeleton key={i} className="h-24 rounded-4xl" />
           ))}
@@ -70,8 +82,8 @@ export function PracticeAdminView() {
         <>
         {questions && questions.length === 0 && (
           <EmptyState
-            title={`Sin preguntas en ${tier} todavía`}
-            description="Agrega la primera pregunta para que el alumno tenga qué responder en este nivel."
+            title="Todavía no hay preguntas"
+            description="Agrega la primera para que BerthoGo tenga qué preguntarle al alumno. Podés cargar todas las que quieras: el juego las va ciclando en orden."
             action={
               <Button
                 size="md"
@@ -128,10 +140,9 @@ export function PracticeAdminView() {
                   onClick={() =>
                     confirmDialog.confirm({
                       title: 'Eliminar pregunta',
-                      body: 'El alumno ya no la verá en este nivel. Esta acción no se puede deshacer.',
+                      body: 'El alumno ya no la verá en el juego. Esta acción no se puede deshacer.',
                       confirmLabel: 'Eliminar',
-                      onConfirm: () =>
-                        deleteQuestion.mutateAsync({ id: question.id, tier }).then(() => undefined),
+                      onConfirm: () => deleteQuestion.mutateAsync({ id: question.id }).then(() => undefined),
                     })
                   }
                 >
@@ -147,7 +158,6 @@ export function PracticeAdminView() {
       <PracticeQuestionDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        tier={tier}
         question={editingQuestion}
         pending={createQuestion.isPending || updateQuestion.isPending}
         onSubmit={(input) =>

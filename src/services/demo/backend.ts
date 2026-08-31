@@ -25,7 +25,6 @@ import type {
   AuditLogEntry,
   Badge,
   BlockType,
-  CefrLevel,
   Course,
   CourseRating,
   CourseRatingsSummary,
@@ -784,20 +783,13 @@ export const demoBackend: Backend = {
       return latency(structuredClone(store.session));
     },
 
-    adminListQuestions: (tier: CefrLevel) =>
-      latency(
-        demoPracticeQuestions
-          .filter((q) => q.cefrTier === tier)
-          .sort((a, b) => a.position - b.position),
-      ),
+    adminListQuestions: () =>
+      latency([...demoPracticeQuestions].sort((a, b) => a.position - b.position)),
 
     adminCreateQuestion: (input: PracticeQuestionInput) => {
-      const position =
-        Math.max(0, ...demoPracticeQuestions.filter((q) => q.cefrTier === input.cefrTier).map((q) => q.position)) +
-        1;
+      const position = Math.max(0, ...demoPracticeQuestions.map((q) => q.position)) + 1;
       const question: PracticeQuestionAdmin = {
         id: crypto.randomUUID(),
-        cefrTier: input.cefrTier,
         position,
         category: input.category,
         xpReward: input.xpReward,
@@ -818,7 +810,6 @@ export const demoBackend: Backend = {
       if (!existing) throw new Error('Pregunta no encontrada');
       const updated: PracticeQuestionAdmin = {
         ...existing,
-        cefrTier: input.cefrTier,
         category: input.category,
         xpReward: input.xpReward,
         prompt: input.prompt,

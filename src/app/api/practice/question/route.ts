@@ -13,9 +13,9 @@ export const runtime = 'nodejs';
  * puede saber la solución antes de contestar. La otra mitad está en
  * `POST /api/practice/answer`, que es quien corrige.
  *
- * Antes servía siempre el mismo ejercicio hardcodeado, sin importar el
- * nivel del alumno. Ahora resuelve el nivel CEFR real desde su
- * `practice_progress` para traer una pregunta acorde.
+ * Antes servía siempre el mismo ejercicio hardcodeado. Ahora resuelve la
+ * pregunta real que corresponde al paso del alumno dentro del banco único
+ * que carga el profesor.
  */
 export async function GET(request: Request) {
   const result = await guard('practice:play');
@@ -24,17 +24,7 @@ export async function GET(request: Request) {
   const step = Number(new URL(request.url).searchParams.get('step') ?? '1');
 
   const supabase = await getSupabaseServerClient();
-  let level = 1;
-  if (supabase) {
-    const { data } = await supabase
-      .from('practice_progress')
-      .select('current_level')
-      .eq('student_id', result.profile.id)
-      .maybeSingle();
-    level = data?.current_level ?? 1;
-  }
-
-  const question = await getQuestionForStep(supabase, level, Number.isFinite(step) ? step : 1);
+  const question = await getQuestionForStep(supabase, Number.isFinite(step) ? step : 1);
 
   return NextResponse.json(toPublicQuestion(question), {
     headers: { 'Cache-Control': 'no-store' },

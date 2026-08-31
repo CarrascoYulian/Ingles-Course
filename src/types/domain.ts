@@ -398,16 +398,14 @@ export interface PracticeQuestion {
   explanationWrong: string;
 }
 
-/** Pregunta del banco tal como la ve el profesor: incluye nivel, orden y respuestas correctas. */
+/** Pregunta del banco tal como la ve el profesor: incluye orden y respuestas correctas. */
 export interface PracticeQuestionAdmin extends Omit<PracticeQuestion, 'correctOptionIds'> {
-  cefrTier: CefrLevel;
   position: number;
   correctOptionIds: string[];
 }
 
 /** Datos que entrega el profesor al crear o editar una pregunta del banco. */
 export interface PracticeQuestionInput {
-  cefrTier: CefrLevel;
   category: string;
   xpReward: number;
   prompt: string;

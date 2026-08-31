@@ -1,7 +1,5 @@
 import { z } from 'zod';
 
-import { CEFR_LEVELS } from '@/types';
-
 const optionSchema = z.object({
   id: z.string().min(1),
   key: z.enum(['A', 'B', 'C', 'D']),
@@ -11,7 +9,6 @@ const optionSchema = z.object({
 /** Compartido por POST (crear) y PATCH (editar) — la forma no cambia entre ambos. */
 export const practiceQuestionInputSchema = z
   .object({
-    cefrTier: z.enum(CEFR_LEVELS, { message: 'Elige un nivel' }),
     category: z.string().trim().min(1, 'La categoría es obligatoria').max(40),
     xpReward: z.number().int().min(1, 'La XP debe ser mayor a 0').max(200),
     prompt: z.string().trim().min(1, 'El enunciado es obligatorio').max(200),

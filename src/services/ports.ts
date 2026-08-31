@@ -396,7 +396,7 @@ export interface PracticePort {
   advance(): Promise<PracticeSession>;
 
   /** Gestión docente del banco de preguntas — ver `PERMISSIONS['practice:manage']`. */
-  adminListQuestions(tier: CefrLevel): Promise<PracticeQuestionAdmin[]>;
+  adminListQuestions(): Promise<PracticeQuestionAdmin[]>;
   adminCreateQuestion(input: PracticeQuestionInput): Promise<PracticeQuestionAdmin>;
   adminUpdateQuestion(id: string, input: PracticeQuestionInput): Promise<PracticeQuestionAdmin>;
   adminDeleteQuestion(id: string): Promise<void>;

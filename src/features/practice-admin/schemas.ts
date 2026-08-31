@@ -1,10 +1,5 @@
 import { z } from 'zod';
 
-/**
- * El nivel CEFR no viaja en el formulario: lo decide la pestaña activa en
- * `PracticeAdminView`, no el profesor dentro del diálogo — evita que
- * cambiar de nivel al editar choque con la unicidad `(cefr_tier, position)`.
- */
 export const practiceQuestionFormSchema = z.object({
   category: z.string().trim().min(1, 'La categoría es obligatoria').max(40),
   xpReward: z

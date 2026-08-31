@@ -1647,8 +1647,8 @@ export const supabaseBackend: Backend = {
       return response.json();
     },
 
-    async adminListQuestions(tier) {
-      const response = await fetch(`/api/practice-questions?tier=${encodeURIComponent(tier)}`);
+    async adminListQuestions() {
+      const response = await fetch('/api/practice-questions');
       if (!response.ok) throw new Error('No se pudieron cargar las preguntas');
       const { questions } = (await response.json()) as { questions: PracticeQuestionAdmin[] };
       return questions;

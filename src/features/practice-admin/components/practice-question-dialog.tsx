@@ -21,7 +21,7 @@ import {
   practiceQuestionFormSchema,
   type PracticeQuestionFormValues,
 } from '../schemas';
-import type { CefrLevel, PracticeQuestionAdmin, PracticeQuestionInput } from '@/types';
+import type { PracticeQuestionAdmin, PracticeQuestionInput } from '@/types';
 
 const OPTION_KEYS = ['A', 'B', 'C', 'D'] as const;
 const OPTION_FIELD: Record<(typeof OPTION_KEYS)[number], 'optionA' | 'optionB' | 'optionC' | 'optionD'> = {
@@ -55,9 +55,8 @@ function toFormValues(question: PracticeQuestionAdmin | null): PracticeQuestionF
   };
 }
 
-function toInput(values: PracticeQuestionFormValues, tier: CefrLevel): PracticeQuestionInput {
+function toInput(values: PracticeQuestionFormValues): PracticeQuestionInput {
   return {
-    cefrTier: tier,
     category: values.category,
     xpReward: values.xpReward,
     prompt: values.prompt,
@@ -76,8 +75,6 @@ function toInput(values: PracticeQuestionFormValues, tier: CefrLevel): PracticeQ
 export interface PracticeQuestionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Nivel de la pestaña activa — el profesor no lo elige acá, ver `../schemas.ts`. */
-  tier: CefrLevel;
   /** `null` = crear una pregunta nueva; con valor = editar esa pregunta. */
   question: PracticeQuestionAdmin | null;
   onSubmit: (input: PracticeQuestionInput) => Promise<unknown>;
@@ -93,7 +90,6 @@ export interface PracticeQuestionDialogProps {
 export function PracticeQuestionDialog({
   open,
   onOpenChange,
-  tier,
   question,
   onSubmit,
   pending,
@@ -115,7 +111,7 @@ export function PracticeQuestionDialog({
 
   const submit = form.handleSubmit(async (values) => {
     try {
-      await onSubmit(toInput(values, tier));
+      await onSubmit(toInput(values));
       onOpenChange(false);
     } catch {
       // El error ya se muestra vía toast (onError de la mutación).
@@ -125,7 +121,7 @@ export function PracticeQuestionDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent width={560}>
-        <DialogTitle>{isEditing ? 'Editar pregunta' : `Nueva pregunta · ${tier}`}</DialogTitle>
+        <DialogTitle>{isEditing ? 'Editar pregunta' : 'Nueva pregunta'}</DialogTitle>
         <DialogDescription>
           4 opciones de respuesta; marca 1 o 2 como correctas. Cualquiera de las marcadas cuenta
           como acierto.

@@ -10,7 +10,6 @@ export const runtime = 'nodejs';
 function toAdminQuestion(row: Database['public']['Tables']['practice_questions']['Row']): PracticeQuestionAdmin {
   return {
     id: row.id,
-    cefrTier: row.cefr_tier,
     position: row.position,
     category: row.category,
     xpReward: row.xp_reward,
@@ -24,7 +23,6 @@ function toAdminQuestion(row: Database['public']['Tables']['practice_questions']
   };
 }
 
-/** No permite mover la pregunta de nivel — evita chocar con la unicidad `(cefr_tier, position)`. */
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const result = await guard('practice:manage');
   if (isDenied(result)) return result.response;

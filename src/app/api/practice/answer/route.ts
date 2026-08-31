@@ -50,11 +50,7 @@ export async function POST(request: Request) {
   // cuerpo de la petición — antes se aceptaba cualquier id de pregunta que
   // existiera en el banco, permitiendo reenviar el id de un paso ya
   // completado (o uno futuro) para acumular XP indebidamente.
-  const question = await getQuestionForStep(
-    supabase,
-    current?.current_level ?? 1,
-    current?.current_step ?? 1,
-  );
+  const question = await getQuestionForStep(supabase, current?.current_step ?? 1);
   if (parsed.data.questionId !== question.id || !question.correctOptionIds?.length) {
     return NextResponse.json(
       { error: 'Esta pregunta ya no corresponde a tu paso actual' },
