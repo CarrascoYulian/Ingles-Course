@@ -31,7 +31,7 @@ function resolveState(
   result: AnswerResult | null,
 ): OptionState {
   if (result) {
-    if (optionId === result.correctOptionId) return 'correct';
+    if (result.correctOptionIds.includes(optionId)) return 'correct';
     if (optionId === selectedOptionId) return 'incorrect';
     return 'idle';
   }
@@ -47,8 +47,10 @@ export function QuizCard({
   onSelect,
   onSubmit,
 }: QuizCardProps) {
-  const correctKey =
-    question.options.find((option) => option.id === result?.correctOptionId)?.key ?? 'A';
+  const correctKey = question.options
+    .filter((option) => result?.correctOptionIds.includes(option.id))
+    .map((option) => option.key)
+    .join(' o ');
 
   // Antes este botón sólo mostraba un toast fingiendo reproducir algo — no
   // existía ningún archivo de audio detrás. Ahora, si la pregunta tiene un

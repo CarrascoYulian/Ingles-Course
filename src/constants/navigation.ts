@@ -43,6 +43,12 @@ export const ADMIN_NAV: readonly NavItem[] = [
     icon: Users,
   },
   {
+    href: ROUTES.admin.practica,
+    label: 'BerthoGo',
+    shortLabel: 'BerthoGo',
+    icon: Star,
+  },
+  {
     href: ROUTES.admin.reportes,
     label: 'Reportes',
     shortLabel: 'Reportes',
@@ -65,6 +71,7 @@ export const ADMIN_PAGE_META: Record<string, { title: string; action?: string }>
   [ROUTES.admin.cursos]: { title: 'Cursos y unidades', action: 'Nuevo curso' },
   [ROUTES.admin.contenido]: { title: 'Constructor de contenido' },
   [ROUTES.admin.estudiantes]: { title: 'Estudiantes', action: 'Nuevo estudiante' },
+  [ROUTES.admin.practica]: { title: 'BerthoGo', action: 'Nueva pregunta' },
   [ROUTES.admin.reportes]: { title: 'Reportes', action: 'Exportar CSV' },
   [ROUTES.admin.cuenta]: { title: 'Mi cuenta' },
   [ROUTES.admin.actividad]: { title: 'Actividad' },

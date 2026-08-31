@@ -21,6 +21,7 @@ export const PERMISSIONS = {
   'report:read': ['admin', 'instructor'],
   'report:export': ['admin'],
   'practice:play': ['student', 'admin', 'instructor'],
+  'practice:manage': ['admin', 'instructor'],
   'quiz:take': ['student'],
   'assignment:edit': ['admin', 'instructor'],
   'assignment:submit': ['student'],

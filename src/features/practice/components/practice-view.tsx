@@ -42,8 +42,8 @@ export function PracticeView() {
     playIncorrectBuzz();
     // Si falló, además de la que tocó (ya escuchada al seleccionar), que
     // oiga la respuesta correcta.
-    const correctText = question.data?.options.find(
-      (option) => option.id === runner.result?.correctOptionId,
+    const correctText = question.data?.options.find((option) =>
+      runner.result?.correctOptionIds.includes(option.id),
     )?.text;
     if (correctText) {
       const timeout = window.setTimeout(() => speakEnglish(correctText), 350);

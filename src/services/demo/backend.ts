@@ -25,6 +25,7 @@ import type {
   AuditLogEntry,
   Badge,
   BlockType,
+  CefrLevel,
   Course,
   CourseRating,
   CourseRatingsSummary,
@@ -33,6 +34,8 @@ import type {
   Lesson,
   LessonComment,
   LessonNote,
+  PracticeQuestionAdmin,
+  PracticeQuestionInput,
   PracticeSession,
   QuizAttempt,
   QuizDraft,
@@ -65,6 +68,9 @@ let demoStaff: StaffMember[] = [
   },
 ];
 const demoAuditLog: AuditLogEntry[] = [];
+// El banco arranca vacío: el profesor lo llena desde `/admin/practica`, ya
+// no hay preguntas semilla hardcodeadas.
+let demoPracticeQuestions: PracticeQuestionAdmin[] = [];
 
 /**
  * El propio `Backend` no expone un método de "enviar intento": la
@@ -696,22 +702,77 @@ export const demoBackend: Backend = {
       demoSubmissions = demoSubmissions.filter((s) => s.id !== submissionId);
       return latency(undefined);
     },
+    getMyNotifications: () => {
+      const now = Date.now();
+      const in1Day = now + 24 * 60 * 60 * 1000;
+      const in3Days = now + 3 * 24 * 60 * 60 * 1000;
+      const recentWindow = now - 3 * 24 * 60 * 60 * 1000;
+
+      const target = (assignment: { moduleId: string; id: string }) => ({
+        courseId: DEMO_MODULE.courseId,
+        moduleId: assignment.moduleId,
+        assignmentId: assignment.id,
+      });
+
+      const mySubmissions = demoSubmissions.filter((s) => s.studentId === DEMO_STUDENT.id);
+      const submittedIds = new Set(mySubmissions.map((s) => s.assignmentId));
+
+      const dueSoonList = demoAssignments.filter((a) => {
+        const dueAt = new Date(a.dueAt).getTime();
+        return !submittedIds.has(a.id) && dueAt > now && dueAt <= in3Days;
+      });
+      const newList = demoAssignments.filter(
+        (a) => !submittedIds.has(a.id) && new Date(a.createdAt).getTime() >= recentWindow,
+      );
+      const gradedList = mySubmissions.filter(
+        (s) => s.gradedAt && new Date(s.gradedAt).getTime() >= recentWindow,
+      );
+
+      const oldestDueSoon = [...dueSoonList].sort(
+        (a, b) => new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime(),
+      )[0];
+      const newestNew = [...newList].sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      )[0];
+      const newestGraded = [...gradedList].sort(
+        (a, b) => new Date(b.gradedAt!).getTime() - new Date(a.gradedAt!).getTime(),
+      )[0];
+      const gradedAssignment = newestGraded
+        ? demoAssignments.find((a) => a.id === newestGraded.assignmentId)
+        : undefined;
+
+      return latency({
+        dueSoon: {
+          count: dueSoonList.length,
+          urgent: dueSoonList.some((a) => new Date(a.dueAt).getTime() <= in1Day),
+          target: oldestDueSoon ? target(oldestDueSoon) : null,
+        },
+        newAssignments: {
+          count: newList.length,
+          target: newestNew ? target(newestNew) : null,
+        },
+        graded: {
+          count: gradedList.length,
+          target: gradedAssignment ? target(gradedAssignment) : null,
+        },
+      });
+    },
   },
 
   practice: {
     getSession: () => latency(structuredClone(store.session)),
     listLevels: () => latency(DEMO_PRACTICE_LEVELS),
-    // Se entrega sin `correctOptionId`, igual que haría la API real.
-    getQuestion: () => latency({ ...DEMO_QUESTION, correctOptionId: undefined }),
+    // Se entrega sin `correctOptionIds`, igual que haría la API real.
+    getQuestion: () => latency({ ...DEMO_QUESTION, correctOptionIds: undefined }),
 
     submitAnswer: (_questionId, optionId) => {
-      const correct = optionId === DEMO_QUESTION.correctOptionId;
+      const correct = DEMO_QUESTION.correctOptionIds!.includes(optionId);
       if (correct) store.session = { ...store.session, xp: store.session.xp + DEMO_QUESTION.xpReward };
       return latency({
         correct,
         xpGained: correct ? DEMO_QUESTION.xpReward : 0,
         explanation: correct ? DEMO_QUESTION.explanationCorrect : DEMO_QUESTION.explanationWrong,
-        correctOptionId: DEMO_QUESTION.correctOptionId!,
+        correctOptionIds: DEMO_QUESTION.correctOptionIds!,
       });
     },
 
@@ -721,6 +782,59 @@ export const demoBackend: Backend = {
         step: Math.min(store.session.totalSteps, store.session.step + 1),
       };
       return latency(structuredClone(store.session));
+    },
+
+    adminListQuestions: (tier: CefrLevel) =>
+      latency(
+        demoPracticeQuestions
+          .filter((q) => q.cefrTier === tier)
+          .sort((a, b) => a.position - b.position),
+      ),
+
+    adminCreateQuestion: (input: PracticeQuestionInput) => {
+      const position =
+        Math.max(0, ...demoPracticeQuestions.filter((q) => q.cefrTier === input.cefrTier).map((q) => q.position)) +
+        1;
+      const question: PracticeQuestionAdmin = {
+        id: crypto.randomUUID(),
+        cefrTier: input.cefrTier,
+        position,
+        category: input.category,
+        xpReward: input.xpReward,
+        prompt: input.prompt,
+        sourceText: input.sourceText,
+        audioKey: null,
+        options: input.options,
+        correctOptionIds: input.correctOptionIds,
+        explanationCorrect: input.explanationCorrect,
+        explanationWrong: input.explanationWrong,
+      };
+      demoPracticeQuestions = [...demoPracticeQuestions, question];
+      return latency(question);
+    },
+
+    adminUpdateQuestion: (id: string, input: PracticeQuestionInput) => {
+      const existing = demoPracticeQuestions.find((q) => q.id === id);
+      if (!existing) throw new Error('Pregunta no encontrada');
+      const updated: PracticeQuestionAdmin = {
+        ...existing,
+        cefrTier: input.cefrTier,
+        category: input.category,
+        xpReward: input.xpReward,
+        prompt: input.prompt,
+        sourceText: input.sourceText,
+        options: input.options,
+        correctOptionIds: input.correctOptionIds,
+        explanationCorrect: input.explanationCorrect,
+        explanationWrong: input.explanationWrong,
+      };
+      demoPracticeQuestions = demoPracticeQuestions.map((q) => (q.id === id ? updated : q));
+      return latency(updated);
+    },
+
+    adminDeleteQuestion: (id: string) => {
+      demoPracticeQuestions = demoPracticeQuestions.filter((q) => q.id !== id);
+      return latency(undefined);
     },
   },
 

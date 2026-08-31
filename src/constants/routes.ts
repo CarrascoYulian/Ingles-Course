@@ -18,6 +18,8 @@ export const ROUTES = {
       `/admin/contenido?courseId=${courseId}&moduleId=${moduleId}&tab=tareas` +
       (assignmentId ? `&assignmentId=${assignmentId}` : ''),
     estudiantes: '/admin/estudiantes',
+    /** Banco de preguntas de BerthoGo — el profesor las crea, ya no vienen precargadas. */
+    practica: '/admin/practica',
     reportes: '/admin/reportes',
     cuenta: '/admin/cuenta',
     actividad: '/admin/actividad',
@@ -31,6 +33,9 @@ export const ROUTES = {
     logros: '/logros',
     mensajes: '/mensajes',
     tareas: '/tareas',
+    /** Deep link a una tarea puntual — usado por la campana de notificaciones del alumno. */
+    tareaDeCurso: (courseId: string, assignmentId: string) =>
+      `/tareas?courseId=${courseId}&assignmentId=${assignmentId}`,
     certificado: (courseId: string) => `/curso/certificado/${courseId}`,
     foro: (courseId: string) => `/curso/foro/${courseId}`,
     foroTema: (courseId: string, threadId: string) => `/curso/foro/${courseId}/${threadId}`,

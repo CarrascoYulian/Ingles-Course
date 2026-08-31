@@ -5,9 +5,6 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { DEMO_QUESTION } from '@/services/demo/data';
 import type { CefrLevel, Database, PracticeOption, PracticeQuestion } from '@/types';
 
-/** Preguntas reales por nivel CEFR — ver migración 0018_practice_questions.sql. */
-const QUESTIONS_PER_TIER = 16;
-
 /**
  * Convierte el nivel numérico del juego (1-500) al nivel CEFR real de las
  * preguntas — el mismo reparto usado al generar `practice_levels`
@@ -31,7 +28,7 @@ function toQuestion(row: Database['public']['Tables']['practice_questions']['Row
     sourceText: row.source_text,
     audioKey: null,
     options: row.options as unknown as PracticeOption[],
-    correctOptionId: row.correct_option_id,
+    correctOptionIds: row.correct_option_ids,
     explanationCorrect: row.explanation_correct,
     explanationWrong: row.explanation_wrong,
   };
@@ -41,7 +38,9 @@ function toQuestion(row: Database['public']['Tables']['practice_questions']['Row
  * Antes esto era un único ejercicio hardcodeado, siempre el mismo sin
  * importar el nivel del alumno. Ahora resuelve la pregunta real que
  * corresponde al nivel CEFR y al paso del alumno, cicladas dentro del
- * banco de 16 preguntas de ese nivel.
+ * banco que el profesor cargó para ese nivel — el banco ya no tiene un
+ * tamaño fijo, así que el ciclo se calcula sobre las preguntas que existan
+ * de verdad (ver `/admin/practica`).
  */
 export async function getQuestionForStep(
   supabase: SupabaseClient<Database> | null,
@@ -51,20 +50,21 @@ export async function getQuestionForStep(
   if (!supabase) return DEMO_QUESTION;
 
   const tier = tierForLevel(level);
-  const position = ((Math.max(1, step) - 1) % QUESTIONS_PER_TIER) + 1;
 
-  const { data } = await supabase
+  const { data: rows } = await supabase
     .from('practice_questions')
     .select('*')
     .eq('cefr_tier', tier)
-    .eq('position', position)
-    .maybeSingle();
+    .order('position', { ascending: true });
 
-  return data ? toQuestion(data) : DEMO_QUESTION;
+  if (!rows || rows.length === 0) return DEMO_QUESTION;
+
+  const index = (Math.max(1, step) - 1) % rows.length;
+  return toQuestion(rows[index]!);
 }
 
-/** Versión pública: sin `correctOptionId` ni explicaciones. */
+/** Versión pública: sin `correctOptionIds` ni explicaciones. */
 export function toPublicQuestion(question: PracticeQuestion): PracticeQuestion {
-  const { correctOptionId: _omit, ...rest } = question;
+  const { correctOptionIds: _omit, ...rest } = question;
   return { ...rest, explanationCorrect: '', explanationWrong: '' };
 }

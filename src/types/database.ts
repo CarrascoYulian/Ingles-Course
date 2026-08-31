@@ -878,7 +878,7 @@ export type Database = {
         Row: {
           category: string
           cefr_tier: Database["public"]["Enums"]["cefr_level"]
-          correct_option_id: string
+          correct_option_ids: string[]
           explanation_correct: string
           explanation_wrong: string
           id: string
@@ -891,7 +891,7 @@ export type Database = {
         Insert: {
           category: string
           cefr_tier: Database["public"]["Enums"]["cefr_level"]
-          correct_option_id: string
+          correct_option_ids: string[]
           explanation_correct: string
           explanation_wrong: string
           id?: string
@@ -904,7 +904,7 @@ export type Database = {
         Update: {
           category?: string
           cefr_tier?: Database["public"]["Enums"]["cefr_level"]
-          correct_option_id?: string
+          correct_option_ids?: string[]
           explanation_correct?: string
           explanation_wrong?: string
           id?: string

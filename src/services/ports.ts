@@ -28,6 +28,8 @@ import type {
   CourseThreadReply,
   PracticeLevel,
   PracticeQuestion,
+  PracticeQuestionAdmin,
+  PracticeQuestionInput,
   PracticeSession,
   QuizAttempt,
   QuizDraft,
@@ -35,6 +37,7 @@ import type {
   ReportSnapshot,
   StaffMember,
   StorageUsage,
+  StudentNotifications,
   StudentPerformanceSummary,
   StudentProgress,
   StudentSummary,
@@ -63,8 +66,8 @@ export interface AnswerResult {
   correct: boolean;
   xpGained: number;
   explanation: string;
-  /** Se revela sólo tras contestar, para poder marcar la opción acertada. */
-  correctOptionId: string;
+  /** Se revela sólo tras contestar, para poder marcar la(s) opción(es) acertada(s). */
+  correctOptionIds: string[];
 }
 
 export interface CoursesPort {
@@ -293,6 +296,8 @@ export interface LearningPort {
   ): Promise<AssignmentSubmission>;
   /** Borra la propia entrega para poder resubir — rechazado si ya venció o fue calificada. */
   deleteMySubmission(submissionId: string): Promise<void>;
+  /** Campana de notificaciones del alumno — tareas por vencer, nuevas y calificadas. */
+  getMyNotifications(): Promise<StudentNotifications>;
 }
 
 export interface QuizPort {
@@ -389,6 +394,12 @@ export interface PracticePort {
   getQuestion(step: number): Promise<PracticeQuestion>;
   submitAnswer(questionId: string, optionId: string): Promise<AnswerResult>;
   advance(): Promise<PracticeSession>;
+
+  /** Gestión docente del banco de preguntas — ver `PERMISSIONS['practice:manage']`. */
+  adminListQuestions(tier: CefrLevel): Promise<PracticeQuestionAdmin[]>;
+  adminCreateQuestion(input: PracticeQuestionInput): Promise<PracticeQuestionAdmin>;
+  adminUpdateQuestion(id: string, input: PracticeQuestionInput): Promise<PracticeQuestionAdmin>;
+  adminDeleteQuestion(id: string): Promise<void>;
 }
 
 export interface StoragePort {

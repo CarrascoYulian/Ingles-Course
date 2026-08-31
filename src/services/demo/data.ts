@@ -354,7 +354,7 @@ export const DEMO_QUESTION: PracticeQuestion = {
       shortText: 'Yesterday I was going to the market…',
     },
   ],
-  correctOptionId: 'o0',
+  correctOptionIds: ['o0'],
   explanationCorrect: '“Yesterday” marca un momento cerrado, por eso va en Past Simple.',
   explanationWrong:
     'Con un tiempo cerrado como “yesterday” se usa Past Simple, no Present Perfect.',

@@ -5,7 +5,7 @@ import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { DEMO_QUESTION } from '../demo/data';
 import type { AttachUploadInput, Backend, CreateAssignmentInput } from '../ports';
 import { toAssignment, toAssignmentSubmission, toCourse, toLesson, toModule, toStudentSummary } from './mappers';
-import type { Course, PracticeSession, ReportRange, StaffMember, UserRole } from '@/types';
+import type { Course, PracticeQuestionAdmin, PracticeSession, ReportRange, StaffMember, UserRole } from '@/types';
 import type { Database } from '@/types';
 
 type Row<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Row'];
@@ -1543,6 +1543,77 @@ export const supabaseBackend: Backend = {
       const { error } = await db().from('assignment_submissions').delete().eq('id', submissionId);
       if (error) throw new Error(error.message);
     },
+
+    async getMyNotifications() {
+      const empty = {
+        dueSoon: { count: 0, urgent: false, target: null },
+        newAssignments: { count: 0, target: null },
+        graded: { count: 0, target: null },
+      } as const;
+
+      const {
+        data: { user },
+      } = await db().auth.getUser();
+      if (!user) return empty;
+
+      const nowMs = Date.now();
+      const nowIso = new Date(nowMs).toISOString();
+      const in1Day = new Date(nowMs + 24 * 60 * 60 * 1000).toISOString();
+      const in3Days = new Date(nowMs + 3 * 24 * 60 * 60 * 1000).toISOString();
+      const recentWindow = new Date(nowMs - 3 * 24 * 60 * 60 * 1000).toISOString();
+
+      // RLS de `assignments` ya restringe esto a los módulos con acceso
+      // otorgado al alumno autenticado — ver "alumno ve tareas de sus
+      // módulos con acceso" en 0036_assignments.sql.
+      const { data: assignmentRows, error: assignmentsError } = await db()
+        .from('assignments')
+        .select('id, module_id, due_at, created_at, modules(course_id)');
+      if (assignmentsError) throw new Error(assignmentsError.message);
+      const assignments = (assignmentRows ?? []) as unknown as {
+        id: string;
+        module_id: string;
+        due_at: string;
+        created_at: string;
+        modules: { course_id: string } | null;
+      }[];
+
+      const mySubmissions = unwrap<Pick<Row<'assignment_submissions'>, 'assignment_id' | 'graded_at'>[]>(
+        await db().from('assignment_submissions').select('assignment_id, graded_at').eq('student_id', user.id),
+      );
+      const submittedIds = new Set(mySubmissions.map((s) => s.assignment_id));
+
+      const target = (a: { module_id: string; id: string; modules: { course_id: string } | null }) =>
+        a.modules ? { courseId: a.modules.course_id, moduleId: a.module_id, assignmentId: a.id } : null;
+
+      const dueSoonList = assignments.filter(
+        (a) => !submittedIds.has(a.id) && a.due_at > nowIso && a.due_at <= in3Days,
+      );
+      const newList = assignments.filter((a) => !submittedIds.has(a.id) && a.created_at >= recentWindow);
+      const gradedList = mySubmissions.filter((s) => s.graded_at !== null && s.graded_at >= recentWindow);
+
+      const oldestDueSoon = [...dueSoonList].sort((a, b) => a.due_at.localeCompare(b.due_at))[0];
+      const newestNew = [...newList].sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
+      const newestGraded = [...gradedList].sort((a, b) => b.graded_at!.localeCompare(a.graded_at!))[0];
+      const gradedAssignment = newestGraded
+        ? assignments.find((a) => a.id === newestGraded.assignment_id)
+        : undefined;
+
+      return {
+        dueSoon: {
+          count: dueSoonList.length,
+          urgent: dueSoonList.some((a) => a.due_at <= in1Day),
+          target: oldestDueSoon ? target(oldestDueSoon) : null,
+        },
+        newAssignments: {
+          count: newList.length,
+          target: newestNew ? target(newestNew) : null,
+        },
+        graded: {
+          count: gradedList.length,
+          target: gradedAssignment ? target(gradedAssignment) : null,
+        },
+      };
+    },
   },
 
   practice: {
@@ -1574,6 +1645,41 @@ export const supabaseBackend: Backend = {
       const response = await fetch('/api/practice/advance', { method: 'POST' });
       if (!response.ok) throw new Error('No se pudo avanzar');
       return response.json();
+    },
+
+    async adminListQuestions(tier) {
+      const response = await fetch(`/api/practice-questions?tier=${encodeURIComponent(tier)}`);
+      if (!response.ok) throw new Error('No se pudieron cargar las preguntas');
+      const { questions } = (await response.json()) as { questions: PracticeQuestionAdmin[] };
+      return questions;
+    },
+    async adminCreateQuestion(input) {
+      const response = await fetch('/api/practice-questions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      });
+      if (!response.ok) {
+        const { error } = await response.json().catch(() => ({ error: 'No se pudo crear la pregunta' }));
+        throw new Error(error ?? 'No se pudo crear la pregunta');
+      }
+      return response.json();
+    },
+    async adminUpdateQuestion(id, input) {
+      const response = await fetch(`/api/practice-questions/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      });
+      if (!response.ok) {
+        const { error } = await response.json().catch(() => ({ error: 'No se pudo actualizar la pregunta' }));
+        throw new Error(error ?? 'No se pudo actualizar la pregunta');
+      }
+      return response.json();
+    },
+    async adminDeleteQuestion(id) {
+      const response = await fetch(`/api/practice-questions/${id}`, { method: 'DELETE' });
+      if (!response.ok) throw new Error('No se pudo eliminar la pregunta');
     },
   },
 

@@ -55,14 +55,14 @@ export async function POST(request: Request) {
     current?.current_level ?? 1,
     current?.current_step ?? 1,
   );
-  if (parsed.data.questionId !== question.id || !question.correctOptionId) {
+  if (parsed.data.questionId !== question.id || !question.correctOptionIds?.length) {
     return NextResponse.json(
       { error: 'Esta pregunta ya no corresponde a tu paso actual' },
       { status: 409 },
     );
   }
 
-  const correct = parsed.data.optionId === question.correctOptionId;
+  const correct = question.correctOptionIds.includes(parsed.data.optionId);
   const xpGained = correct ? question.xpReward : 0;
 
   if (supabase) {
@@ -96,7 +96,7 @@ export async function POST(request: Request) {
     correct,
     xpGained,
     explanation: correct ? question.explanationCorrect : question.explanationWrong,
-    correctOptionId: question.correctOptionId,
+    correctOptionIds: question.correctOptionIds,
   };
 
   return NextResponse.json(answer, { headers: { 'Cache-Control': 'no-store' } });

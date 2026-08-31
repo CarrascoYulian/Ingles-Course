@@ -182,6 +182,27 @@ export interface Assignment {
   createdAt: string;
 }
 
+/** Ubica una tarea puntual para que una notificación pueda llevar directo ahí. */
+export interface AssignmentNotificationTarget {
+  courseId: string;
+  moduleId: string;
+  assignmentId: string;
+}
+
+/**
+ * Notificaciones del alumno autenticado — todas calculadas en vivo a partir
+ * de `dueAt`/`createdAt`/`gradedAt`, igual que `getUngradedCount` del lado
+ * docente: sin tabla de notificaciones ni estado de "leído" propio.
+ */
+export interface StudentNotifications {
+  /** Tareas sin entregar que vencen dentro de 3 días. */
+  dueSoon: { count: number; urgent: boolean; target: AssignmentNotificationTarget | null };
+  /** Tareas publicadas en las últimas 72 h que el alumno todavía no entregó. */
+  newAssignments: { count: number; target: AssignmentNotificationTarget | null };
+  /** Entregas calificadas por el docente en las últimas 72 h. */
+  graded: { count: number; target: AssignmentNotificationTarget | null };
+}
+
 /**
  * Entrega de un alumno. `studentName` sólo viene poblado en las lecturas del
  * docente (tabla por alumno); el propio alumno ya sabe quién es.
@@ -369,9 +390,32 @@ export interface PracticeQuestion {
   /**
    * Sólo presente en servidor y en modo demo. La API pública lo omite: si
    * viajara al navegador, la respuesta sería visible en las DevTools antes
-   * de contestar. La corrección la hace `submitAnswer`.
+   * de contestar. La corrección la hace `submitAnswer`. Puede haber 1 o 2
+   * opciones correctas — cualquiera de ellas cuenta como acierto.
    */
-  correctOptionId?: string;
+  correctOptionIds?: string[];
+  explanationCorrect: string;
+  explanationWrong: string;
+}
+
+/** Pregunta del banco tal como la ve el profesor: incluye nivel, orden y respuestas correctas. */
+export interface PracticeQuestionAdmin extends Omit<PracticeQuestion, 'correctOptionIds'> {
+  cefrTier: CefrLevel;
+  position: number;
+  correctOptionIds: string[];
+}
+
+/** Datos que entrega el profesor al crear o editar una pregunta del banco. */
+export interface PracticeQuestionInput {
+  cefrTier: CefrLevel;
+  category: string;
+  xpReward: number;
+  prompt: string;
+  sourceText: string;
+  /** Exactamente 4 opciones. */
+  options: PracticeOption[];
+  /** 1 o 2 ids de `options` marcados como correctos. */
+  correctOptionIds: string[];
   explanationCorrect: string;
   explanationWrong: string;
 }
