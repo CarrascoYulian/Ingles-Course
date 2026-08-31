@@ -1,11 +1,12 @@
 /**
  * Feedback sonoro al corregir una respuesta: un chime/buzz sintetizado con
  * Web Audio API (sin archivos de audio) y una voz que lee la frase correcta
- * en inglés con la Web Speech API del navegador.
+ * en inglés — voz neural de `/api/tts` (ver esa ruta), con la Web Speech API
+ * del navegador como respaldo si la red falla.
  *
- * Todo acá es best-effort: si el navegador no soporta alguna API, o el
- * usuario nunca interactuó (autoplay policy), las funciones simplemente no
- * hacen nada — nunca deben romper el flujo de práctica.
+ * Todo acá es best-effort: si el navegador no soporta alguna API, la red
+ * falla, o el usuario nunca interactuó (autoplay policy), las funciones
+ * simplemente no hacen nada — nunca deben romper el flujo de práctica.
  */
 
 let audioContext: AudioContext | null = null;
@@ -81,8 +82,13 @@ export function pickEnglishVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesi
   );
 }
 
-/** Lee `text` en voz alta en inglés, cancelando cualquier lectura en curso. */
-export function speakEnglish(text: string) {
+// Objeto URL por frase ya sintetizada — la misma pregunta se repite seguido
+// (reintento tras fallar) y no tiene sentido pedirle el audio a `/api/tts`
+// de nuevo cada vez.
+const ttsCache = new Map<string, string>();
+let currentAudio: HTMLAudioElement | null = null;
+
+function speakEnglishFallback(text: string) {
   if (typeof window === 'undefined' || !window.speechSynthesis) return;
   window.speechSynthesis.cancel();
   const utterance = new SpeechSynthesisUtterance(text);
@@ -90,4 +96,39 @@ export function speakEnglish(text: string) {
   const voice = pickEnglishVoice(window.speechSynthesis.getVoices());
   if (voice) utterance.voice = voice;
   window.speechSynthesis.speak(utterance);
+}
+
+function playCachedAudio(url: string) {
+  currentAudio?.pause();
+  const audio = new Audio(url);
+  currentAudio = audio;
+  void audio.play().catch(() => {});
+}
+
+/**
+ * Lee `text` en voz alta en inglés con la voz neural de `/api/tts`,
+ * cancelando cualquier lectura en curso. Si la petición falla (red, ruta
+ * caída), recurre a la Web Speech API del navegador.
+ */
+export function speakEnglish(text: string) {
+  if (typeof window === 'undefined') return;
+
+  const cached = ttsCache.get(text);
+  if (cached) {
+    playCachedAudio(cached);
+    return;
+  }
+
+  fetch('/api/tts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text }),
+  })
+    .then((response) => (response.ok ? response.blob() : Promise.reject(new Error('tts request failed'))))
+    .then((blob) => {
+      const url = URL.createObjectURL(blob);
+      ttsCache.set(text, url);
+      playCachedAudio(url);
+    })
+    .catch(() => speakEnglishFallback(text));
 }

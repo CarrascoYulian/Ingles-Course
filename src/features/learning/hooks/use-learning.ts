@@ -210,6 +210,16 @@ export function useUnreadMessageCount(enabled = true) {
   });
 }
 
+/** Campana de notificaciones del alumno — mismo polling de 20s que `useUnreadMessageCount`. */
+export function useMyNotifications(enabled = true) {
+  return useQuery({
+    queryKey: ['my-notifications'],
+    queryFn: () => backend.learning.getMyNotifications(),
+    refetchInterval: 20_000,
+    enabled,
+  });
+}
+
 export function useMarkMessageRead() {
   const queryClient = useQueryClient();
 

@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 
 import { Logo } from '@/components/shared/logo';
 import { LogoutButton } from '@/components/shared/logout-button';
+import { StudentNotificationBell } from '@/components/student/notification-bell';
 import { Avatar } from '@/components/ui/avatar';
 import { STUDENT_NAV } from '@/constants/navigation';
 import { ROUTES } from '@/constants/routes';
@@ -67,6 +68,7 @@ export function StudentNavbar({ name, enrollmentCode, avatarColor, streakDays }:
             {streakDays} <span className="hidden sm:inline">días</span>
           </span>
         </p>
+        <StudentNotificationBell />
         <div className="flex items-center gap-[9px]">
           <Avatar name={name} color={avatarColor} size={32} />
           <span className="hidden flex-col leading-[1.2] sm:flex">

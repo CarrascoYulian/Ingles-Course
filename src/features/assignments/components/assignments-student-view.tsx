@@ -1,5 +1,6 @@
 'use client';
 
+import { useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
 import { AssignmentDetailDialog } from '@/components/student/assignment-detail-dialog';
@@ -21,6 +22,11 @@ import {
 } from '../hooks/use-assignments';
 
 export function AssignmentsStudentView() {
+  const searchParams = useSearchParams();
+  // Deep link desde la campana de notificaciones (`ROUTES.student.tareaDeCurso`).
+  const deepLinkCourseId = searchParams.get('courseId');
+  const deepLinkAssignmentId = searchParams.get('assignmentId');
+
   const { data: courses, isPending: isCoursesPending } = useMyCourses();
   const [selectedCourseId, setSelectedCourseId] = useState('');
 
@@ -28,14 +34,29 @@ export function AssignmentsStudentView() {
   useEffect(() => {
     if (!courses || syncedCourses.current) return;
     syncedCourses.current = true;
-    if (courses.length === 1) setSelectedCourseId(courses[0]!.id);
-  }, [courses]);
+    if (deepLinkCourseId && courses.some((c) => c.id === deepLinkCourseId)) {
+      setSelectedCourseId(deepLinkCourseId);
+    } else if (courses.length === 1) {
+      setSelectedCourseId(courses[0]!.id);
+    }
+  }, [courses, deepLinkCourseId]);
 
   const course = courses?.find((c) => c.id === selectedCourseId);
   const { data: modules } = useModules(selectedCourseId);
   const { data: assignments, isPending: isAssignmentsPending } = useMyAssignments(selectedCourseId);
 
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
+
+  const openedDeepLink = useRef(false);
+  useEffect(() => {
+    if (!deepLinkAssignmentId || openedDeepLink.current || !assignments) return;
+    const target = assignments.find((a) => a.id === deepLinkAssignmentId);
+    if (target) {
+      openedDeepLink.current = true;
+      openAssignment(target);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assignments, deepLinkAssignmentId]);
   const { data: submission } = useMySubmission(selectedAssignment?.id ?? '');
   const submitAssignment = useSubmitAssignment(selectedAssignment?.id ?? '');
   const deleteSubmission = useDeleteMySubmission(selectedAssignment?.id ?? '');
