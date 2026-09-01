@@ -14,7 +14,7 @@ import type { PracticeQuestion } from '@/types';
 
 export interface QuizCardProps {
   question: PracticeQuestion;
-  selectedOptionId: string | null;
+  selectedOptionIds: string[];
   result: AnswerResult | null;
   isPending: boolean;
   onSelect: (optionId: string) => void;
@@ -27,26 +27,27 @@ export interface QuizCardProps {
  */
 function resolveState(
   optionId: string,
-  selectedOptionId: string | null,
+  selectedOptionIds: string[],
   result: AnswerResult | null,
 ): OptionState {
   if (result) {
     if (result.correctOptionIds.includes(optionId)) return 'correct';
-    if (optionId === selectedOptionId) return 'incorrect';
+    if (selectedOptionIds.includes(optionId)) return 'incorrect';
     return 'idle';
   }
-  return optionId === selectedOptionId ? 'selected' : 'idle';
+  return selectedOptionIds.includes(optionId) ? 'selected' : 'idle';
 }
 
 /** Ejercicio de práctica: enunciado, opciones y barra de acción. */
 export function QuizCard({
   question,
-  selectedOptionId,
+  selectedOptionIds,
   result,
   isPending,
   onSelect,
   onSubmit,
 }: QuizCardProps) {
+  const multiSelect = question.answerCount > 1;
   const correctKey = question.options
     .filter((option) => result?.correctOptionIds.includes(option.id))
     .map((option) => option.key)
@@ -130,8 +131,14 @@ export function QuizCard({
         )}
       </div>
 
+      {multiSelect && !result && (
+        <p className="mt-2.5 text-label font-semibold text-fg-ghost">
+          Elige {question.answerCount} respuestas
+        </p>
+      )}
+
       <div
-        role="radiogroup"
+        role={multiSelect ? 'group' : 'radiogroup'}
         aria-label={question.prompt}
         className="mt-[18px] flex flex-col gap-[9px] md:mt-[22px] md:grid md:grid-cols-2 md:gap-3"
       >
@@ -139,7 +146,8 @@ export function QuizCard({
           <QuizOption
             key={option.id}
             option={option}
-            state={resolveState(option.id, selectedOptionId, result)}
+            role={multiSelect ? 'checkbox' : 'radio'}
+            state={resolveState(option.id, selectedOptionIds, result)}
             disabled={result !== null}
             onSelect={() => onSelect(option.id)}
           />
@@ -150,7 +158,7 @@ export function QuizCard({
         <div className="min-w-0 md:order-1">
           <QuizFeedback
             result={result}
-            hasSelection={selectedOptionId !== null}
+            hasSelection={selectedOptionIds.length > 0}
             correctKey={correctKey}
             xpReward={question.xpReward}
           />
@@ -158,7 +166,7 @@ export function QuizCard({
         <Button
           size="block"
           onClick={onSubmit}
-          disabled={!selectedOptionId || isPending}
+          disabled={selectedOptionIds.length === 0 || isPending}
           className="md:order-2 md:w-auto md:rounded-xl md:px-[22px] md:py-[11px] md:text-body-sm"
         >
           {result ? 'Continuar' : 'Comprobar'}

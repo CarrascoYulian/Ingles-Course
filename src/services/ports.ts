@@ -63,7 +63,10 @@ export interface PaginatedResult<T> {
 }
 
 export interface AnswerResult {
+  /** Marcó todas las opciones correctas y ninguna incorrecta. */
   correct: boolean;
+  /** Acertó alguna(s) pero no todas — cuenta la mitad (u otra fracción) de la XP. */
+  partial: boolean;
   xpGained: number;
   explanation: string;
   /** Se revela sólo tras contestar, para poder marcar la(s) opción(es) acertada(s). */
@@ -392,7 +395,7 @@ export interface PracticePort {
   getSession(): Promise<PracticeSession>;
   listLevels(): Promise<PracticeLevel[]>;
   getQuestion(step: number): Promise<PracticeQuestion>;
-  submitAnswer(questionId: string, optionId: string): Promise<AnswerResult>;
+  submitAnswer(questionId: string, optionIds: string[]): Promise<AnswerResult>;
   advance(): Promise<PracticeSession>;
 
   /** Gestión docente del banco de preguntas — ver `PERMISSIONS['practice:manage']`. */

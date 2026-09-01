@@ -10,6 +10,8 @@ export interface QuizOptionProps {
   state: OptionState;
   disabled: boolean;
   onSelect: () => void;
+  /** `radio` para preguntas de 1 respuesta, `checkbox` cuando se permite marcar varias. */
+  role?: 'radio' | 'checkbox';
 }
 
 const SHELL: Record<OptionState, string> = {
@@ -34,11 +36,11 @@ const KEY: Record<OptionState, string> = {
  * color — el estado también viaja en `aria-checked` y en el texto de
  * retroalimentación asociado.
  */
-export function QuizOption({ option, state, disabled, onSelect }: QuizOptionProps) {
+export function QuizOption({ option, state, disabled, onSelect, role = 'radio' }: QuizOptionProps) {
   return (
     <button
       type="button"
-      role="radio"
+      role={role}
       aria-checked={state !== 'idle'}
       disabled={disabled}
       onClick={onSelect}

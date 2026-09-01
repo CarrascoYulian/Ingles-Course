@@ -386,12 +386,18 @@ export interface PracticeQuestion {
   prompt: string;
   sourceText: string;
   audioKey: string | null;
+  /** Voz neural con la que `/api/tts` lee la frase (ver esa ruta). */
+  voice: 'female' | 'male';
   options: PracticeOption[];
+  /**
+   * Cuántas opciones debe marcar el alumno (1 o 2). Sí viaja en la versión
+   * pública porque no revela cuáles son correctas, sólo cuántas elegir.
+   */
+  answerCount: number;
   /**
    * Sólo presente en servidor y en modo demo. La API pública lo omite: si
    * viajara al navegador, la respuesta sería visible en las DevTools antes
-   * de contestar. La corrección la hace `submitAnswer`. Puede haber 1 o 2
-   * opciones correctas — cualquiera de ellas cuenta como acierto.
+   * de contestar. La corrección la hace `submitAnswer`.
    */
   correctOptionIds?: string[];
   explanationCorrect: string;
@@ -410,6 +416,8 @@ export interface PracticeQuestionInput {
   xpReward: number;
   prompt: string;
   sourceText: string;
+  /** Voz neural con la que `/api/tts` lee la frase. */
+  voice: 'female' | 'male';
   /** Exactamente 4 opciones. */
   options: PracticeOption[];
   /** 1 o 2 ids de `options` marcados como correctos. */

@@ -43,6 +43,7 @@ function toFormValues(question: PracticeQuestionAdmin | null): PracticeQuestionF
     xpReward: question.xpReward,
     prompt: question.prompt,
     sourceText: question.sourceText,
+    voice: question.voice,
     optionA: textByKey.get('A') ?? '',
     optionB: textByKey.get('B') ?? '',
     optionC: textByKey.get('C') ?? '',
@@ -61,6 +62,7 @@ function toInput(values: PracticeQuestionFormValues): PracticeQuestionInput {
     xpReward: values.xpReward,
     prompt: values.prompt,
     sourceText: values.sourceText,
+    voice: values.voice,
     options: OPTION_KEYS.map((key) => ({
       id: KEY_TO_ID[key],
       key,
@@ -175,6 +177,24 @@ export function PracticeQuestionDialog({
               />
             )}
           </Field>
+
+          <fieldset className="mt-[18px]">
+            <legend className="text-meta font-bold text-fg-subtle">Voz de reproducción</legend>
+            <Controller
+              control={form.control}
+              name="voice"
+              render={({ field }) => (
+                <div role="group" aria-label="Voz de reproducción" className="mt-2 flex gap-2">
+                  <Chip active={field.value === 'female'} onClick={() => field.onChange('female')}>
+                    Voz femenina
+                  </Chip>
+                  <Chip active={field.value === 'male'} onClick={() => field.onChange('male')}>
+                    Voz masculina
+                  </Chip>
+                </div>
+              )}
+            />
+          </fieldset>
 
           <fieldset className="mt-[18px]">
             <legend className="text-meta font-bold text-fg-subtle">Opciones de respuesta</legend>

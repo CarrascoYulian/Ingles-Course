@@ -764,14 +764,25 @@ export const demoBackend: Backend = {
     // Se entrega sin `correctOptionIds`, igual que haría la API real.
     getQuestion: () => latency({ ...DEMO_QUESTION, correctOptionIds: undefined }),
 
-    submitAnswer: (_questionId, optionId) => {
-      const correct = DEMO_QUESTION.correctOptionIds!.includes(optionId);
-      if (correct) store.session = { ...store.session, xp: store.session.xp + DEMO_QUESTION.xpReward };
+    submitAnswer: (_questionId, optionIds) => {
+      const correctIds = DEMO_QUESTION.correctOptionIds!;
+      const selectedIds = [...new Set(optionIds)];
+      const correctSelectedCount = selectedIds.filter((id) => correctIds.includes(id)).length;
+      const wrongSelectedCount = selectedIds.length - correctSelectedCount;
+      const correct = wrongSelectedCount === 0 && correctSelectedCount === correctIds.length;
+      const partial = !correct && correctSelectedCount > 0;
+      const xpGained = correct
+        ? DEMO_QUESTION.xpReward
+        : partial
+          ? Math.round((DEMO_QUESTION.xpReward * correctSelectedCount) / correctIds.length)
+          : 0;
+      if (xpGained > 0) store.session = { ...store.session, xp: store.session.xp + xpGained };
       return latency({
         correct,
-        xpGained: correct ? DEMO_QUESTION.xpReward : 0,
+        partial,
+        xpGained,
         explanation: correct ? DEMO_QUESTION.explanationCorrect : DEMO_QUESTION.explanationWrong,
-        correctOptionIds: DEMO_QUESTION.correctOptionIds!,
+        correctOptionIds: correctIds,
       });
     },
 
@@ -796,7 +807,9 @@ export const demoBackend: Backend = {
         prompt: input.prompt,
         sourceText: input.sourceText,
         audioKey: null,
+        voice: input.voice,
         options: input.options,
+        answerCount: input.correctOptionIds.length,
         correctOptionIds: input.correctOptionIds,
         explanationCorrect: input.explanationCorrect,
         explanationWrong: input.explanationWrong,
@@ -814,7 +827,9 @@ export const demoBackend: Backend = {
         xpReward: input.xpReward,
         prompt: input.prompt,
         sourceText: input.sourceText,
+        voice: input.voice,
         options: input.options,
+        answerCount: input.correctOptionIds.length,
         correctOptionIds: input.correctOptionIds,
         explanationCorrect: input.explanationCorrect,
         explanationWrong: input.explanationWrong,

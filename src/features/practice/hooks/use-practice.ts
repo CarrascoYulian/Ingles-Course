@@ -35,27 +35,28 @@ export function usePracticeQuestion(step: number) {
  * La corrección vive en el servidor (`submitAnswer`), no en el cliente: la
  * respuesta correcta nunca llega al navegador antes de contestar.
  */
-export function usePracticeRunner(questionId: string | undefined) {
+export function usePracticeRunner(questionId: string | undefined, answerCount: number = 1) {
   const queryClient = useQueryClient();
-  const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
+  const [selectedOptionIds, setSelectedOptionIds] = useState<string[]>([]);
   const [result, setResult] = useState<AnswerResult | null>(null);
 
   const check = useMutation({
     mutationFn: () => {
-      if (!questionId || !selectedOptionId) throw new Error('Sin selección');
-      return backend.practice.submitAnswer(questionId, selectedOptionId);
+      if (!questionId || selectedOptionIds.length === 0) throw new Error('Sin selección');
+      return backend.practice.submitAnswer(questionId, selectedOptionIds);
     },
     onSuccess: (answer) => {
       setResult(answer);
       queryClient.invalidateQueries({ queryKey: [...QUERY_KEYS.practice, 'session'] });
       if (answer.correct) toast(`+${answer.xpGained} XP · racha intacta`);
+      else if (answer.partial) toast(`+${answer.xpGained} XP · acierto parcial`);
     },
   });
 
   const advance = useMutation({
     mutationFn: () => backend.practice.advance(),
     onSuccess: () => {
-      setSelectedOptionId(null);
+      setSelectedOptionIds([]);
       setResult(null);
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.practice });
     },
@@ -64,22 +65,28 @@ export function usePracticeRunner(questionId: string | undefined) {
   const select = useCallback(
     (optionId: string) => {
       if (result) return; // Ya corregido: la selección queda congelada.
-      setSelectedOptionId(optionId);
+      setSelectedOptionIds((current) => {
+        if (current.includes(optionId)) return current.filter((id) => id !== optionId);
+        // Preguntas de 1 respuesta se comportan como radio: la nueva reemplaza a la anterior.
+        if (answerCount <= 1) return [optionId];
+        if (current.length >= answerCount) return current;
+        return [...current, optionId];
+      });
     },
-    [result],
+    [result, answerCount],
   );
 
   const submit = useCallback(() => {
-    if (!selectedOptionId) {
-      toast('Elige una opción primero');
+    if (selectedOptionIds.length === 0) {
+      toast(answerCount > 1 ? 'Elige tus opciones primero' : 'Elige una opción primero');
       return;
     }
     if (result) advance.mutate();
     else check.mutate();
-  }, [selectedOptionId, result, advance, check]);
+  }, [selectedOptionIds, result, advance, check, answerCount]);
 
   return {
-    selectedOptionId,
+    selectedOptionIds,
     result,
     select,
     submit,

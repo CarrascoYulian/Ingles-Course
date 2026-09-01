@@ -20,13 +20,17 @@ export const runtime = 'nodejs';
 process.env.WS_NO_BUFFER_UTIL = '1';
 
 /**
- * Voz neural de Microsoft Edge (Read Aloud), gratis y sin límite de
- * caracteres — reemplaza la Web Speech API del navegador (`speakEnglish`),
+ * Voces neurales de Microsoft Edge (Read Aloud), gratis y sin límite de
+ * caracteres — reemplazan la Web Speech API del navegador (`speakEnglish`),
  * que sonaba robótica y dependía de qué voces tuviera instaladas el SO de
- * cada alumno. `en-US-AvaNeural` es una de las voces más naturales del
- * catálogo, pensada para lectura conversacional.
+ * cada alumno. El profesor elige, por pregunta, cuál de las dos usar (ver
+ * `practice_questions.voice`); ambas están pensadas para lectura
+ * conversacional natural.
  */
-const VOICE = 'en-US-AvaNeural';
+const VOICES = {
+  female: 'en-US-AvaNeural',
+  male: 'en-US-AndrewNeural',
+} as const;
 
 /**
  * Lee en voz alta la frase de una pregunta del juego de práctica — texto
@@ -40,11 +44,12 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
   const text = typeof body?.text === 'string' ? body.text.trim() : '';
   if (!text || text.length > 500) return badRequest('Texto inválido');
+  const voice = body?.voice === 'male' ? VOICES.male : VOICES.female;
 
   try {
     const { MsEdgeTTS, OUTPUT_FORMAT } = await import('msedge-tts');
     const tts = new MsEdgeTTS();
-    await tts.setMetadata(VOICE, OUTPUT_FORMAT.AUDIO_24KHZ_96KBITRATE_MONO_MP3);
+    await tts.setMetadata(voice, OUTPUT_FORMAT.AUDIO_24KHZ_96KBITRATE_MONO_MP3);
     const { audioStream } = tts.toStream(text);
 
     const chunks: Buffer[] = [];

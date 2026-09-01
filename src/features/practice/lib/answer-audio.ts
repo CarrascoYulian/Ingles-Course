@@ -66,6 +66,78 @@ export function playIncorrectBuzz() {
   playTone(ctx, 146.83, now, 0.22, 'square'); // D3
 }
 
+// Todo sintetizado (sin archivo de audio de por medio): un acorde sostenido
+// muy grave con cada nota "respirando" en volumen vía su propio LFO. `nodes`
+// guarda TODO lo que hay que apagar al parar (osciladores de nota + de LFO).
+let ambientMasterGain: GainNode | null = null;
+let ambientNodes: OscillatorNode[] = [];
+
+/**
+ * Arranca la musiquita ambiental de fondo del juego (looping, muy bajo
+ * volumen). Como `startAmbientMusic()`/`primeAudio()`, sólo suena si se llama
+ * dentro de un gesto del usuario — por eso se dispara en el primer click del
+ * alumno (seleccionar una opción o tocar el ícono de sonido), no al montar.
+ */
+export function startAmbientMusic() {
+  const ctx = getAudioContext();
+  if (!ctx || ambientMasterGain) return;
+
+  const master = ctx.createGain();
+  master.gain.setValueAtTime(0, ctx.currentTime);
+  master.gain.linearRampToValueAtTime(0.03, ctx.currentTime + 2.5);
+  master.connect(ctx.destination);
+  ambientMasterGain = master;
+
+  const notes = [130.81, 164.81, 196.0, 261.63]; // C3, E3, G3, C4
+  notes.forEach((frequency, i) => {
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.value = frequency;
+
+    const noteGain = ctx.createGain();
+    noteGain.gain.value = 1 / notes.length;
+
+    const lfo = ctx.createOscillator();
+    lfo.frequency.value = 0.04 + i * 0.015;
+    const lfoGain = ctx.createGain();
+    lfoGain.gain.value = 0.2;
+    lfo.connect(lfoGain);
+    lfoGain.connect(noteGain.gain);
+
+    osc.connect(noteGain);
+    noteGain.connect(master);
+    osc.start();
+    lfo.start();
+
+    ambientNodes.push(osc, lfo);
+  });
+}
+
+/** Apaga la musiquita ambiental con un fade corto para que no corte en seco. */
+export function stopAmbientMusic() {
+  if (!ambientMasterGain) return;
+  const ctx = audioContext;
+  const master = ambientMasterGain;
+  const nodes = ambientNodes;
+  ambientMasterGain = null;
+  ambientNodes = [];
+
+  if (ctx) {
+    master.gain.cancelScheduledValues(ctx.currentTime);
+    master.gain.setValueAtTime(master.gain.value, ctx.currentTime);
+    master.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.6);
+  }
+  window.setTimeout(() => {
+    nodes.forEach((node) => {
+      try {
+        node.stop();
+      } catch {
+        // Ya pudo haberse detenido; no pasa nada.
+      }
+    });
+  }, 700);
+}
+
 /**
  * Prioriza voces en inglés, prefiriendo en-US. Función pura (no llama a
  * `speechSynthesis.getVoices()` ella misma) para poder testearla sin DOM.
@@ -106,14 +178,16 @@ function playCachedAudio(url: string) {
 }
 
 /**
- * Lee `text` en voz alta en inglés con la voz neural de `/api/tts`,
+ * Lee `text` en voz alta en inglés con la voz neural de `/api/tts`
+ * (femenina o masculina, elegida por el profesor en la pregunta),
  * cancelando cualquier lectura en curso. Si la petición falla (red, ruta
  * caída), recurre a la Web Speech API del navegador.
  */
-export function speakEnglish(text: string) {
+export function speakEnglish(text: string, voice: 'female' | 'male' = 'female') {
   if (typeof window === 'undefined') return;
 
-  const cached = ttsCache.get(text);
+  const cacheKey = `${voice}:${text}`;
+  const cached = ttsCache.get(cacheKey);
   if (cached) {
     playCachedAudio(cached);
     return;
@@ -122,12 +196,12 @@ export function speakEnglish(text: string) {
   fetch('/api/tts', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text }),
+    body: JSON.stringify({ text, voice }),
   })
     .then((response) => (response.ok ? response.blob() : Promise.reject(new Error('tts request failed'))))
     .then((blob) => {
       const url = URL.createObjectURL(blob);
-      ttsCache.set(text, url);
+      ttsCache.set(cacheKey, url);
       playCachedAudio(url);
     })
     .catch(() => speakEnglishFallback(text));

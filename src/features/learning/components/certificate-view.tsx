@@ -1,13 +1,13 @@
 'use client';
 
-import { ArrowLeft, Award, Printer } from 'lucide-react';
+import { Dancing_Script } from 'next/font/google';
+import { ArrowLeft, Printer } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 
-import { LogoMark } from '@/components/shared/logo';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
-import { APP_NAME } from '@/constants';
 import { ROUTES } from '@/constants/routes';
 import { cn } from '@/lib/utils';
 import { CourseRatingWidget } from './course-rating-widget';
@@ -18,8 +18,81 @@ export interface CertificateViewProps {
   studentName: string;
 }
 
+/**
+ * Fuente cursiva sólo para el nombre del alumno en el certificado — el resto
+ * de la plataforma se queda en Plus Jakarta Sans (ver layout.tsx). Autoalojada
+ * por next/font igual que la fuente principal: sin petición a Google en runtime.
+ */
+const dancingScript = Dancing_Script({
+  subsets: ['latin', 'latin-ext'],
+  weight: ['700'],
+  display: 'swap',
+});
+
+/**
+ * El certificado no tiene hoy un campo de "profesor del curso" en el modelo
+ * de datos — es una decisión de producto pendiente (ver conversación de
+ * diseño), no un bug. Mientras no exista ese campo, el nombre queda fijo.
+ */
+const CERTIFICATE_SIGNATORY = { name: 'Robertho Lajoe', role: 'Profesor' };
+
 function formatIssueDate(): string {
   return new Date().toLocaleDateString('es-DO', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function CertificateFlagBadge({ className }: { className?: string }) {
+  return (
+    <svg aria-hidden viewBox="0 0 120 76" className={className}>
+      <rect width="120" height="76" fill="#b22234" />
+      <g fill="#fff">
+        <rect y="5.8" width="120" height="5.8" />
+        <rect y="17.5" width="120" height="5.8" />
+        <rect y="29.2" width="120" height="5.8" />
+        <rect y="40.8" width="120" height="5.8" />
+        <rect y="52.5" width="120" height="5.8" />
+        <rect y="64.2" width="120" height="5.8" />
+      </g>
+      <rect width="52" height="41" fill="#16204a" />
+      <g fill="#fff">
+        {[7, 14, 21, 28, 35].map((cy, row) =>
+          (row % 2 === 0 ? [8, 19, 30, 41] : [13, 24, 35, 46]).map((cx) => (
+            <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r="1.8" />
+          )),
+        )}
+      </g>
+    </svg>
+  );
+}
+
+function CertificateMedal({ className }: { className?: string }) {
+  return (
+    <svg aria-hidden viewBox="0 0 130 190" className={className}>
+      <defs>
+        <radialGradient id="certificateMedalGold" cx="35%" cy="30%" r="75%">
+          <stop offset="0%" stopColor="#fbe089" />
+          <stop offset="55%" stopColor="#e8b23d" />
+          <stop offset="100%" stopColor="#a9700f" />
+        </radialGradient>
+      </defs>
+      <path d="M40 70 L18 178 L65 148 L112 178 L90 70 Z" fill="#b22234" />
+      <path d="M48 74 L30 168 L65 146 Z" fill="#8f1a29" />
+      <path d="M82 74 L100 168 L65 146 Z" fill="#8f1a29" />
+      <circle cx="65" cy="60" r="58" fill="#b22234" />
+      <circle cx="65" cy="60" r="58" fill="none" stroke="#8f1a29" strokeWidth="2" />
+      <circle cx="65" cy="60" r="46" fill="url(#certificateMedalGold)" stroke="#fff" strokeWidth="3" />
+      <g stroke="#a9700f" strokeWidth="1" opacity="0.55">
+        <line x1="65" y1="14" x2="65" y2="106" />
+        <line x1="19" y1="60" x2="111" y2="60" />
+        <line x1="33" y1="28" x2="97" y2="92" />
+        <line x1="97" y1="28" x2="33" y2="92" />
+      </g>
+      <circle cx="65" cy="60" r="34" fill="none" stroke="#fff" strokeWidth="1.4" strokeDasharray="2.4 4" opacity="0.85" />
+      <path
+        d="M65 38 L71 54 L88 56 L75 67 L79 84 L65 75 L51 84 L55 67 L42 56 L59 54 Z"
+        fill="#fff"
+      />
+    </svg>
+  );
 }
 
 /**
@@ -77,7 +150,7 @@ export function CertificateView({ courseId, studentName }: CertificateViewProps)
   }
 
   return (
-    <div className="mx-auto max-w-[860px] px-5 py-8 lg:px-[30px] lg:py-12 print:max-w-none print:p-0">
+    <div className="mx-auto max-w-[980px] px-5 py-8 lg:px-[30px] lg:py-12 print:max-w-none print:p-0">
       <div className="mb-4 flex items-center justify-between print:hidden">
         <Link
           href={ROUTES.student.curso}
@@ -94,41 +167,69 @@ export function CertificateView({ courseId, studentName }: CertificateViewProps)
 
       <div
         className={cn(
-          'relative overflow-hidden rounded-3xl border-[3px] border-double border-line-strong p-10 shadow-card sm:p-14',
-          'print:h-[100vh] print:w-full print:rounded-none print:border-2 print:border-solid print:border-fg print:p-16 print:shadow-none',
-          'bg-[radial-gradient(circle_at_15%_0%,color-mix(in_oklch,var(--color-brand)_10%,transparent)_0%,transparent_55%),radial-gradient(circle_at_100%_100%,color-mix(in_oklch,var(--color-warning)_12%,transparent)_0%,transparent_55%)] bg-surface',
+          'relative overflow-hidden rounded-[18px] bg-[#16204a] p-4 shadow-[0_30px_70px_rgb(10_15_30_/_0.35),0_2px_6px_rgb(10_15_30_/_0.15)] sm:p-[34px]',
+          'print:h-[100vh] print:w-full print:rounded-none print:shadow-none',
         )}
       >
-        {/* Marca decorativa: sólo aporta "vida" visual, no información — oculta a lectores de pantalla. */}
-        <Award
+        <Image
+          src="/branding/certificate-books-icon.png"
+          alt=""
           aria-hidden
-          strokeWidth={1}
-          className="pointer-events-none absolute -right-10 -top-10 size-64 text-brand opacity-[0.06] print:opacity-[0.08]"
+          width={300}
+          height={247}
+          className="pointer-events-none absolute left-1 top-1 z-[3] h-[84px] w-[102px] object-contain drop-shadow-[0_4px_8px_rgba(10,15,30,0.3)] sm:left-2 sm:top-2 sm:h-[148px] sm:w-[180px]"
+        />
+        <Image
+          src="/branding/certificate-globe-icon.png"
+          alt=""
+          aria-hidden
+          width={300}
+          height={300}
+          className="pointer-events-none absolute bottom-1 right-1 z-[3] size-[84px] object-contain drop-shadow-[0_4px_8px_rgba(10,15,30,0.3)] sm:bottom-2 sm:right-2 sm:size-[148px]"
         />
 
-        <div className="relative flex flex-col items-center text-center">
-          <LogoMark size={32} />
-          <p className="mt-5 text-label font-bold uppercase tracking-eyebrow text-fg-faint">
-            Certificado de finalización
-          </p>
+        <div className="relative rounded-[4px] border-2 border-[#b22234] bg-white px-5 py-12 text-center sm:px-[60px] sm:py-14">
+          <CertificateFlagBadge className="absolute -top-3.5 left-1/2 z-[4] h-[46px] w-[72px] -translate-x-1/2 drop-shadow-[0_4px_8px_rgba(0,0,0,0.25)] sm:-top-[18px] sm:h-[58px] sm:w-[92px]" />
+          <CertificateMedal className="absolute -top-3 right-3 z-[4] w-[84px] drop-shadow-[0_8px_14px_rgba(0,0,0,0.3)] sm:-top-4 sm:right-7 sm:w-[130px]" />
 
-          <p className="mt-9 text-title-xs font-semibold text-fg-soft">Se certifica que</p>
-          <h1 className="mt-2.5 text-display font-extrabold tracking-display text-fg text-balance sm:text-display-lg">
-            {studentName || 'Estudiante'}
-          </h1>
-          <p className="mt-5 text-title-xs font-semibold text-fg-soft">completó satisfactoriamente el curso</p>
-          <h2 className="mt-2 text-title-lg font-bold text-brand text-balance sm:text-heading-sm">{course.name}</h2>
+          <div className="relative z-[2]">
+            <span className="inline-block text-[11.5px] font-extrabold uppercase tracking-badge text-[#16204a] opacity-75">
+              Bertho Community English
+            </span>
 
-          <p className="mt-6 max-w-md text-balance text-body-sm font-semibold leading-normal text-fg-soft">
-            Un logro que se construye clase a clase — felicitaciones por el esfuerzo y la constancia hasta cruzar
-            la meta.
-          </p>
+            <h1 className="mt-4 text-[clamp(34px,7vw,70px)] font-extrabold tracking-tight text-[#16204a]">
+              CERTIFICADO
+            </h1>
 
-          <p className="mt-6 text-tiny font-bold text-fg-ghost">Nivel {course.level}</p>
+            <p className="mx-auto mt-1.5 max-w-[620px] text-body-sm font-semibold leading-normal text-fg-body sm:text-title-xs">
+              Completó satisfactoriamente el curso{' '}
+              <strong className="font-extrabold">{course.name}</strong>
+            </p>
 
-          <div className="mt-10 flex w-full items-center justify-between border-t border-line pt-5">
-            <p className="text-tiny font-semibold text-fg-faint">Emitido el {formatIssueDate()}</p>
-            <p className="text-tiny font-bold text-fg-dim">{APP_NAME}</p>
+            <h2
+              className={cn(
+                dancingScript.className,
+                'mt-2 text-[clamp(36px,7vw,68px)] font-bold leading-none text-[#16204a]',
+              )}
+            >
+              {studentName || 'Estudiante'}
+            </h2>
+
+            <div className="mt-6 inline-block">
+              <div className="text-title-xs font-extrabold text-fg">{CERTIFICATE_SIGNATORY.name}</div>
+              <div className="mt-1.5 h-[1.5px] bg-[#16204a] opacity-55" />
+              <div className="mt-1.5 text-body-sm font-semibold text-fg-faint">{CERTIFICATE_SIGNATORY.role}</div>
+            </div>
+
+            <p className="mt-4 text-body-sm font-bold text-fg-body">Emitido el {formatIssueDate()}</p>
+
+            <Image
+              src="/branding/bertho-community-logo.png"
+              alt="Bertho Community English"
+              width={300}
+              height={300}
+              className="mx-auto mt-3.5 h-[84px] w-auto"
+            />
           </div>
         </div>
       </div>

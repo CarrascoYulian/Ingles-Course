@@ -338,6 +338,7 @@ export const DEMO_QUESTION: PracticeQuestion = {
   prompt: 'Elige la traducción correcta',
   sourceText: '“Ayer fui al mercado con mi hermana.”',
   audioKey: 'practica/nivel-3/ayer-fui-al-mercado.mp3',
+  voice: 'female',
   options: [
     { id: 'o0', key: 'A', text: 'Yesterday I went to the market with my sister.' },
     { id: 'o1', key: 'B', text: 'Yesterday I go to the market with my sister.' },
@@ -354,6 +355,7 @@ export const DEMO_QUESTION: PracticeQuestion = {
       shortText: 'Yesterday I was going to the market…',
     },
   ],
+  answerCount: 1,
   correctOptionIds: ['o0'],
   explanationCorrect: '“Yesterday” marca un momento cerrado, por eso va en Past Simple.',
   explanationWrong:

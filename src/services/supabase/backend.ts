@@ -1632,11 +1632,11 @@ export const supabaseBackend: Backend = {
       if (!response.ok) throw new Error('No se pudo cargar el ejercicio');
       return response.json();
     },
-    async submitAnswer(questionId, optionId) {
+    async submitAnswer(questionId, optionIds) {
       const response = await fetch('/api/practice/answer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ questionId, optionId }),
+        body: JSON.stringify({ questionId, optionIds }),
       });
       if (!response.ok) throw new Error('No se pudo comprobar la respuesta');
       return response.json();

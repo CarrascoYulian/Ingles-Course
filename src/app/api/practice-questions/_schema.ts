@@ -13,6 +13,7 @@ export const practiceQuestionInputSchema = z
     xpReward: z.number().int().min(1, 'La XP debe ser mayor a 0').max(200),
     prompt: z.string().trim().min(1, 'El enunciado es obligatorio').max(200),
     sourceText: z.string().trim().min(1, 'La frase a traducir es obligatoria').max(300),
+    voice: z.enum(['female', 'male']).default('female'),
     options: z.array(optionSchema).length(4, 'Se necesitan exactamente 4 opciones'),
     correctOptionIds: z
       .array(z.string().min(1))

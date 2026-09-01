@@ -41,7 +41,7 @@ export function QuizFeedback({ result, hasSelection, correctKey, xpReward }: Qui
   return (
     <AnimatePresence mode="wait">
       <motion.div
-        key={result.correct ? 'ok' : 'ko'}
+        key={result.correct ? 'ok' : result.partial ? 'partial' : 'ko'}
         role="status"
         initial={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.96 }}
         animate={reduceMotion ? { opacity: 1 } : { opacity: 1, scale: 1 }}
@@ -52,7 +52,7 @@ export function QuizFeedback({ result, hasSelection, correctKey, xpReward }: Qui
           aria-hidden
           className={cn(
             'grid size-6 shrink-0 place-items-center rounded-full text-label font-extrabold text-white',
-            result.correct ? 'bg-success' : 'bg-danger',
+            result.correct ? 'bg-success' : result.partial ? 'bg-warning' : 'bg-danger',
           )}
         >
           {result.correct ? <Check size={13} strokeWidth={3} /> : '!'}
@@ -62,12 +62,18 @@ export function QuizFeedback({ result, hasSelection, correctKey, xpReward }: Qui
           <p
             className={cn(
               'text-body font-extrabold',
-              result.correct ? 'text-success-strong' : 'text-danger-strong',
+              result.correct
+                ? 'text-success-strong'
+                : result.partial
+                  ? 'text-warning-strong'
+                  : 'text-danger-strong',
             )}
           >
             {result.correct
               ? `¡Correcto! +${xpReward} XP`
-              : `Casi. La respuesta correcta es la ${correctKey}`}
+              : result.partial
+                ? `Casi. Sólo acertaste una parte. +${result.xpGained} XP`
+                : `Casi. La respuesta correcta es la ${correctKey}`}
           </p>
           <p className="mt-0.5 text-label font-medium leading-[1.45] text-fg-soft">
             {result.explanation}

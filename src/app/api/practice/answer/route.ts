@@ -13,7 +13,7 @@ export const runtime = 'nodejs';
 
 const requestSchema = z.object({
   questionId: z.string().min(1),
-  optionId: z.string().min(1),
+  optionIds: z.array(z.string().min(1)).min(1).max(4),
 });
 
 /**
@@ -58,14 +58,30 @@ export async function POST(request: Request) {
     );
   }
 
-  const correct = question.correctOptionIds.includes(parsed.data.optionId);
-  const xpGained = correct ? question.xpReward : 0;
+  // Preguntas con 2 respuestas correctas: hay que marcar las dos para
+  // llevarse el acierto completo. Si el alumno acierta sólo una, se le
+  // acredita la fracción correspondiente de la XP (p. ej. la mitad de 2).
+  const selectedIds = [...new Set(parsed.data.optionIds)];
+  const correctSelectedCount = selectedIds.filter((id) =>
+    question.correctOptionIds!.includes(id),
+  ).length;
+  const wrongSelectedCount = selectedIds.length - correctSelectedCount;
+  const correct = wrongSelectedCount === 0 && correctSelectedCount === question.correctOptionIds!.length;
+  const partial = !correct && correctSelectedCount > 0;
+  const xpGained = correct
+    ? question.xpReward
+    : partial
+      ? Math.round((question.xpReward * correctSelectedCount) / question.correctOptionIds!.length)
+      : 0;
 
   if (supabase) {
     // Antes los corazones eran un valor decorativo fijo que la API siempre
     // devolvía igual — ahora una respuesta incorrecta resta uno de verdad
-    // (nunca por debajo de 0); una correcta no los toca.
-    const heartsRemaining = computeHeartsRemaining(correct, current?.hearts_remaining ?? HEARTS_TOTAL);
+    // (nunca por debajo de 0); una correcta o parcial no los toca.
+    const heartsRemaining = computeHeartsRemaining(
+      correct || partial,
+      current?.hearts_remaining ?? HEARTS_TOTAL,
+    );
 
     // Antes `streak_days` nunca se recalculaba en ningún endpoint, sólo se
     // leía — la racha mostrada era la misma desde que se creó la fila.
@@ -90,6 +106,7 @@ export async function POST(request: Request) {
 
   const answer: AnswerResult = {
     correct,
+    partial,
     xpGained,
     explanation: correct ? question.explanationCorrect : question.explanationWrong,
     correctOptionIds: question.correctOptionIds,

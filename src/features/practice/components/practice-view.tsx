@@ -8,7 +8,14 @@ import { MissionCards } from '@/components/duolingo/mission-cards';
 import { QuizCard } from '@/components/duolingo/quiz-card';
 import { Progress } from '@/components/ui/progress';
 import { LoadingRegion, Skeleton } from '@/components/ui/skeleton';
-import { playCorrectChime, playIncorrectBuzz, primeAudio, speakEnglish } from '../lib/answer-audio';
+import {
+  playCorrectChime,
+  playIncorrectBuzz,
+  primeAudio,
+  speakEnglish,
+  startAmbientMusic,
+  stopAmbientMusic,
+} from '../lib/answer-audio';
 import { PracticeHeader } from './practice-header';
 import {
   usePracticeLevels,
@@ -22,7 +29,7 @@ export function PracticeView() {
   const session = usePracticeSession();
   const levels = usePracticeLevels();
   const question = usePracticeQuestion(session.data?.step ?? 1);
-  const runner = usePracticeRunner(question.data?.id);
+  const runner = usePracticeRunner(question.data?.id, question.data?.answerCount ?? 1);
   const sound = useSoundPreference();
 
   // El ding/buzz suena al resolver el chequeo (llega por la mutation async),
@@ -46,7 +53,7 @@ export function PracticeView() {
       runner.result?.correctOptionIds.includes(option.id),
     )?.text;
     if (correctText) {
-      const timeout = window.setTimeout(() => speakEnglish(correctText), 350);
+      const timeout = window.setTimeout(() => speakEnglish(correctText, question.data?.voice), 350);
       return () => window.clearTimeout(timeout);
     }
   }, [runner.result, sound.enabled, question.data]);
@@ -54,14 +61,25 @@ export function PracticeView() {
   const handleSelect = (optionId: string) => {
     runner.select(optionId);
     if (!sound.enabled || runner.result) return;
+    startAmbientMusic();
     const optionText = question.data?.options.find((option) => option.id === optionId)?.text;
-    if (optionText) speakEnglish(optionText);
+    if (optionText) speakEnglish(optionText, question.data?.voice);
   };
 
   const handleSubmit = () => {
-    if (sound.enabled && !runner.result) primeAudio();
+    if (sound.enabled && !runner.result) {
+      primeAudio();
+      startAmbientMusic();
+    }
     runner.submit();
   };
+
+  // La música ambiental sólo puede arrancar dentro de un gesto (ver arriba);
+  // acá sólo la apagamos: al desactivar el sonido o al salir de la práctica.
+  useEffect(() => {
+    if (!sound.enabled) stopAmbientMusic();
+    return () => stopAmbientMusic();
+  }, [sound.enabled]);
 
   if (!session.data) {
     return (
@@ -81,7 +99,10 @@ export function PracticeView() {
         session={session.data}
         levelTitle={currentLevel?.title ?? 'Nivel 1'}
         soundEnabled={sound.enabled}
-        onToggleSound={sound.toggle}
+        onToggleSound={() => {
+          if (!sound.enabled) startAmbientMusic();
+          sound.toggle();
+        }}
       />
 
       <div className="flex flex-1 gap-[22px] p-[18px] md:px-[30px] md:py-[26px]">
@@ -108,7 +129,7 @@ export function PracticeView() {
           {question.data ? (
             <QuizCard
               question={question.data}
-              selectedOptionId={runner.selectedOptionId}
+              selectedOptionIds={runner.selectedOptionIds}
               result={runner.result}
               isPending={runner.isPending}
               onSelect={handleSelect}

@@ -885,6 +885,7 @@ export type Database = {
           position: number
           prompt: string
           source_text: string
+          voice: string
           xp_reward: number
         }
         Insert: {
@@ -897,6 +898,7 @@ export type Database = {
           position: number
           prompt: string
           source_text: string
+          voice?: string
           xp_reward: number
         }
         Update: {
@@ -909,6 +911,7 @@ export type Database = {
           position?: number
           prompt?: string
           source_text?: string
+          voice?: string
           xp_reward?: number
         }
         Relationships: []
