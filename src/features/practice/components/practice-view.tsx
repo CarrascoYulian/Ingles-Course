@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
+import { BerthoLevelUpCelebration } from '@/components/duolingo/bertho-mascot';
 import { Hearts } from '@/components/duolingo/stat-pills';
 import { LevelPath } from '@/components/duolingo/level-path';
 import { MissionCards } from '@/components/duolingo/mission-cards';
@@ -31,6 +32,7 @@ export function PracticeView() {
   const question = usePracticeQuestion(session.data?.step ?? 1);
   const runner = usePracticeRunner(question.data?.id, question.data?.answerCount ?? 1);
   const sound = useSoundPreference();
+  const [showLevelUp, setShowLevelUp] = useState(false);
 
   // El ding/buzz suena al resolver el chequeo (llega por la mutation async),
   // pero el `AudioContext` sólo se puede desbloquear de forma síncrona
@@ -40,6 +42,12 @@ export function PracticeView() {
   useEffect(() => {
     if (!runner.result || runner.result === lastAnnouncedResultRef.current) return;
     lastAnnouncedResultRef.current = runner.result;
+
+    // Si acierta la última pregunta de la sesión, activa la celebración de nivel
+    if (runner.result.correct && session.data && session.data.step >= session.data.totalSteps) {
+      setShowLevelUp(true);
+    }
+
     if (!sound.enabled) return;
 
     if (runner.result.correct) {
@@ -148,6 +156,12 @@ export function PracticeView() {
           </div>
         </div>
       </div>
+
+      <BerthoLevelUpCelebration
+        open={showLevelUp}
+        onClose={() => setShowLevelUp(false)}
+        levelTitle={currentLevel?.title ?? '¡Nivel Completado!'}
+      />
     </div>
   );
 }
