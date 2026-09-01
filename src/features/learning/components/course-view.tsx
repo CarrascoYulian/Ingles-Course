@@ -1,12 +1,12 @@
 'use client';
 
-import { ArrowLeft, Lock, MessagesSquare } from 'lucide-react';
+import { ArrowLeft, FolderTree, Layers, Lock, MessagesSquare } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
-import { Chip, ChipRow } from '@/components/ui/chip';
+import { CourseUnitsModal } from '@/components/student/course-units-modal';
 import { CoursePickerCard } from '@/components/student/course-picker-card';
 import { LessonFileView } from '@/components/student/lesson-file-view';
 import { LessonList } from '@/components/student/lesson-list';
@@ -108,6 +108,7 @@ export function CourseView({
   const [seekRequest, setSeekRequest] = useState<{ seconds: number; nonce: number } | null>(null);
   const [moduleCompleteOpen, setModuleCompleteOpen] = useState(false);
   const [quizTakeOpen, setQuizTakeOpen] = useState(false);
+  const [unitsModalOpen, setUnitsModalOpen] = useState(false);
 
   const { data: moduleQuiz } = useModuleQuiz(effectiveModule?.id ?? '');
   const { data: moduleQuizAttempts } = useMyQuizAttempts(moduleQuiz?.id ?? '');
@@ -257,15 +258,26 @@ export function CourseView({
   }
 
   const courseSwitcher = (
-    <div className="px-5 pt-3 lg:px-8">
+    <div className="flex flex-wrap items-center justify-between gap-2.5 px-5 pt-3 lg:px-8">
       <button
         type="button"
         onClick={() => setSelectedCourseId('')}
-        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-caption font-extrabold text-slate-700 shadow-sm transition-all hover:border-brand/40 hover:text-brand"
+        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-caption font-extrabold text-slate-700 shadow-sm transition-all hover:border-brand/40 hover:text-brand"
       >
         <ArrowLeft aria-hidden className="size-3.5" />
         <span>Volver a Mis cursos</span>
       </button>
+
+      {allModules && allModules.length > 0 && (
+        <button
+          type="button"
+          onClick={() => setUnitsModalOpen(true)}
+          className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 px-3.5 py-1.5 text-caption font-extrabold text-brand shadow-sm hover:from-brand hover:to-indigo-600 hover:text-white transition-all"
+        >
+          <FolderTree aria-hidden size={15} />
+          <span>Plan de estudios ({allModules.length} {allModules.length === 1 ? 'unidad' : 'unidades'})</span>
+        </button>
+      )}
     </div>
   );
 
@@ -529,20 +541,59 @@ export function CourseView({
 
       {allModules && allModules.length > 1 && (
         <Card padding="md" radius="xl" className="border border-slate-200 bg-white shadow-sm">
-          <p className="mb-2.5 text-caption font-extrabold uppercase tracking-wider text-slate-400">
-            Unidades del curso
-          </p>
-          <ChipRow label="Elegir unidad" className="flex-wrap gap-1.5">
-            {allModules.map((m) => (
-              <Chip
-                key={m.id}
-                active={m.id === effectiveModule.id}
-                onClick={() => setManualModuleId(m.id)}
-              >
-                {m.title}
-              </Chip>
-            ))}
-          </ChipRow>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <span className="grid size-7 place-items-center rounded-lg bg-blue-50 text-brand">
+                <Layers aria-hidden size={14} />
+              </span>
+              <p className="text-caption font-extrabold uppercase tracking-wider text-slate-700">
+                Unidades del curso
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setUnitsModalOpen(true)}
+              className="text-[11px] font-extrabold text-brand hover:underline"
+            >
+              Ver temario →
+            </button>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            {allModules.map((m, idx) => {
+              const isSelected = m.id === effectiveModule.id;
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => setManualModuleId(m.id)}
+                  className={cn(
+                    'group flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-left transition-all',
+                    isSelected
+                      ? 'border border-blue-200 bg-blue-50/90 text-brand shadow-sm font-black'
+                      : 'border border-slate-100 hover:bg-slate-50 text-slate-700 font-bold',
+                  )}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span
+                      className={cn(
+                        'grid size-5 shrink-0 place-items-center rounded-md text-[10px] font-black',
+                        isSelected ? 'bg-brand text-white' : 'bg-slate-100 text-slate-500',
+                      )}
+                    >
+                      {idx + 1}
+                    </span>
+                    <span className="truncate text-caption">{m.title}</span>
+                  </div>
+                  {isSelected && (
+                    <span className="shrink-0 rounded-full bg-blue-100 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-brand">
+                      Activa
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </Card>
       )}
 
@@ -631,11 +682,7 @@ export function CourseView({
         moduleTitle={moduleLabel}
         isLastModule={isLastModule}
         onViewCertificate={
-          // Antes esto sólo miraba `isLastModule` — un módulo final con
-          // evaluación pendiente/reprobada mostraba igual "Ver certificado",
-          // que abría y al toque se cerraba solo diciendo "no completaste el
-          // curso" (mismo gate que sí respeta "Continuar" más abajo).
-          isLastModule && (!moduleQuiz || hasPassedModuleQuiz)
+          isLastModule && (!moduleQuiz || hasPassedModuleQuiz) && (progress ? progress.percent >= 100 : course.progress >= 100)
             ? () => {
                 setModuleCompleteOpen(false);
                 router.push(ROUTES.student.certificado(course.id));
@@ -662,6 +709,21 @@ export function CourseView({
           moduleId={effectiveModule.id}
           moduleTitle={moduleLabel}
           onContinue={continueAfterModule}
+        />
+      )}
+
+      {allModules && allModules.length > 0 && (
+        <CourseUnitsModal
+          open={unitsModalOpen}
+          onOpenChange={setUnitsModalOpen}
+          courseTitle={course.name}
+          courseLevel={course.level}
+          modules={allModules}
+          activeModuleId={effectiveModule.id}
+          onSelectLesson={(mod, les) => {
+            setManualModuleId(mod.id);
+            router.push(ROUTES.student.leccion(course.level.toLowerCase(), mod.id, les.order));
+          }}
         />
       )}
     </div>

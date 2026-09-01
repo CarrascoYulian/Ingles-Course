@@ -4,7 +4,7 @@ import { formatInteger } from '@/lib/format';
 export interface StatPillsProps {
   streak: number;
   xp: number;
-  coins: number;
+  coins?: number;
   /** En móvil las píldoras se reparten el ancho; en escritorio se ajustan. */
   stretch?: boolean;
   className?: string;
@@ -19,8 +19,8 @@ interface Pill {
   label: string;
 }
 
-/** Racha, XP y monedas. Réplica exacta de las tres píldoras del diseño. */
-export function StatPills({ streak, xp, coins, stretch = false, className }: StatPillsProps) {
+/** Racha y XP. Indicadores gamificados principales de práctica. */
+export function StatPills({ streak, xp, stretch = false, className }: StatPillsProps) {
   const pills: Pill[] = [
     {
       dot: 'bg-warning',
@@ -37,14 +37,6 @@ export function StatPills({ streak, xp, coins, stretch = false, className }: Sta
       full: `${formatInteger(xp)} XP`,
       short: `${formatInteger(xp)} XP`,
       label: `${xp} puntos de experiencia`,
-    },
-    {
-      dot: 'bg-fg-dim',
-      bg: 'bg-surface-sunken',
-      fg: 'text-fg-muted',
-      full: `${formatInteger(coins)} monedas`,
-      short: formatInteger(coins),
-      label: `${coins} monedas`,
     },
   ];
 

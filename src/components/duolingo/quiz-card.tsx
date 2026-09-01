@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { BerthoMascot, type MascotMood } from './bertho-mascot';
 import { QuizFeedback } from './quiz-feedback';
 import { QuizOption, type OptionState } from './quiz-option';
 import type { AnswerResult } from '@/services';
@@ -50,6 +51,14 @@ export function QuizCard({
     .filter((option) => result?.correctOptionIds.includes(option.id))
     .map((option) => option.key)
     .join(' o ');
+
+  const mascotMood: MascotMood = result
+    ? result.correct
+      ? 'happy'
+      : 'sad'
+    : selectedOptionIds.length > 0
+      ? 'thinking'
+      : 'idle';
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [audioState, setAudioState] = useState<'idle' | 'loading' | 'playing'>('idle');
@@ -102,34 +111,43 @@ export function QuizCard({
         </span>
       </div>
 
-      <h1 className="mt-4 text-heading font-black tracking-tight text-slate-900 md:text-heading-lg text-pretty">
-        {question.prompt}
-      </h1>
+      <div className="mt-4 flex flex-col md:flex-row items-center md:items-start gap-5">
+        <div className="flex-1 min-w-0">
+          <h1 className="text-heading font-black tracking-tight text-slate-900 md:text-heading-lg text-pretty">
+            {question.prompt}
+          </h1>
 
-      {/* Caja de frase / fuente con pronunciación */}
-      <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-blue-100 bg-blue-50/40 p-4 md:p-5">
-        <p className="text-body-lg md:text-title font-extrabold text-slate-900 leading-relaxed">
-          {question.sourceText}
-        </p>
+          {/* Caja de frase / fuente con pronunciación */}
+          <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-blue-100 bg-blue-50/40 p-4 md:p-5">
+            <p className="text-body-lg md:text-title font-extrabold text-slate-900 leading-relaxed">
+              {question.sourceText}
+            </p>
 
-        {question.audioKey && (
-          <Button
-            variant="glass"
-            size="sm"
-            onClick={playAudio}
-            disabled={audioState === 'loading'}
-            className="w-fit rounded-xl gap-2 font-extrabold text-brand"
-          >
-            <Volume2 aria-hidden className="size-4 animate-pulse" />
-            <span>
-              {audioState === 'loading'
-                ? 'Cargando voz…'
-                : audioState === 'playing'
-                  ? 'Pausar pronunciación'
-                  : 'Escuchar pronunciación'}
-            </span>
-          </Button>
-        )}
+            {question.audioKey && (
+              <Button
+                variant="glass"
+                size="sm"
+                onClick={playAudio}
+                disabled={audioState === 'loading'}
+                className="w-fit rounded-xl gap-2 font-extrabold text-brand"
+              >
+                <Volume2 aria-hidden className="size-4 animate-pulse" />
+                <span>
+                  {audioState === 'loading'
+                    ? 'Cargando voz…'
+                    : audioState === 'playing'
+                      ? 'Pausar pronunciación'
+                      : 'Escuchar pronunciación'}
+                </span>
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Mascota animada Bertho */}
+        <div className="shrink-0 flex justify-center py-2">
+          <BerthoMascot mood={mascotMood} size="sm" showSpeechBubble />
+        </div>
       </div>
 
       {/* Opciones de respuesta */}

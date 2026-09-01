@@ -82,7 +82,7 @@ export function PracticeHeader({
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <StatPills streak={session.streak} xp={session.xp} coins={session.coins} />
+          <StatPills streak={session.streak} xp={session.xp} />
           <SoundToggle enabled={soundEnabled} onToggle={onToggleSound} />
         </div>
       </div>
@@ -109,7 +109,6 @@ export function PracticeHeader({
         <StatPills
           streak={session.streak}
           xp={session.xp}
-          coins={session.coins}
           stretch
           className="mt-3"
         />

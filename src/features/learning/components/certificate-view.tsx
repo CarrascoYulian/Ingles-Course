@@ -1,17 +1,19 @@
 'use client';
 
 import { Dancing_Script } from 'next/font/google';
-import { ArrowLeft, Printer } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Lock, Printer, ShieldAlert } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
+import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ROUTES } from '@/constants/routes';
 import { cn } from '@/lib/utils';
 import { CourseRatingWidget } from './course-rating-widget';
-import { useMyCourses } from '../hooks/use-learning';
+import { useMyCourses, useMyProgress } from '../hooks/use-learning';
 
 export interface CertificateViewProps {
   courseId: string;
@@ -96,21 +98,16 @@ function CertificateMedal({ className }: { className?: string }) {
 }
 
 /**
- * Certificado como PDF vía impresión del navegador, no una librería nueva
- * de generación de PDF: no hay ningún caso en el proyecto que la necesite
- * todavía, y `window.print()` con CSS `print:` (layout.tsx del grupo
- * `(student)` oculta nav/tab-bar) alcanza para un documento de una sola
- * página. Si en el futuro hace falta firmarlo o versionarlo, ahí sí vale
- * la pena una librería real.
- *
- * No hay `completed_at` en `enrollments` (ver 0001_schema.sql) — la fecha
- * que se muestra es la de emisión del certificado (hoy), no la fecha real
- * en que se llegó al 100 %. Es una limitación conocida, no un bug: agregar
- * la fecha real de finalización es un cambio de esquema aparte.
+ * Certificado como PDF vía impresión del navegador.
+ * Sólo se habilita cuando el alumno ha completado el 100 % del curso
+ * y aprobado todas sus evaluaciones.
  */
 export function CertificateView({ courseId, studentName }: CertificateViewProps) {
-  const { data: courses, isPending } = useMyCourses();
+  const { data: courses, isPending: isCoursesPending } = useMyCourses();
+  const { data: progress, isPending: isProgressPending } = useMyProgress(courseId);
+
   const course = courses?.find((c) => c.id === courseId);
+  const isPending = isCoursesPending || isProgressPending;
 
   if (isPending) {
     return (
@@ -126,25 +123,86 @@ export function CertificateView({ courseId, studentName }: CertificateViewProps)
         <EmptyState
           title="No encontramos ese curso"
           description="Puede que ya no estés matriculado, o el enlace esté mal escrito."
+          action={
+            <Button asChild size="md" className="font-extrabold">
+              <Link href={ROUTES.student.curso}>Volver a mis cursos</Link>
+            </Button>
+          }
         />
       </div>
     );
   }
 
-  if (course.progress < 100) {
+  const effectiveProgress = progress ? progress.percent : Math.round(course.progress);
+  const isCompleted = effectiveProgress >= 100;
+
+  if (!isCompleted) {
     return (
-      <div className="mx-auto max-w-[720px] px-5 py-8 lg:px-[30px] lg:py-12">
-        <EmptyState
-          title="Todavía no completaste este curso"
-          description={`Llevas ${Math.round(course.progress)} % de “${course.name}”. El certificado se habilita al llegar al 100 %.`}
-        />
-        <Link
-          href={ROUTES.student.curso}
-          className="mt-4 flex w-fit items-center gap-1.5 text-tiny font-bold text-fg-dim hover:text-fg"
+      <div className="mx-auto max-w-[760px] px-5 py-10 lg:px-[30px] lg:py-16">
+        <Card
+          radius="2xl"
+          padding="none"
+          className="relative overflow-hidden border border-amber-200/90 bg-white p-6 shadow-xl sm:p-10"
         >
-          <ArrowLeft aria-hidden size={14} strokeWidth={2.4} />
-          Volver a mis cursos
-        </Link>
+          {/* Fondo sutil decorativo */}
+          <div className="pointer-events-none absolute -right-12 -top-12 size-48 rounded-full bg-amber-100/50 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-12 -left-12 size-48 rounded-full bg-blue-100/50 blur-3xl" />
+
+          <div className="relative z-10 flex flex-col items-center text-center">
+            <div className="grid size-18 place-items-center rounded-3xl bg-amber-100/80 text-amber-700 shadow-inner">
+              <Lock aria-hidden className="size-9" />
+            </div>
+
+            <span className="mt-5 inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200/80 px-3 py-1 text-micro font-extrabold uppercase tracking-wider text-amber-800">
+              <ShieldAlert aria-hidden className="size-3.5" />
+              Certificado Oficial Protegido
+            </span>
+
+            <h1 className="mt-3 text-heading font-black tracking-tight text-slate-900 sm:text-heading-lg">
+              Aún no has completado este curso
+            </h1>
+
+            <p className="mt-2.5 max-w-lg text-body-sm font-medium leading-relaxed text-slate-600 sm:text-body">
+              Para obtener y descargar tu certificado oficial de{' '}
+              <strong className="font-extrabold text-slate-900">“{course.name}”</strong>, debes completar el 100% de
+              todos los módulos, lecciones y evaluaciones correspondientes.
+            </p>
+
+            <div className="mt-7 w-full max-w-md rounded-2xl border border-slate-100 bg-slate-50/80 p-5 text-left">
+              <div className="flex items-center justify-between">
+                <span className="text-caption font-extrabold text-slate-700">Tu progreso actual</span>
+                <span className="text-caption font-black text-brand tabular-nums">{effectiveProgress}%</span>
+              </div>
+
+              <Progress
+                value={effectiveProgress}
+                height={8}
+                tone="accent"
+                className="mt-2.5"
+                label="Progreso hacia el certificado"
+              />
+
+              <p className="mt-3 text-micro font-bold text-slate-500">
+                Te falta un {Math.max(0, 100 - effectiveProgress)}% para desbloquear la descarga e impresión en PDF.
+              </p>
+            </div>
+
+            <div className="mt-8 flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+              <Button asChild size="lg" variant="glow" className="w-full sm:w-auto font-black gap-2 shadow-glow">
+                <Link href={ROUTES.student.curso}>
+                  <span>Continuar aprendiendo</span>
+                  <ArrowRight aria-hidden className="size-4" />
+                </Link>
+              </Button>
+              <Button asChild size="lg" variant="outline" className="w-full sm:w-auto font-extrabold">
+                <Link href={ROUTES.student.curso}>
+                  <ArrowLeft aria-hidden className="size-4" />
+                  <span>Volver al panel</span>
+                </Link>
+              </Button>
+            </div>
+          </div>
+        </Card>
       </div>
     );
   }
