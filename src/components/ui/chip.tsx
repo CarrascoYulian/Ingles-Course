@@ -9,9 +9,7 @@ export interface ChipProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 /**
- * Chip de filtro. Se expone como `role="switch"` porque alterna un estado
- * binario: los lectores de pantalla anuncian «activado/desactivado» en lugar
- * de leer sólo la etiqueta.
+ * Chip de filtro tecnológico y accesible.
  */
 export function Chip({ className, active = false, ...props }: ChipProps) {
   return (
@@ -20,13 +18,13 @@ export function Chip({ className, active = false, ...props }: ChipProps) {
       role="switch"
       aria-checked={active}
       className={cn(
-        'shrink-0 cursor-pointer whitespace-nowrap rounded-pill border px-[13px] py-[7px]',
+        'shrink-0 cursor-pointer whitespace-nowrap rounded-full border px-3.5 py-1.5',
         'font-sans text-meta font-bold',
-        'transition-[background-color,border-color,color,transform] duration-[160ms] ease-[cubic-bezier(0.23,1,0.32,1)]',
+        'transition-[background-color,border-color,color,box-shadow,transform] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)]',
         '[@media(hover:hover)_and_(pointer:fine)]:active:scale-[0.97]',
         active
-          ? 'border-brand bg-brand text-white'
-          : 'border-line-strong bg-surface text-fg-subtle hover:border-fg-placeholder',
+          ? 'border-brand bg-brand text-white shadow-[0_0_14px_-2px_rgba(37,99,235,0.35)]'
+          : 'border-slate-200 bg-white text-slate-600 hover:border-brand/40 hover:text-brand shadow-sm',
         className,
       )}
       {...props}
@@ -48,9 +46,10 @@ export function ChipRow({
     <div
       role="group"
       aria-label={label}
-      className={cn('flex items-center gap-2 overflow-x-auto scrollbar-none', className)}
+      className={cn('flex items-center gap-2 overflow-x-auto scrollbar-none py-1', className)}
     >
       {children}
     </div>
   );
 }
+

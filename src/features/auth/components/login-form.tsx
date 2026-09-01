@@ -131,8 +131,8 @@ export function LoginForm() {
         </div>
       </div>
 
-      <Button type="submit" size="block" disabled={form.formState.isSubmitting} className="mt-1">
-        {form.formState.isSubmitting ? 'Entrando…' : 'Entrar'}
+      <Button type="submit" variant="glow" size="lg" disabled={form.formState.isSubmitting} className="mt-2 w-full font-black text-body">
+        {form.formState.isSubmitting ? 'Iniciando sesión…' : 'Ingresar a mi aula'}
       </Button>
 
       {IS_DEMO_MODE && demoAccounts && demoAccounts.length > 0 && (

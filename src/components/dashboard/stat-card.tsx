@@ -6,47 +6,51 @@ import { cn } from '@/lib/utils';
 export interface StatCardProps {
   label: string;
   value: string;
-  /** Variación respecto al periodo anterior. */
   delta?: { label: string; tone?: 'success' | 'neutral' | 'warning' };
-  /** Barra, mini-gráfico o desglose bajo la cifra. */
   visual?: ReactNode;
   caption?: string;
   className?: string;
 }
 
 const DELTA_TONE = {
-  success: 'text-success',
-  neutral: 'text-fg-dim',
-  warning: 'text-warning',
+  success: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  neutral: 'bg-slate-100 text-slate-700 border-slate-200',
+  warning: 'bg-amber-50 text-amber-700 border-amber-200',
 } as const;
 
 /**
- * KPI del panel. La cifra domina; la variación va al lado, alineada por la
- * línea base, para leerse como una sola unidad de información.
+ * KPI del panel de administración con diseño moderno de métricas.
  */
 export function StatCard({ label, value, delta, visual, caption, className }: StatCardProps) {
   return (
-    <Card className={cn('p-[15px] md:p-[18px]', className)}>
-      <p className="text-tiny font-semibold text-fg-dim md:text-meta">{label}</p>
-
-      <div className="mt-[5px] flex items-end gap-2 md:mt-2">
-        <p className="text-[24px] font-extrabold leading-none tracking-display text-fg md:text-display">
-          {value}
-        </p>
+    <Card
+      padding="none"
+      radius="xl"
+      className={cn('border border-slate-200/90 bg-white p-5 shadow-card transition-all hover:border-slate-300', className)}
+    >
+      <div className="flex items-center justify-between">
+        <p className="text-caption font-extrabold text-slate-500 uppercase tracking-wider">{label}</p>
         {delta?.label && (
-          <p
+          <span
             className={cn(
-              'pb-[3px] text-tiny font-bold md:text-meta',
+              'inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-black tabular-nums',
               DELTA_TONE[delta.tone ?? 'success'],
             )}
           >
             {delta.label}
-          </p>
+          </span>
         )}
       </div>
 
-      {visual && <div className="mt-3">{visual}</div>}
-      {caption && <p className="mt-[7px] text-caption text-fg-ghost">{caption}</p>}
+      <div className="mt-3">
+        <p className="text-display-sm md:text-display font-black tracking-tight text-slate-900 tabular-nums leading-none">
+          {value}
+        </p>
+      </div>
+
+      {visual && <div className="mt-4">{visual}</div>}
+      {caption && <p className="mt-2 text-caption font-medium text-slate-400">{caption}</p>}
     </Card>
   );
 }
+

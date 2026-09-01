@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
-import { Eyebrow } from '@/components/shared/section-title';
 import { Chip, ChipRow } from '@/components/ui/chip';
 import { CoursePickerCard } from '@/components/student/course-picker-card';
 import { LessonFileView } from '@/components/student/lesson-file-view';
@@ -210,14 +209,36 @@ export function CourseView({
   // entrada es explícito: se elige el curso, luego se entra a su contenido.
   if (!course) {
     return (
-      <div className="px-5 py-8 lg:px-[30px] lg:py-12">
-        <h1 className="text-heading-sm font-extrabold tracking-heading text-fg lg:text-heading-lg">
-          Mis cursos
-        </h1>
-        <p className="mt-1 text-body-sm font-semibold text-fg-dim">
-          Elige un curso para continuar donde lo dejaste.
-        </p>
-        <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="px-5 py-8 lg:px-10 lg:py-10 max-w-7xl mx-auto">
+        {/* Hero Banner de Bienvenida y Progreso */}
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-700 via-indigo-700 to-slate-900 p-6 md:p-8 text-white shadow-xl mb-8">
+          <div className="relative z-10 max-w-2xl">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-caption font-extrabold uppercase tracking-wider backdrop-blur-md text-blue-100">
+              Panel de Aprendizaje
+            </span>
+            <h1 className="mt-3 text-display-sm md:text-display font-extrabold tracking-tight text-white">
+              Mis Cursos de Inglés
+            </h1>
+            <p className="mt-2 text-body-sm md:text-body font-medium text-blue-100 leading-relaxed">
+              Selecciona tu programa para acceder a las video-lecciones, ejercicios de pronunciación y tareas guiadas.
+            </p>
+          </div>
+
+          {/* Decoración geométrica tecnológica */}
+          <div className="absolute right-0 top-0 -mt-10 -mr-10 size-64 rounded-full bg-blue-500/20 blur-3xl pointer-events-none" />
+          <div className="absolute right-20 bottom-0 size-48 rounded-full bg-indigo-500/20 blur-2xl pointer-events-none" />
+        </div>
+
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-heading-sm font-extrabold text-slate-900">
+            Tus programas matriculados
+          </h2>
+          <span className="text-caption font-extrabold text-slate-500 tabular-nums">
+            {courses.length} {courses.length === 1 ? 'curso disponible' : 'cursos disponibles'}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {courses.map((c) => (
             <CoursePickerCard key={c.id} course={c} onSelect={(selected) => setSelectedCourseId(selected.id)} />
           ))}
@@ -228,32 +249,31 @@ export function CourseView({
 
   if (isModulePending) {
     return (
-      <div className="flex flex-col gap-4 px-5 py-4 lg:px-[30px] lg:py-6">
-        <Skeleton className="aspect-video rounded-9xl" />
-        <Skeleton className="h-40 rounded-8xl" />
+      <div className="flex flex-col gap-4 px-5 py-4 lg:px-8 lg:py-6">
+        <Skeleton className="aspect-video rounded-3xl" />
+        <Skeleton className="h-40 rounded-2xl" />
       </div>
     );
   }
 
   const courseSwitcher = (
-    <button
-      type="button"
-      onClick={() => setSelectedCourseId('')}
-      className="mx-5 flex w-fit items-center gap-1.5 rounded-full px-3 py-1.5 text-tiny font-bold text-fg-dim transition-colors hover:bg-surface-sunken hover:text-fg lg:mx-0"
-    >
-      <ArrowLeft aria-hidden size={14} strokeWidth={2.4} />
-      Mis cursos
-    </button>
+    <div className="px-5 pt-3 lg:px-8">
+      <button
+        type="button"
+        onClick={() => setSelectedCourseId('')}
+        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-caption font-extrabold text-slate-700 shadow-sm transition-all hover:border-brand/40 hover:text-brand"
+      >
+        <ArrowLeft aria-hidden className="size-3.5" />
+        <span>Volver a Mis cursos</span>
+      </button>
+    </div>
   );
 
-  // Antes, sin módulos reales en la base de datos, esto caía a un módulo de
-  // ejemplo fijo — el alumno veía "Present Perfect vs. Past Simple" como si
-  // fuera contenido real de su curso. Ahora se muestra un vacío honesto.
   if (!effectiveModule) {
     return (
       <div className="flex flex-col gap-4">
         {courseSwitcher}
-        <div className="px-5 py-8 lg:px-[30px] lg:py-12">
+        <div className="px-5 py-8 lg:px-8 lg:py-12">
           <EmptyState
             title="Todavía no hay ninguna unidad publicada"
             description="Tu docente aún no ha creado contenido para este curso. Vuelve pronto."
@@ -412,36 +432,43 @@ export function CourseView({
   const lessonDetailsCard = (
     <div className={cn('px-5 lg:px-0', isTheater && 'w-full')}>
       <Card
-        padding="none"
+        padding="lg"
         radius="xl"
-        className="max-lg:border-0 max-lg:bg-transparent lg:px-6 lg:py-[22px]"
+        className="border border-slate-200/90 bg-white shadow-card p-6"
       >
-        <div className="flex items-start gap-3">
+        <div className="flex items-start gap-4">
           <span
             aria-hidden
-            className="mt-0.5 hidden size-9 shrink-0 rounded-full sm:block"
+            className="mt-0.5 hidden size-10 shrink-0 rounded-2xl sm:grid place-items-center text-white font-extrabold shadow-sm"
             style={{
               background: `linear-gradient(135deg, ${avatarColorFor(effectiveModule.id)}, ${avatarColorFor(effectiveModule.id)}99)`,
             }}
-          />
-          <div className="min-w-0">
-            <Eyebrow>{moduleLabel.toUpperCase()}</Eyebrow>
-            <h1 className="mt-[5px] text-heading-sm font-extrabold tracking-heading text-fg text-pretty lg:mt-1.5 lg:text-heading-lg">
+          >
+            {course.level}
+          </span>
+          <div className="min-w-0 flex-1">
+            <span className="text-micro font-extrabold tracking-widest text-brand uppercase">
+              {moduleLabel}
+            </span>
+            <h1 className="mt-1 text-heading-sm font-black tracking-tight text-slate-900 text-pretty lg:text-heading">
               {lessonTitle}
             </h1>
           </div>
         </div>
 
-        <ul className="mt-3 flex flex-wrap gap-2.5">
-          <li className="rounded-md bg-surface-sunken px-3 py-[7px] text-meta font-bold text-fg-subtle">
-            Duración {currentLesson?.duration ?? '—'}
+        <ul className="mt-3.5 flex flex-wrap gap-2">
+          <li className="rounded-lg border border-slate-200/80 bg-slate-50 px-3 py-1 text-caption font-bold text-slate-600">
+            ⏱ Duración: {currentLesson?.duration ?? '—'}
           </li>
-          <li className="rounded-md bg-surface-sunken px-3 py-[7px] text-meta font-bold text-fg-subtle">
-            Nivel {course.level}
+          <li className="rounded-lg border border-slate-200/80 bg-slate-50 px-3 py-1 text-caption font-bold text-slate-600">
+            📊 Nivel: {course.level}
+          </li>
+          <li className="rounded-lg border border-blue-100 bg-blue-50/70 px-3 py-1 text-caption font-bold text-brand">
+            📚 {completed} de {total} completadas
           </li>
         </ul>
 
-        <div className="mt-3.5 lg:mt-[18px]">
+        <div className="mt-5 pt-4 border-t border-slate-100">
           <LessonTabs
             description={currentLesson?.description ?? null}
             transcript={currentLesson?.transcript ?? null}
@@ -466,8 +493,8 @@ export function CourseView({
   );
 
   const sidebarElement = (
-    <aside className="flex flex-col gap-3.5 px-5 pb-5 lg:w-aside lg:shrink-0 lg:px-0 lg:pb-0">
-      {isProgressPending && <Skeleton className="h-[220px] rounded-8xl" />}
+    <aside className="flex flex-col gap-4 px-5 pb-5 lg:w-aside lg:shrink-0 lg:px-0 lg:pb-0">
+      {isProgressPending && <Skeleton className="h-[220px] rounded-3xl" />}
       {progress && (
         <ProgressCard
           percent={progress.percent}
@@ -479,18 +506,21 @@ export function CourseView({
         />
       )}
 
-      <Link href={ROUTES.student.foro(course.id)}>
+      <Link href={ROUTES.student.foro(course.id)} className="group block focus-visible:outline-none">
         <Card
+          variant="hover"
           padding="md"
           radius="xl"
-          className="flex items-center gap-2.5 transition-colors duration-[160ms] hover:border-fg-placeholder"
+          className="flex items-center gap-3 border border-slate-200 bg-white shadow-sm hover:border-brand/40"
         >
-          <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-accent-soft text-accent">
-            <MessagesSquare aria-hidden size={16} strokeWidth={2.2} />
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-blue-50 text-brand shadow-sm group-hover:bg-brand group-hover:text-white transition-colors">
+            <MessagesSquare aria-hidden size={18} strokeWidth={2.2} />
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block text-body-sm font-bold text-fg">Foro del curso</span>
-            <span className="block text-tiny font-semibold text-fg-ghost">
+            <span className="block text-body-sm font-extrabold text-slate-900 group-hover:text-brand transition-colors">
+              Foro del curso
+            </span>
+            <span className="block text-caption font-medium text-slate-500">
               Preguntas y respuestas con tus compañeros
             </span>
           </span>
@@ -498,9 +528,11 @@ export function CourseView({
       </Link>
 
       {allModules && allModules.length > 1 && (
-        <Card padding="md" radius="xl">
-          <p className="mb-2 text-tiny font-bold text-fg-ghost">Tus unidades</p>
-          <ChipRow label="Elegir unidad" className="flex-wrap">
+        <Card padding="md" radius="xl" className="border border-slate-200 bg-white shadow-sm">
+          <p className="mb-2.5 text-caption font-extrabold uppercase tracking-wider text-slate-400">
+            Unidades del curso
+          </p>
+          <ChipRow label="Elegir unidad" className="flex-wrap gap-1.5">
             {allModules.map((m) => (
               <Chip
                 key={m.id}
@@ -514,19 +546,19 @@ export function CourseView({
         </Card>
       )}
 
-      <Card padding="lg" radius="xl">
-        <div className="mb-3 flex items-center justify-between lg:mb-3.5">
-          <h2 className="text-body-lg font-bold text-fg">Contenido de la unidad</h2>
-          <span className="text-tiny font-bold text-fg-ghost">
+      <Card padding="lg" radius="xl" className="border border-slate-200 bg-white shadow-sm">
+        <div className="mb-3.5 flex items-center justify-between">
+          <h2 className="text-body font-extrabold text-slate-900">Contenido de la unidad</h2>
+          <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-micro font-extrabold text-slate-600 tabular-nums">
             {completed} / {total}
           </span>
         </div>
 
         {isPending && (
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-2">
             <LoadingRegion label="Cargando el contenido de la unidad" />
-            {Array.from({ length: 6 }, (_, i) => (
-              <Skeleton key={i} className="h-12 rounded-2xl" />
+            {Array.from({ length: 5 }, (_, i) => (
+              <Skeleton key={i} className="h-12 rounded-xl" />
             ))}
           </div>
         )}
@@ -557,17 +589,16 @@ export function CourseView({
           />
         )}
 
-        <p className="mt-3.5 flex items-start gap-[11px] rounded-2xl bg-surface-muted p-[13px]">
+        <div className="mt-4 flex items-start gap-2.5 rounded-2xl bg-blue-50/50 p-3 border border-blue-100">
           <Lock
             aria-hidden
             size={16}
-            strokeWidth={1.9}
-            className="mt-px shrink-0 text-fg-faint"
+            className="mt-0.5 shrink-0 text-blue-600"
           />
-          <span className="text-meta font-semibold leading-normal text-fg-soft">
-            La siguiente unidad se abre al terminar el 100 % de esta. Tu avance se guarda solo.
+          <span className="text-caption font-medium leading-relaxed text-blue-950">
+            Las unidades se desbloquean al completar el 100% de la anterior. Tu progreso se guarda automáticamente.
           </span>
-        </p>
+        </div>
       </Card>
     </aside>
   );

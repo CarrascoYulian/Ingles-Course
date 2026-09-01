@@ -1,6 +1,6 @@
 'use client';
 
-import { FileText, MessageCircle, Sparkles } from 'lucide-react';
+import { CheckCircle2, Clock, FileText, MessageSquare, Plus, Sparkles, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
 import { Avatar } from '@/components/ui/avatar';
@@ -9,14 +9,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import type { LessonComment, LessonNote } from '@/types';
-
-/** Pestañas tipo cápsula, sólo para este panel — el `Tabs` compartido
- * sigue siendo subrayado por defecto para cualquier otro consumidor. */
-const PILL_LIST = 'flex w-fit gap-1 rounded-pill border-0 bg-surface-muted p-1';
-const PILL_TRIGGER =
-  'rounded-pill border-0 px-3.5 py-[7px] text-body-sm font-bold text-fg-faint ' +
-  'data-[state=active]:border-0 data-[state=active]:bg-fg data-[state=active]:text-white ' +
-  'hover:text-fg-subtle data-[state=active]:hover:text-white';
 
 function formatRelativeTime(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -37,30 +29,26 @@ function formatTimestamp(seconds: number): string {
 
 export interface LessonTabsProps {
   description: string | null;
-  /** Texto plano — `null`/vacío oculta la pestaña entera en vez de mostrarla sin contenido. */
   transcript: string | null;
   notes: LessonNote[];
   notesPending?: boolean;
-  /** Segundo actual del video — la nota se guarda ahí, no en un valor inventado. */
   currentTimeSeconds: number;
   onAddNote: (body: string) => void;
   addNotePending?: boolean;
   onSeekToNote?: (seconds: number) => void;
   comments: LessonComment[];
   commentsPending?: boolean;
-  /** `parentId` presente = respuesta a ese comentario, no uno nuevo suelto. */
   onAddComment: (body: string, parentId?: string) => void;
   addCommentPending?: boolean;
   onDeleteComment: (commentId: string) => void;
-  /** Sólo el autor del comentario (o de la respuesta) puede borrarlo desde aquí. */
   currentUserId: string | null;
-  /** Hay comentarios de otra persona más nuevos que la última vez que se abrió esta pestaña. */
   hasUnseenComments?: boolean;
-  /** Se llama al entrar a la pestaña "Comentarios" — apaga el aviso de "nuevo". */
   onCommentsTabOpen?: () => void;
 }
 
-/** Paneles de la lección: descripción, archivos, notas y comentarios. */
+/**
+ * Pestañas de lección estilo Coursera / LinkedIn Learning.
+ */
 export function LessonTabs({
   description,
   transcript,
@@ -115,211 +103,229 @@ export function LessonTabs({
     repliesByParent.set(comment.parentId, list);
   }
 
-  // Autores únicos, más recientes primero — sólo para la pila de avatares
-  // de la cabecera de "Comentarios", no cambia el orden del hilo en sí.
-  const recentAuthors: LessonComment[] = [];
-  const seenAuthorIds = new Set<string>();
-  for (const comment of [...comments].sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-  )) {
-    if (seenAuthorIds.has(comment.authorId)) continue;
-    seenAuthorIds.add(comment.authorId);
-    recentAuthors.push(comment);
-    if (recentAuthors.length === 4) break;
-  }
-
   return (
     <Tabs
       defaultValue="desc"
       onValueChange={(value) => {
         if (value === 'comments') onCommentsTabOpen?.();
       }}
+      className="w-full"
     >
-      <TabsList className={PILL_LIST}>
-        <TabsTrigger value="desc" className={PILL_TRIGGER}>
-          Descripción
+      <TabsList className="border-b border-slate-200/90 pb-0">
+        <TabsTrigger value="desc">Descripción general</TabsTrigger>
+        {transcript && <TabsTrigger value="transcript">Transcripción</TabsTrigger>}
+        <TabsTrigger value="notes" className="flex items-center gap-1.5">
+          <span>Cuaderno de notas</span>
+          {notes.length > 0 && (
+            <span className="rounded-full bg-blue-100 px-2 py-0.2 text-micro font-extrabold text-brand tabular-nums">
+              {notes.length}
+            </span>
+          )}
         </TabsTrigger>
-        {transcript && (
-          <TabsTrigger value="transcript" className={PILL_TRIGGER}>
-            Transcripción
-          </TabsTrigger>
-        )}
-        <TabsTrigger value="notes" className={PILL_TRIGGER}>
-          <span className="md:hidden">Notas</span>
-          <span className="hidden md:inline">Mis notas</span>
-        </TabsTrigger>
-        <TabsTrigger value="comments" className={cn(PILL_TRIGGER, 'relative')}>
-          Comentarios
+        <TabsTrigger value="comments" className="relative flex items-center gap-1.5">
+          <span>Preguntas y Foro</span>
+          {comments.length > 0 && (
+            <span className="rounded-full bg-slate-100 px-2 py-0.2 text-micro font-extrabold text-slate-600 tabular-nums">
+              {comments.length}
+            </span>
+          )}
           {hasUnseenComments && (
-            <span
-              aria-label="Comentarios nuevos"
-              className="absolute -right-1 -top-0.5 size-[7px] rounded-full bg-danger"
-            />
+            <span className="size-2 rounded-full bg-rose-500 ring-2 ring-white animate-pulse" />
           )}
         </TabsTrigger>
       </TabsList>
 
+      {/* Pestaña: Descripción */}
       <TabsContent value="desc">
-        <div className="flex gap-3 rounded-4xl bg-accent-tint p-4">
-          <Sparkles aria-hidden size={18} strokeWidth={2.2} className="mt-0.5 shrink-0 text-accent" />
-          <div className="min-w-0">
-            <p
-              className={cn(
-                'text-body-lg font-medium leading-[1.65] text-fg-body',
-                !descExpanded && 'line-clamp-3',
-              )}
-            >
-              {description || 'Tu docente todavía no escribió una descripción para este video.'}
-            </p>
-            {description && description.length > 160 && (
-              <button
-                type="button"
-                onClick={() => setDescExpanded((v) => !v)}
-                className="mt-1.5 text-tiny font-extrabold text-accent hover:underline"
+        <div className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50/60 via-white to-indigo-50/30 p-5 shadow-sm">
+          <div className="flex gap-3">
+            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-blue-600 text-white shadow-sm">
+              <Sparkles aria-hidden className="size-4.5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <h4 className="text-body-sm font-extrabold text-slate-900">Objetivos de esta lección</h4>
+              <p
+                className={cn(
+                  'mt-1.5 text-body-sm font-medium leading-relaxed text-slate-600',
+                  !descExpanded && 'line-clamp-3',
+                )}
               >
-                {descExpanded ? 'Leer menos' : 'Leer más'}
-              </button>
-            )}
+                {description || 'El docente no ha especificado notas adicionales para este video.'}
+              </p>
+              {description && description.length > 160 && (
+                <button
+                  type="button"
+                  onClick={() => setDescExpanded((v) => !v)}
+                  className="mt-2 text-caption font-extrabold text-brand hover:underline"
+                >
+                  {descExpanded ? 'Ver menos' : 'Leer descripción completa →'}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </TabsContent>
 
+      {/* Pestaña: Transcripción */}
       {transcript && (
         <TabsContent value="transcript">
-          <div className="flex gap-3 rounded-4xl bg-surface-muted p-4">
-            <FileText aria-hidden size={18} strokeWidth={2.2} className="mt-0.5 shrink-0 text-fg-ghost" />
-            <p className="min-w-0 whitespace-pre-line text-body font-medium leading-[1.65] text-fg-body">
+          <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-5">
+            <div className="flex items-center gap-2 text-meta font-extrabold text-slate-700 mb-3">
+              <FileText aria-hidden className="size-4 text-brand" />
+              <span>Transcripción de audio</span>
+            </div>
+            <p className="whitespace-pre-line text-body font-normal leading-relaxed text-slate-700 font-sans">
               {transcript}
             </p>
           </div>
         </TabsContent>
       )}
 
-      <TabsContent value="notes">
-        {!notesPending && notes.length === 0 && !composing && (
-          <div className="rounded-4xl border-[1.5px] border-dashed border-line-dashed bg-surface-subtle px-[18px] py-4">
-            <p className="text-body font-bold text-fg">Aún no tienes notas en esta lección</p>
-            <p className="mt-1 text-body-sm font-medium text-fg-faint">
-              Escribe una nota y se guarda en el minuto exacto del video en el que vas.
+      {/* Pestaña: Notas */}
+      <TabsContent value="notes" className="space-y-4">
+        {!composing && (
+          <div className="flex items-center justify-between rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
+            <div className="flex items-center gap-2.5">
+              <span className="grid size-8 place-items-center rounded-lg bg-blue-50 text-brand">
+                <Clock aria-hidden className="size-4" />
+              </span>
+              <div>
+                <p className="text-body-sm font-extrabold text-slate-900">Tomar nota rápida</p>
+                <p className="text-caption font-medium text-slate-500">
+                  Se sincronizará en el minuto <span className="font-mono font-bold text-brand">{formatTimestamp(currentTimeSeconds)}</span>
+                </p>
+              </div>
+            </div>
+            <Button size="sm" onClick={() => setComposing(true)} className="gap-1.5 font-extrabold">
+              <Plus aria-hidden className="size-4" />
+              Nueva nota
+            </Button>
+          </div>
+        )}
+
+        {composing && (
+          <div className="rounded-2xl border border-blue-200 bg-blue-50/30 p-4 shadow-sm">
+            <p className="mb-2 text-caption font-extrabold text-slate-700 flex items-center gap-1.5">
+              <Clock aria-hidden className="size-3.5 text-brand" />
+              Nota en <span className="font-mono text-brand">{formatTimestamp(currentTimeSeconds)}</span>
+            </p>
+            <Textarea
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              placeholder="Escribe un concepto clave, traducción o regla gramatical…"
+              autoFocus
+              className="bg-white"
+            />
+            <div className="mt-3 flex justify-end gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setComposing(false)}>
+                Cancelar
+              </Button>
+              <Button size="sm" onClick={submitNote} disabled={!draft.trim() || addNotePending}>
+                {addNotePending ? 'Guardando…' : 'Guardar nota'}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {notes.length === 0 && !composing && (
+          <div className="rounded-2xl border border-dashed border-slate-200 p-8 text-center bg-slate-50/50">
+            <p className="text-body-sm font-bold text-slate-800">
+              {notesPending ? 'Cargando notas…' : 'No tienes notas en esta lección todavía'}
+            </p>
+            <p className="mt-1 text-caption text-slate-500">
+              Usa las notas para registrar vocabulario nuevo en el segundo exacto del video.
             </p>
           </div>
         )}
 
         {notes.length > 0 && (
-          <ul className="flex flex-col gap-2.5">
+          <ul className="space-y-2.5">
             {notes.map((note) => (
-              <li key={note.id} className="rounded-3xl border border-line px-3.5 py-[13px]">
-                <button
-                  type="button"
-                  onClick={() => onSeekToNote?.(note.timestampSeconds)}
-                  className="text-tiny font-extrabold text-brand hover:underline"
-                >
-                  {formatTimestamp(note.timestampSeconds)}
-                </button>
-                <p className="mt-1 text-body-sm font-medium text-fg-body">{note.body}</p>
+              <li
+                key={note.id}
+                className="group flex items-start justify-between gap-3 rounded-2xl border border-slate-200/90 bg-white p-4 shadow-sm hover:border-brand/40 transition-colors"
+              >
+                <div className="flex items-start gap-3 min-w-0 flex-1">
+                  <button
+                    type="button"
+                    onClick={() => onSeekToNote?.(note.timestampSeconds)}
+                    title="Saltar al segundo del video"
+                    className="flex shrink-0 items-center gap-1 rounded-lg bg-blue-50 px-2.5 py-1 text-caption font-extrabold font-mono text-brand hover:bg-brand hover:text-white transition-colors"
+                  >
+                    <Clock aria-hidden className="size-3" />
+                    {formatTimestamp(note.timestampSeconds)}
+                  </button>
+                  <p className="text-body-sm font-medium text-slate-800 leading-relaxed pt-0.5">{note.body}</p>
+                </div>
               </li>
             ))}
           </ul>
         )}
-
-        {composing ? (
-          <div className="mt-3">
-            <Textarea
-              value={draft}
-              onChange={(event) => setDraft(event.target.value)}
-              placeholder={`Nota en el minuto ${formatTimestamp(currentTimeSeconds)}…`}
-              autoFocus
-            />
-            <div className="mt-2 flex gap-2">
-              <Button
-                size="sm"
-                onClick={submitNote}
-                disabled={!draft.trim() || addNotePending}
-                className="rounded-lg px-[15px] py-[9px] text-label"
-              >
-                {addNotePending ? 'Guardando…' : `Guardar en ${formatTimestamp(currentTimeSeconds)}`}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setComposing(false);
-                  setDraft('');
-                }}
-                className="rounded-lg px-[15px] py-[9px] text-label"
-              >
-                Cancelar
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <Button
-            size="sm"
-            onClick={() => setComposing(true)}
-            className="mt-3 rounded-lg px-[15px] py-[9px] text-label"
-          >
-            Añadir nota
-          </Button>
-        )}
       </TabsContent>
 
-      <TabsContent value="comments">
-        <div className="mb-3.5 flex items-center justify-between">
-          <p className="flex items-center gap-1.5 text-body-sm font-bold text-fg">
-            <MessageCircle aria-hidden size={15} strokeWidth={2.2} className="text-fg-ghost" />
-            {comments.length} {comments.length === 1 ? 'comentario' : 'comentarios'}
-          </p>
-          {recentAuthors.length > 0 && (
-            <div className="flex -space-x-2">
-              {recentAuthors.map((comment) => (
-                <Avatar
-                  key={comment.authorId}
-                  name={comment.authorName}
-                  color={comment.fromStaff ? '#2F6BFF' : '#0F5257'}
-                  size={26}
-                  className="ring-2 ring-surface"
-                />
-              ))}
-            </div>
-          )}
+      {/* Pestaña: Preguntas / Comentarios */}
+      <TabsContent value="comments" className="space-y-4">
+        {/* Formulario de nuevo comentario */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <Textarea
+            value={commentDraft}
+            onChange={(e) => setCommentDraft(e.target.value)}
+            placeholder="¿Tienes alguna duda sobre la gramática o pronunciación de este video?"
+            className="bg-slate-50/70 border-slate-200 focus:bg-white"
+          />
+          <div className="mt-2.5 flex justify-end">
+            <Button
+              size="sm"
+              onClick={submitComment}
+              disabled={!commentDraft.trim() || addCommentPending}
+              className="gap-1.5 font-extrabold"
+            >
+              <MessageSquare aria-hidden className="size-3.5" />
+              {addCommentPending ? 'Publicando…' : 'Hacer pregunta'}
+            </Button>
+          </div>
         </div>
 
-        {!commentsPending && comments.length === 0 && (
-          <p className="text-body-sm font-medium text-fg-faint">
-            Todavía no hay comentarios en este video. Sé el primero en preguntar algo.
-          </p>
+        {comments.length === 0 && (
+          <div className="rounded-2xl border border-dashed border-slate-200 p-8 text-center bg-slate-50/50">
+            <p className="text-body-sm font-bold text-slate-800">
+              {commentsPending ? 'Cargando preguntas…' : 'Sin preguntas en esta lección'}
+            </p>
+            <p className="mt-1 text-caption text-slate-500">
+              Pregúntale a tu docente o comparte tus respuestas con la comunidad.
+            </p>
+          </div>
         )}
 
         {topLevelComments.length > 0 && (
-          <ul className="flex flex-col gap-3.5">
+          <ul className="space-y-3">
             {topLevelComments.map((comment) => (
-              <li key={comment.id} className="flex flex-col gap-3">
-                <div className="flex gap-3">
+              <li key={comment.id} className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
+                <div className="flex items-start gap-3">
                   <Avatar
                     name={comment.authorName}
-                    color={comment.fromStaff ? '#2F6BFF' : '#0F5257'}
+                    color={comment.fromStaff ? '#2563EB' : '#0F172A'}
                     size={34}
+                    className="ring-2 ring-white shadow-sm"
                   />
-                  <div className="min-w-0 flex-1 rounded-3xl bg-surface-muted px-3.5 py-[13px]">
-                    <p className="flex flex-wrap items-baseline gap-2">
-                      <span className="text-body-sm font-bold text-fg">
-                        {comment.authorName}
-                        {comment.fromStaff && ' (docente)'}
-                      </span>
-                      <span className="text-caption font-semibold text-fg-ghost">
-                        {formatRelativeTime(comment.createdAt)}
-                      </span>
-                    </p>
-                    <p className="mt-[3px] text-body font-medium leading-[1.55] text-fg-body">
-                      {comment.body}
-                    </p>
-                    <div className="mt-1.5 flex gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-body-sm font-extrabold text-slate-900">{comment.authorName}</span>
+                      {comment.fromStaff && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.2 text-[10px] font-extrabold text-brand">
+                          <CheckCircle2 aria-hidden className="size-2.5" />
+                          Docente
+                        </span>
+                      )}
+                      <span className="text-caption text-slate-400 font-medium">{formatRelativeTime(comment.createdAt)}</span>
+                    </div>
+                    <p className="mt-1.5 text-body-sm font-medium text-slate-700 leading-relaxed">{comment.body}</p>
+
+                    <div className="mt-2.5 flex items-center gap-3">
                       <button
                         type="button"
-                        onClick={() =>
-                          setReplyingToId(replyingToId === comment.id ? null : comment.id)
-                        }
-                        className="text-tiny font-bold text-fg-ghost hover:text-fg hover:underline"
+                        onClick={() => setReplyingToId(replyingToId === comment.id ? null : comment.id)}
+                        className="text-caption font-bold text-brand hover:underline"
                       >
                         Responder
                       </button>
@@ -327,79 +333,51 @@ export function LessonTabs({
                         <button
                           type="button"
                           onClick={() => onDeleteComment(comment.id)}
-                          className="text-tiny font-bold text-danger hover:underline"
+                          className="text-caption font-bold text-rose-600 hover:underline flex items-center gap-1"
                         >
-                          Borrar
+                          <Trash2 aria-hidden className="size-3" />
+                          Eliminar
                         </button>
                       )}
                     </div>
                   </div>
                 </div>
 
+                {/* Respuestas anidadas */}
                 {(repliesByParent.get(comment.id)?.length ?? 0) > 0 && (
-                  <ul className="ml-[46px] flex flex-col gap-3">
+                  <ul className="mt-3.5 space-y-2.5 pl-9 border-l-2 border-slate-100 ml-4">
                     {repliesByParent.get(comment.id)!.map((reply) => (
-                      <li key={reply.id} className="flex gap-2.5">
-                        <Avatar
-                          name={reply.authorName}
-                          color={reply.fromStaff ? '#2F6BFF' : '#0F5257'}
-                          size={30}
-                        />
-                        <div className="min-w-0 flex-1 rounded-3xl bg-surface-muted px-3 py-2.5">
-                          <p className="flex flex-wrap items-baseline gap-2">
-                            <span className="text-body-sm font-bold text-fg">
-                              {reply.authorName}
-                              {reply.fromStaff && ' (docente)'}
+                      <li key={reply.id} className="rounded-xl bg-slate-50/80 p-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-caption font-extrabold text-slate-900">{reply.authorName}</span>
+                          {reply.fromStaff && (
+                            <span className="rounded-full bg-blue-100 px-2 py-0.2 text-[9px] font-extrabold text-brand">
+                              Docente
                             </span>
-                            <span className="text-caption font-semibold text-fg-ghost">
-                              {formatRelativeTime(reply.createdAt)}
-                            </span>
-                          </p>
-                          <p className="mt-[3px] text-body font-medium leading-[1.55] text-fg-body">
-                            {reply.body}
-                          </p>
-                          {reply.authorId === currentUserId && (
-                            <button
-                              type="button"
-                              onClick={() => onDeleteComment(reply.id)}
-                              className="mt-1 text-tiny font-bold text-danger hover:underline"
-                            >
-                              Borrar
-                            </button>
                           )}
+                          <span className="text-micro text-slate-400">{formatRelativeTime(reply.createdAt)}</span>
                         </div>
+                        <p className="mt-1 text-body-sm text-slate-700">{reply.body}</p>
                       </li>
                     ))}
                   </ul>
                 )}
 
+                {/* Formulario de respuesta */}
                 {replyingToId === comment.id && (
-                  <div className="ml-[46px]">
+                  <div className="mt-3 pl-9">
                     <Textarea
                       value={replyDraft}
-                      onChange={(event) => setReplyDraft(event.target.value)}
-                      placeholder={`Responder a ${comment.authorName}…`}
+                      onChange={(e) => setReplyDraft(e.target.value)}
+                      placeholder={`Escribe una respuesta a ${comment.authorName}…`}
                       autoFocus
                     />
-                    <div className="mt-2 flex gap-2">
-                      <Button
-                        size="sm"
-                        onClick={() => submitReply(comment.id)}
-                        disabled={!replyDraft.trim() || addCommentPending}
-                        className="rounded-lg px-[15px] py-[9px] text-label"
-                      >
-                        {addCommentPending ? 'Publicando…' : 'Responder'}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setReplyingToId(null);
-                          setReplyDraft('');
-                        }}
-                        className="rounded-lg px-[15px] py-[9px] text-label"
-                      >
+                    <div className="mt-2 flex justify-end gap-2">
+                      <Button variant="ghost" size="xs" onClick={() => setReplyingToId(null)}>
                         Cancelar
+                      </Button>
+                      <Button size="xs" onClick={() => submitReply(comment.id)} disabled={!replyDraft.trim()}>
+                        Enviar respuesta
                       </Button>
                     </div>
                   </div>
@@ -408,23 +386,8 @@ export function LessonTabs({
             ))}
           </ul>
         )}
-
-        <div className="mt-3.5">
-          <Textarea
-            value={commentDraft}
-            onChange={(event) => setCommentDraft(event.target.value)}
-            placeholder="Escribe una pregunta o un comentario sobre este video…"
-          />
-          <Button
-            size="sm"
-            onClick={submitComment}
-            disabled={!commentDraft.trim() || addCommentPending}
-            className="mt-2 rounded-lg px-[15px] py-[9px] text-label"
-          >
-            {addCommentPending ? 'Publicando…' : 'Comentar'}
-          </Button>
-        </div>
       </TabsContent>
     </Tabs>
   );
 }
+

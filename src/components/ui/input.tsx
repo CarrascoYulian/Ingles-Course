@@ -5,14 +5,13 @@ import { forwardRef, type InputHTMLAttributes, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
-  /** Icono decorativo a la izquierda (se marca aria-hidden). */
+  /** Icono decorativo a la izquierda */
   icon?: ReactNode;
   invalid?: boolean;
 }
 
 /**
- * Campo de texto del diseño: fondo #F7F8FA, borde 1.5 px, radio 12 px.
- * El foco no se elimina, se sustituye por el anillo de marca.
+ * Campo de texto moderno con halo de luz en foco.
  */
 export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   { className, icon, invalid, ...props },
@@ -23,12 +22,14 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
       ref={ref}
       aria-invalid={invalid || undefined}
       className={cn(
-        'w-full min-w-0 bg-transparent font-sans text-body-sm text-fg outline-none',
-        'placeholder:text-fg-faint',
-        'disabled:cursor-not-allowed disabled:opacity-60',
-        !icon && 'rounded-2xl border-[1.5px] border-line-strong bg-surface-muted px-[14px] py-3',
-        !icon && 'transition-colors duration-[160ms] focus:border-brand',
-        !icon && invalid && 'border-danger-line',
+        'w-full min-w-0 bg-transparent font-sans text-body-sm text-fg outline-none font-medium',
+        'placeholder:text-slate-400',
+        'disabled:cursor-not-allowed disabled:opacity-50',
+        !icon &&
+          'rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 shadow-sm',
+        !icon &&
+          'transition-[border-color,box-shadow] duration-150 focus:border-brand focus:ring-2 focus:ring-brand/20',
+        !icon && invalid && 'border-rose-300 focus:ring-rose-200',
         className,
       )}
       {...props}
@@ -40,16 +41,18 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   return (
     <div
       className={cn(
-        'flex items-center gap-2 rounded-xl bg-surface-sunken px-[14px] py-[9px]',
-        'focus-within:ring-2 focus-within:ring-accent focus-within:ring-offset-1',
-        'transition-shadow duration-[160ms]',
+        'flex items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 shadow-sm',
+        'focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20',
+        'transition-[border-color,box-shadow] duration-150',
+        invalid && 'border-rose-300 focus-within:ring-rose-200',
         className,
       )}
     >
-      <span aria-hidden className="grid shrink-0 place-items-center text-fg-faint">
+      <span aria-hidden className="grid shrink-0 place-items-center text-slate-400">
         {icon}
       </span>
       {field}
     </div>
   );
 });
+

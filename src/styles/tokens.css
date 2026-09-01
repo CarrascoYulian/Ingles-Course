@@ -1,176 +1,175 @@
 /* ============================================================================
- * TOKENS · Extraídos 1:1 del diseño original (Claude Design).
- * Ningún valor de esta capa es inventado: cada color, radio, tamaño y curva
- * aparece literalmente en el mockup. Los componentes NUNCA usan hex sueltos.
+ * TOKENS · Modern EdTech Design System (Coursera / LinkedIn / Linear inspired)
  * ========================================================================== */
 
 @theme {
   /* ── Tipografía ─────────────────────────────────────────────────────── */
   --font-sans:
     'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
-    sans-serif;
+    Roboto, 'Helvetica Neue', Arial, sans-serif;
 
-  /* Escala real del diseño (incluye medios píxeles: es intencional). */
+  /* Escala tipográfica estandarizada y nítida */
   --text-micro: 10px;
   --text-micro--line-height: 1.3;
-  --text-caption: 10.5px;
+  --text-caption: 11px;
   --text-caption--line-height: 1.35;
   --text-tiny: 11px;
   --text-tiny--line-height: 1.35;
-  --text-meta: 11.5px;
+  --text-meta: 12px;
   --text-meta--line-height: 1.4;
-  --text-label: 12px;
+  --text-label: 12.5px;
   --text-label--line-height: 1.4;
-  --text-body-sm: 12.5px;
+  --text-body-sm: 13px;
   --text-body-sm--line-height: 1.45;
-  --text-body: 13px;
+  --text-body: 14px;
   --text-body--line-height: 1.5;
-  --text-body-lg: 13.5px;
+  --text-body-lg: 15px;
   --text-body-lg--line-height: 1.55;
   --text-title-xs: 14px;
   --text-title-xs--line-height: 1.35;
-  --text-title-sm: 14.5px;
+  --text-title-sm: 15px;
   --text-title-sm--line-height: 1.35;
   --text-title: 16px;
   --text-title--line-height: 1.35;
-  --text-title-lg: 17px;
+  --text-title-lg: 18px;
   --text-title-lg--line-height: 1.3;
-  --text-heading-sm: 19px;
+  --text-heading-sm: 20px;
   --text-heading-sm--line-height: 1.25;
-  --text-heading: 21px;
+  --text-heading: 22px;
   --text-heading--line-height: 1.2;
-  --text-heading-lg: 22px;
+  --text-heading-lg: 24px;
   --text-heading-lg--line-height: 1.2;
-  --text-display-sm: 26px;
+  --text-display-sm: 28px;
   --text-display-sm--line-height: 1.1;
-  --text-display: 29px;
+  --text-display: 32px;
   --text-display--line-height: 1;
-  --text-display-lg: 32px;
+  --text-display-lg: 36px;
   --text-display-lg--line-height: 1;
 
-  --tracking-heading: -0.03em;
+  --tracking-heading: -0.025em;
   --tracking-display: -0.035em;
   --tracking-display-lg: -0.04em;
   --tracking-tight-2: -0.02em;
-  --tracking-eyebrow: 0.1em;
-  --tracking-badge: 0.04em;
+  --tracking-eyebrow: 0.08em;
+  --tracking-badge: 0.05em;
 
-  /* ── Marca ──────────────────────────────────────────────────────────── */
-  --color-brand: #1652d1;
-  --color-brand-hover: #123ea3;
-  --color-brand-soft: #e8eefc;
+  /* ── Marca Principal (Electric Royal Blue) ──────────────────────────── */
+  --color-brand: #2563eb;
+  --color-brand-hover: #1d4ed8;
+  --color-brand-soft: #eff6ff;
+  --color-brand-glow: rgba(37, 99, 235, 0.35);
 
-  /* ── Superficies oscuras (sidebar, reproductor, tarjetas "insight") ─── */
-  --color-ink: #0b1620;
-  --color-ink-raised: #111f2b;
-  --color-ink-elevated: #16303c;
-  --color-ink-line: #1e2e3c;
-  --color-ink-fg: #9fb0c0;
-  --color-ink-fg-soft: #8fa0b0;
-  --color-ink-fg-dim: #66788a;
-  --color-ink-fg-faint: #4e5f72;
-  --color-ink-fg-strong: #cdd8e2;
-  --color-ink-nav: #8496a6;
-  --color-ink-nav-label: #4e5f72;
-  --color-ink-accent: #5aa2ff;
+  /* ── Modo Cinema & Superficies Oscuras (Tech Dark) ─────────────────── */
+  --color-ink: #0b0f19;
+  --color-ink-raised: #111827;
+  --color-ink-elevated: #1e293b;
+  --color-ink-line: #1e293b;
+  --color-ink-fg: #94a3b8;
+  --color-ink-fg-soft: #cbd5e1;
+  --color-ink-fg-dim: #64748b;
+  --color-ink-fg-faint: #475569;
+  --color-ink-fg-strong: #f8fafc;
+  --color-ink-nav: #94a3b8;
+  --color-ink-nav-label: #64748b;
+  --color-ink-accent: #38bdf8;
 
-  /* ── Texto sobre superficies claras ─────────────────────────────────── */
+  /* ── Texto de Alto Contraste sobre Claro (WCAG AAA) ─────────────────── */
   --color-fg: #0f172a;
-  --color-fg-strong: #26313d;
-  --color-fg-muted: #3e4a59;
-  --color-fg-body: #4b5765;
-  --color-fg-subtle: #5c6876;
-  --color-fg-soft: #6b7684;
-  --color-fg-dim: #7c8797;
-  --color-fg-faint: #8b95a4;
-  --color-fg-ghost: #939dab;
-  --color-fg-disabled: #a8b2bf;
-  --color-fg-locked: #b6bfc9;
-  --color-fg-placeholder: #c9d1da;
+  --color-fg-strong: #1e293b;
+  --color-fg-muted: #334155;
+  --color-fg-body: #475569;
+  --color-fg-subtle: #475569;
+  --color-fg-soft: #64748b;
+  --color-fg-dim: #64748b;
+  --color-fg-faint: #94a3b8;
+  --color-fg-ghost: #94a3b8;
+  --color-fg-disabled: #cbd5e1;
+  --color-fg-locked: #cbd5e1;
+  --color-fg-placeholder: #94a3b8;
 
-  /* ── Superficies claras ─────────────────────────────────────────────── */
-  --color-canvas: #eef0f4;
+  /* ── Superficies Claras Tecnológicas ────────────────────────────────── */
+  --color-canvas: #f8fafc;
   --color-surface: #ffffff;
-  --color-surface-muted: #f7f8fa;
-  --color-surface-subtle: #fcfcfd;
-  --color-surface-sunken: #f1f3f7;
+  --color-surface-muted: #f8fafc;
+  --color-surface-subtle: #ffffff;
+  --color-surface-sunken: #f1f5f9;
 
-  /* ── Bordes ─────────────────────────────────────────────────────────── */
-  --color-line: #e7eaef;
-  --color-line-strong: #e1e5eb;
-  --color-line-soft: #edf0f4;
-  --color-line-dashed: #d7dde5;
-  --color-line-chart: #dce3ec;
+  /* ── Bordes Nítidos ─────────────────────────────────────────────────── */
+  --color-line: #e2e8f0;
+  --color-line-strong: #cbd5e1;
+  --color-line-soft: #f1f5f9;
+  --color-line-dashed: #cbd5e1;
+  --color-line-chart: #e2e8f0;
 
-  /* ── Semánticos ─────────────────────────────────────────────────────── */
-  --color-accent: #2f6bff;
-  --color-accent-hover: #1e4fd8;
-  --color-accent-soft: #e9effe;
-  --color-accent-tint: #f5f8ff;
+  /* ── Semánticos Tecnológicos & Gamificación ─────────────────────────── */
+  --color-accent: #2563eb;
+  --color-accent-hover: #1d4ed8;
+  --color-accent-soft: #eff6ff;
+  --color-accent-tint: #f0f7ff;
 
-  --color-success: #16a34a;
-  --color-success-strong: #12803c;
-  --color-success-soft: #effaf3;
-  --color-success-tint: #f2fbf5;
+  --color-success: #10b981;
+  --color-success-strong: #059669;
+  --color-success-soft: #ecfdf5;
+  --color-success-tint: #f0fdf4;
 
   --color-warning: #f59e0b;
-  --color-warning-strong: #b4790c;
-  --color-warning-deep: #7a5205;
-  --color-warning-soft: #fffbeb;
-  --color-warning-tint: #fef6e7;
-  --color-warning-line: #f1dfb4;
+  --color-warning-strong: #d97706;
+  --color-warning-deep: #b45309;
+  --color-warning-soft: #fef3c7;
+  --color-warning-tint: #fffbeb;
+  --color-warning-line: #fde68a;
 
-  --color-danger: #dc2626;
-  --color-danger-strong: #b42318;
-  --color-danger-soft: #fef3f2;
-  --color-danger-line: #f3c7c3;
+  --color-danger: #ef4444;
+  --color-danger-strong: #dc2626;
+  --color-danger-soft: #fef2f2;
+  --color-danger-line: #fecaca;
 
-  --color-violet: #7a5af8;
-  --color-violet-strong: #6d4de0;
-  --color-violet-soft: #f3f0fe;
+  --color-violet: #6366f1;
+  --color-violet-strong: #4f46e5;
+  --color-violet-soft: #eef2ff;
 
-  --color-teal: #0ea5a8;
+  --color-cyan: #06b6d4;
+  --color-cyan-strong: #0891b2;
+  --color-cyan-soft: #ecfeff;
+
+  --color-teal: #0d9488;
   --color-slate: #475569;
 
-  /* ── Radios ─────────────────────────────────────────────────────────── */
-  /* Escala comprimida a un máximo de 12px: valores de hasta 22px (antiguo
-   * --radius-10xl) daban un aspecto "de juguete" a cards, dialogs y al
-   * reproductor de video frente a plataformas de referencia (Coursera,
-   * Udemy, LinkedIn Learning), que rara vez superan 12-14px incluso en
-   * superficies grandes. --radius-pill queda igual: es para píldoras y
-   * botones circulares, no para esquinas de superficies. */
+  /* ── Radios Modernos ─────────────────────────────────────────────────── */
   --radius-xs: 4px;
-  --radius-sm: 5px;
-  --radius-md: 6px;
-  --radius-lg: 6px;
-  --radius-xl: 7px;
-  --radius-2xl: 8px;
-  --radius-3xl: 8px;
-  --radius-4xl: 9px;
-  --radius-5xl: 9px;
-  --radius-6xl: 10px;
-  --radius-7xl: 10px;
-  --radius-8xl: 11px;
-  --radius-9xl: 12px;
-  --radius-10xl: 12px;
-  --radius-pill: 99px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+  --radius-2xl: 14px;
+  --radius-3xl: 16px;
+  --radius-4xl: 18px;
+  --radius-5xl: 20px;
+  --radius-6xl: 22px;
+  --radius-7xl: 24px;
+  --radius-8xl: 26px;
+  --radius-9xl: 28px;
+  --radius-10xl: 30px;
+  --radius-pill: 9999px;
 
-  /* ── Sombras ────────────────────────────────────────────────────────── */
-  --shadow-segment: 0 1px 3px rgb(15 23 42 / 0.14);
-  --shadow-card: 0 30px 70px rgb(15 23 42 / 0.14), 0 2px 6px rgb(15 23 42 / 0.06);
-  --shadow-dialog: 0 30px 70px rgb(15 23 42 / 0.3);
-  --shadow-toast: 0 18px 40px rgb(15 23 42 / 0.28);
-  --shadow-player: 0 14px 34px rgb(11 22 32 / 0.22);
+  /* ── Sombras Multicapa & Ambient Glow ────────────────────────────────── */
+  --shadow-segment: 0 1px 2px 0 rgba(15, 23, 42, 0.04);
+  --shadow-card: 0 4px 20px -2px rgba(15, 23, 42, 0.06), 0 2px 6px -1px rgba(15, 23, 42, 0.03);
+  --shadow-card-hover: 0 12px 32px -4px rgba(15, 23, 42, 0.09), 0 4px 12px -2px rgba(15, 23, 42, 0.04);
+  --shadow-dialog: 0 24px 60px -12px rgba(15, 23, 42, 0.22);
+  --shadow-toast: 0 16px 36px -8px rgba(15, 23, 42, 0.2);
+  --shadow-player: 0 20px 50px -10px rgba(11, 15, 25, 0.4);
+  --shadow-glow-brand: 0 0 24px -4px rgba(37, 99, 235, 0.3);
+  --shadow-glow-gold: 0 0 24px -4px rgba(245, 158, 11, 0.35);
+  --shadow-glow-emerald: 0 0 24px -4px rgba(16, 185, 129, 0.3);
 
-  /* ── Movimiento ─────────────────────────────────────────────────────────
-   * Curvas fuertes: las nativas de CSS son demasiado planas y hacen que la
-   * interfaz se sienta lenta. Nunca usamos ease-in en UI.
-   * ------------------------------------------------------------------- */
+  /* ── Curvas de Movimiento ────────────────────────────────────────────── */
   --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out-strong: cubic-bezier(0.77, 0, 0.175, 1);
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 
-  --duration-press: 160ms;
+  --duration-press: 140ms;
   --duration-hover: 160ms;
   --duration-popover: 180ms;
   --duration-dropdown: 200ms;
@@ -178,7 +177,7 @@
   --duration-dialog: 220ms;
 
   /* ── Layout ─────────────────────────────────────────────────────────── */
-  --spacing-sidebar: 236px;
-  --spacing-rail: 288px;
-  --spacing-aside: 352px;
+  --spacing-sidebar: 250px;
+  --spacing-rail: 290px;
+  --spacing-aside: 360px;
 }

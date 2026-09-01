@@ -1,10 +1,10 @@
 'use client';
 
-import { ChevronRight, Check } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Sparkles } from 'lucide-react';
 
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { avatarColorFor } from '@/constants/palettes';
+import { LEVEL_BADGE } from '@/constants/palettes';
 import type { Course } from '@/types';
 
 export interface CoursePickerCardProps {
@@ -12,61 +12,80 @@ export interface CoursePickerCardProps {
   onSelect: (course: Course) => void;
 }
 
-/** Tarjeta de curso — punto de entrada explícito en vez de caer directo al contenido. */
+/**
+ * Tarjeta de curso con diseño EdTech moderno inspirado en Coursera y MasterClass.
+ */
 export function CoursePickerCard({ course, onSelect }: CoursePickerCardProps) {
   const completed = course.progress >= 100;
 
   return (
-    <button type="button" onClick={() => onSelect(course)} className="w-full text-left">
+    <button
+      type="button"
+      onClick={() => onSelect(course)}
+      className="group w-full text-left focus-visible:outline-none"
+    >
       <Card
+        variant="hover"
         padding="none"
         radius="xl"
-        className="group flex flex-col overflow-hidden transition-transform duration-[160ms] ease-[cubic-bezier(0.23,1,0.32,1)] hover:-translate-y-0.5 hover:shadow-card"
+        className="flex h-full flex-col overflow-hidden border border-slate-200/90 bg-white"
       >
-        <div
-          aria-hidden
-          className="relative h-20 w-full"
-          style={{
-            background: `linear-gradient(135deg, ${avatarColorFor(course.id)}, ${avatarColorFor(course.id)}99)`,
-          }}
-        >
-          {completed && (
-            <span className="absolute right-2.5 top-2.5 flex items-center gap-1 rounded-pill bg-white/95 px-2.5 py-1 text-tiny font-extrabold text-success-strong">
-              <Check aria-hidden size={12} strokeWidth={3} />
+        {/* Banner superior con gradiente de nivel y badges flotantes */}
+        <div className="relative h-24 w-full bg-gradient-to-br from-blue-600 via-indigo-600 to-slate-900 p-3.5 flex items-start justify-between">
+          <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-micro font-extrabold shadow-sm ${LEVEL_BADGE[course.level]}`}>
+            NIVEL {course.level}
+          </span>
+
+          {completed ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/90 backdrop-blur-sm px-2.5 py-0.5 text-micro font-extrabold text-white shadow-sm">
+              <CheckCircle2 aria-hidden className="size-3" />
               Completado
             </span>
+          ) : (
+            course.progress > 0 && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-white/20 backdrop-blur-md px-2.5 py-0.5 text-micro font-extrabold text-white">
+                <Sparkles aria-hidden className="size-3 text-amber-300" />
+                En curso
+              </span>
+            )
           )}
         </div>
-        <div className="flex flex-col gap-3 p-[18px]">
+
+        <div className="flex flex-1 flex-col justify-between p-5">
           <div>
-            <p className="text-tiny font-bold uppercase tracking-wide text-fg-ghost">
-              Nivel {course.level}
-            </p>
-            <h3 className="mt-0.5 text-body-lg font-extrabold tracking-tight-2 text-fg">
+            <h3 className="text-title font-extrabold tracking-tight text-slate-900 group-hover:text-brand transition-colors">
               {course.name}
             </h3>
+            <p className="mt-1 text-meta font-medium text-slate-500 line-clamp-2">
+              Programa estructurado con ejercicios guiados y evaluaciones.
+            </p>
           </div>
 
-          <div>
-            <div className="flex items-center justify-between text-tiny font-bold text-fg-ghost">
-              <span>Tu progreso</span>
-              <span>{course.progress} %</span>
+          <div className="mt-5 pt-3 border-t border-slate-100">
+            <div className="flex items-center justify-between text-caption font-bold text-slate-600 mb-1.5">
+              <span>Progreso de estudio</span>
+              <span className="font-extrabold tabular-nums text-slate-900">{course.progress}%</span>
             </div>
             <Progress
               value={course.progress}
               height={6}
-              tone={completed ? 'success' : 'brand'}
-              className="mt-1.5"
+              tone={completed ? 'success' : 'accent'}
               label={`Progreso en ${course.name}`}
             />
-          </div>
 
-          <span className="mt-1 flex items-center gap-1 text-body-sm font-bold text-brand group-hover:gap-1.5">
-            {completed ? 'Ver de nuevo' : 'Continuar'}
-            <ChevronRight aria-hidden size={15} strokeWidth={2.4} />
-          </span>
+            <div className="mt-4 flex items-center justify-between">
+              <span className="text-caption font-bold text-slate-400">
+                {completed ? 'Repasar contenido' : 'Continuar lección'}
+              </span>
+              <span className="inline-flex items-center gap-1 text-body-sm font-extrabold text-brand group-hover:translate-x-1 transition-transform">
+                Entrar
+                <ArrowRight aria-hidden className="size-4" />
+              </span>
+            </div>
+          </div>
         </div>
       </Card>
     </button>
   );
 }
+

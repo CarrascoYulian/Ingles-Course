@@ -1,13 +1,11 @@
-import { Star } from 'lucide-react';
+import { Lock, Sparkles, Trophy } from 'lucide-react';
 
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import type { Badge as BadgeModel } from '@/types';
 
 /**
- * Tarjeta de insignia. El estado no se comunica sólo por color: la obtenida
- * lleva estrella y la pendiente un punto, para no depender del contraste
- * ámbar/gris (WCAG 1.4.1).
+ * Tarjeta de insignia estilo vitrina de trofeos con acabados metálicos y luz ambiental.
  */
 export function BadgeCard({ badge }: { badge: BadgeModel }) {
   const { earned, name, state } = badge;
@@ -15,35 +13,60 @@ export function BadgeCard({ badge }: { badge: BadgeModel }) {
   return (
     <Card
       variant={earned ? 'earned' : 'default'}
-      className="flex flex-col gap-2 p-[18px]"
+      padding="none"
+      radius="xl"
+      className={cn(
+        'group flex flex-col p-5 transition-all duration-200 border',
+        earned
+          ? 'border-amber-300/90 bg-gradient-to-br from-amber-50 via-white to-amber-100/40 shadow-glow-gold'
+          : 'border-slate-200 bg-white hover:border-slate-300 shadow-sm opacity-70 hover:opacity-100',
+      )}
       aria-label={`${name}: ${state}`}
     >
-      <span
-        aria-hidden
-        className={cn(
-          'grid size-[34px] place-items-center rounded-xl text-body font-extrabold text-white',
-          earned ? 'bg-warning' : 'bg-fg-placeholder',
-        )}
-      >
-        {earned ? <Star size={15} strokeWidth={2.6} fill="currentColor" /> : '·'}
-      </span>
+      <div className="flex items-center justify-between">
+        <span
+          aria-hidden
+          className={cn(
+            'grid size-11 place-items-center rounded-2xl text-body font-black transition-all duration-200 shadow-sm',
+            earned
+              ? 'bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-glow-gold ring-2 ring-amber-200'
+              : 'bg-slate-100 text-slate-400',
+          )}
+        >
+          {earned ? (
+            <Trophy aria-hidden className="size-5.5 fill-white/80" />
+          ) : (
+            <Lock aria-hidden className="size-4.5" />
+          )}
+        </span>
 
-      <p
-        className={cn(
-          'text-body-sm font-extrabold',
-          earned ? 'text-warning-deep' : 'text-fg-subtle',
+        {earned && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-amber-100/80 px-2.5 py-0.5 text-micro font-black text-amber-800 uppercase tracking-wider">
+            <Sparkles aria-hidden className="size-2.5" />
+            Desbloqueado
+          </span>
         )}
-      >
-        {name}
-      </p>
-      <p
-        className={cn(
-          'text-caption font-bold',
-          earned ? 'text-warning-strong' : 'text-fg-ghost',
-        )}
-      >
-        {state}
-      </p>
+      </div>
+
+      <div className="mt-4">
+        <p
+          className={cn(
+            'text-body-sm font-extrabold tracking-tight',
+            earned ? 'text-amber-950 font-black' : 'text-slate-700',
+          )}
+        >
+          {name}
+        </p>
+        <p
+          className={cn(
+            'mt-0.5 text-caption font-semibold',
+            earned ? 'text-amber-800' : 'text-slate-400',
+          )}
+        >
+          {state}
+        </p>
+      </div>
     </Card>
   );
 }
+

@@ -6,35 +6,44 @@ export interface EmptyStateProps {
   title: string;
   description: string;
   action?: ReactNode;
+  icon?: ReactNode;
   className?: string;
-  /** Compacto para móvil (padding menor, como en el diseño). */
+  /** Compacto para móvil o sidebars */
   compact?: boolean;
 }
 
 /**
- * Estado vacío. El texto siempre dice qué hacer a continuación, no sólo que
- * no hay nada: «Prueba con la matrícula completa (ING-000072)».
+ * Estado vacío moderno con borde suave y texto de alta legibilidad.
  */
 export function EmptyState({
   title,
   description,
   action,
+  icon,
   className,
   compact = false,
 }: EmptyStateProps) {
   return (
     <div
       className={cn(
-        'rounded-4xl border-[1.5px] border-dashed border-line-dashed bg-surface-subtle text-center',
-        compact ? 'px-[18px] py-[30px]' : 'px-5 py-[38px]',
+        'flex flex-col items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-white/70 backdrop-blur-sm text-center shadow-sm',
+        compact ? 'px-4 py-6' : 'px-6 py-10',
         className,
       )}
     >
-      <p className={cn('font-bold text-fg', compact ? 'text-body' : 'text-body-lg')}>{title}</p>
-      <p className={cn('mt-1 font-semibold text-fg-faint', compact ? 'text-meta' : 'text-label')}>
-        {description}
-      </p>
-      {action && <div className="mt-3 flex justify-center">{action}</div>}
+      {icon && (
+        <div className="mb-3 grid size-12 place-items-center rounded-2xl bg-blue-50 text-blue-600 shadow-sm">
+          {icon}
+        </div>
+      )}
+      <p className={cn('font-extrabold text-slate-900', compact ? 'text-body-sm' : 'text-body-lg')}>{title}</p>
+      {description && (
+        <p className={cn('mt-1.5 font-medium text-slate-500 max-w-md text-pretty', compact ? 'text-caption' : 'text-body-sm')}>
+          {description}
+        </p>
+      )}
+      {action && <div className="mt-4 flex justify-center">{action}</div>}
     </div>
   );
 }
+

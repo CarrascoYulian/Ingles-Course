@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 
 import { LogoutButton } from '@/components/shared/logout-button';
+import { ThemeToggle } from '@/components/shared/theme-toggle';
 import { Avatar } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { ADMIN_PAGE_META } from '@/constants/navigation';
@@ -59,6 +60,7 @@ export function AdminTopbar({ subtitle, teacherName, action }: AdminTopbarProps)
             />
           )}
           <NotificationBell />
+          <ThemeToggle />
           <div className="hidden lg:block">{action}</div>
           <Link href={ROUTES.admin.cuenta} aria-label="Mi cuenta" className="lg:hidden">
             <Avatar name={teacherName} color="#0F5257" size={34} />

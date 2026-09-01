@@ -1,36 +1,36 @@
 import type { BlockType, CefrLevel } from '@/types';
 
 /**
- * Paletas derivadas del diseño. Se declaran como clases de Tailwind completas
- * (nunca interpoladas) para que el compilador de Tailwind pueda verlas.
+ * Paletas derivadas del diseño tecnológico moderno.
  */
 
-/** Insignia de nivel MCER (cuadrado con las siglas). */
+/** Insignia de nivel MCER (píldora/cuadrado con las siglas). */
 export const LEVEL_BADGE: Record<CefrLevel, string> = {
-  A1: 'bg-brand-soft text-brand',
-  A2: 'bg-surface-sunken text-fg-subtle',
-  B1: 'bg-accent-soft text-accent',
-  B2: 'bg-warning-tint text-warning-strong',
-  C1: 'bg-violet-soft text-violet-strong',
+  A1: 'bg-emerald-50 text-emerald-700 border border-emerald-200/80',
+  A2: 'bg-cyan-50 text-cyan-700 border border-cyan-200/80',
+  B1: 'bg-blue-50 text-blue-700 border border-blue-200/80',
+  B2: 'bg-amber-50 text-amber-700 border border-amber-200/80',
+  C1: 'bg-indigo-50 text-indigo-700 border border-indigo-200/80',
 };
 
-/** Etiqueta cuadrada del tipo de bloque en el constructor de contenido. */
+/** Etiqueta del tipo de bloque en el constructor de contenido y sala de clase. */
 export const BLOCK_BADGE: Record<BlockType, string> = {
-  Video: 'bg-accent-soft text-accent',
-  PDF: 'bg-surface-sunken text-fg-subtle',
-  Ejercicio: 'bg-brand-soft text-brand',
-  Audio: 'bg-violet-soft text-violet-strong',
-  Evaluación: 'bg-warning-tint text-warning-strong',
+  Video: 'bg-blue-50 text-blue-700 border border-blue-200/60',
+  PDF: 'bg-slate-100 text-slate-700 border border-slate-200/80',
+  Ejercicio: 'bg-emerald-50 text-emerald-700 border border-emerald-200/60',
+  Audio: 'bg-indigo-50 text-indigo-700 border border-indigo-200/60',
+  Evaluación: 'bg-amber-50 text-amber-700 border border-amber-200/60',
 };
 
-/** Colores de avatar, en el orden exacto del diseño. */
+/** Colores de avatar tecnológicos y vibrantes. */
 export const AVATAR_COLORS = [
-  '#0F5257',
-  '#2F6BFF',
-  '#7A5AF8',
-  '#0EA5A8',
-  '#475569',
-  '#B4790C',
+  '#2563EB', // Electric Blue
+  '#6366F1', // Indigo
+  '#06B6D4', // Cyan
+  '#10B981', // Emerald
+  '#8B5CF6', // Violet
+  '#F59E0B', // Amber
+  '#0D9488', // Teal
 ] as const;
 
 export function avatarColorFor(seed: string): string {
@@ -42,8 +42,7 @@ export function avatarColorFor(seed: string): string {
 }
 
 /**
- * Color de la barra de progreso: verde por encima de 70, azul entre 30 y 70,
- * ámbar por debajo. Es la regla literal del diseño.
+ * Color de la barra de progreso: verde esmeralda > 70%, azul cobalto 30-70%, ámbar < 30%.
  */
 export function progressTone(value: number): 'success' | 'accent' | 'warning' {
   if (value > 70) return 'success';

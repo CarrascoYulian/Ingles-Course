@@ -1,8 +1,10 @@
 @import 'tailwindcss';
 @import '../styles/tokens.css';
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* ============================================================================
- * BASE
+ * BASE & MODO OSCURO (DARK MODE TOKENS)
  * ========================================================================== */
 @layer base {
   html {
@@ -15,13 +17,50 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+    transition: background-color 200ms ease, color 200ms ease;
   }
 
-  /* Foco visible y consistente en todo el producto (WCAG 2.4.7). */
+  /* Tokens dinámicos de Modo Oscuro */
+  :root.dark,
+  .dark {
+    --color-canvas: #090d16;
+    --color-surface: #0f172a;
+    --color-surface-muted: #1e293b;
+    --color-surface-subtle: #131d31;
+    --color-surface-sunken: #060911;
+
+    --color-fg: #f8fafc;
+    --color-fg-strong: #ffffff;
+    --color-fg-muted: #cbd5e1;
+    --color-fg-body: #cbd5e1;
+    --color-fg-subtle: #94a3b8;
+    --color-fg-soft: #94a3b8;
+    --color-fg-dim: #94a3b8;
+    --color-fg-faint: #64748b;
+    --color-fg-ghost: #64748b;
+    --color-fg-disabled: #334155;
+    --color-fg-locked: #334155;
+    --color-fg-placeholder: #64748b;
+
+    --color-line: rgba(255, 255, 255, 0.08);
+    --color-line-strong: rgba(255, 255, 255, 0.16);
+    --color-line-soft: rgba(255, 255, 255, 0.04);
+    --color-line-dashed: rgba(255, 255, 255, 0.12);
+
+    --color-accent-soft: rgba(37, 99, 235, 0.22);
+    --color-accent-tint: rgba(37, 99, 235, 0.15);
+
+    --color-brand-soft: rgba(37, 99, 235, 0.25);
+    --shadow-card: 0 4px 24px -2px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.07);
+    --shadow-card-hover: 0 12px 36px -4px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.12);
+  }
+
+  /* Foco visible y consistente con halo de luz tecnológico (WCAG 2.4.7). */
   :focus-visible {
-    outline: 2px solid var(--color-accent);
+    outline: 2px solid var(--color-brand);
     outline-offset: 2px;
-    border-radius: 4px;
+    box-shadow: 0 0 12px 0 var(--color-brand-glow);
+    border-radius: 6px;
   }
 
   /* El anillo del navegador se sustituye por el nuestro, nunca se elimina. */
@@ -39,11 +78,102 @@
   }
 }
 
+/* Glassmorphism en modo oscuro */
+.dark .glass-header {
+  background-color: rgba(15, 23, 42, 0.85);
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+.dark .glass-card {
+  background-color: rgba(15, 23, 42, 0.88);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.dark .glass-dock {
+  background-color: rgba(15, 23, 42, 0.92);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+/* Adaptaciones fluidas para modo oscuro */
+.dark .bg-white {
+  background-color: #0f172a;
+}
+.dark .bg-slate-50,
+.dark .bg-slate-50\/40,
+.dark .bg-slate-50\/50,
+.dark .bg-slate-50\/70,
+.dark .bg-slate-50\/80 {
+  background-color: #1e293b;
+}
+.dark .bg-slate-100 {
+  background-color: #334155;
+}
+.dark .border-slate-100,
+.dark .border-slate-200,
+.dark .border-slate-200\/70,
+.dark .border-slate-200\/80,
+.dark .border-slate-200\/90 {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+.dark .text-slate-900 {
+  color: #f8fafc;
+}
+.dark .text-slate-800 {
+  color: #f1f5f9;
+}
+.dark .text-slate-700 {
+  color: #e2e8f0;
+}
+.dark .text-slate-600 {
+  color: #cbd5e1;
+}
+.dark .text-slate-500 {
+  color: #94a3b8;
+}
+
+
 /* ============================================================================
- * UTILIDADES DE PRODUCTO
+ * UTILIDADES DE PRODUCTO & HIGH-TECH UI
  * ========================================================================== */
 
-/* Barra de scroll discreta para raíles y listas internas. */
+/* Paneles y barras estilo Glassmorphism */
+@utility glass-header {
+  background-color: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+@utility glass-card {
+  background-color: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: var(--shadow-card);
+}
+
+@utility glass-dock {
+  background-color: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  box-shadow: var(--shadow-toast);
+}
+
+/* Halos luminosos sutiles */
+@utility glow-brand {
+  box-shadow: var(--shadow-glow-brand);
+}
+
+@utility glow-gold {
+  box-shadow: var(--shadow-glow-gold);
+}
+
+@utility glow-emerald {
+  box-shadow: var(--shadow-glow-emerald);
+}
+
+/* Barra de scroll discreta y moderna. */
 @utility scrollbar-slim {
   scrollbar-width: thin;
   scrollbar-color: var(--color-line-dashed) transparent;
@@ -55,6 +185,9 @@
   &::-webkit-scrollbar-thumb {
     background: var(--color-line-dashed);
     border-radius: var(--radius-pill);
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background: var(--color-line-strong);
   }
   &::-webkit-scrollbar-track {
     background: transparent;
@@ -69,8 +202,7 @@
   }
 }
 
-/* Aparición sutil de paneles. Duración corta: cambiar de pestaña es una
- * acción frecuente y el movimiento la haría sentir lenta. */
+/* Aparición sutil de paneles. */
 @utility animate-fade-in {
   animation: fade-in 160ms var(--ease-out-strong) both;
 }
@@ -78,15 +210,31 @@
 @keyframes fade-in {
   from {
     opacity: 0;
+    transform: translateY(2px);
   }
   to {
     opacity: 1;
+    transform: translateY(0);
   }
 }
 
-/* Sombreado momentáneo para marcar el destino de un deep link (p. ej. la
- * entrega sin calificar que llevó hasta acá) — se sostiene ~1s y se
- * desvanece, sin dejar rastro permanente en el estilo de la fila. */
+/* Shimmer animado para loaders y cards destacadas */
+@utility animate-shimmer {
+  background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.4) 50%, rgba(255,255,255,0) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.8s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Sombreado momentáneo para marcar el destino de un deep link */
 @utility animate-highlight-flash {
   animation: highlight-flash 1800ms var(--ease-out-strong) both;
 }
@@ -94,7 +242,7 @@
 @keyframes highlight-flash {
   0%,
   55% {
-    background-color: var(--color-accent-soft, #fef3c7);
+    background-color: var(--color-accent-soft, #eff6ff);
   }
   100% {
     background-color: transparent;
@@ -124,8 +272,7 @@
   }
 }
 
-/* Feedback de pulsación. Sólo en punteros finos: en táctil el :active
- * se dispara con el scroll y produce falsos positivos. */
+/* Feedback de pulsación con respuesta táctil elástica. */
 @utility press {
   transition: transform var(--duration-press) var(--ease-out-strong);
 
@@ -138,8 +285,6 @@
 
 /* ============================================================================
  * MOVIMIENTO REDUCIDO
- * Menos movimiento, no cero: se conservan opacidad y color porque ayudan a
- * comprender el cambio de estado.
  * ========================================================================== */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -154,11 +299,6 @@
 
 /* ============================================================================
  * IMPRESIÓN — certificado
- * Sin esto, "Guardar como PDF" usa el tamaño/orientación por defecto del
- * navegador (Carta, retrato) — el certificado (pensado para landscape, ver
- * CertificateView) quedaba angosto con márgenes grandes en vez de ocupar
- * la página. `size: landscape` fija la orientación desde el propio
- * documento, sin depender de que el alumno la cambie a mano en el diálogo.
  * ========================================================================== */
 @media print {
   @page {

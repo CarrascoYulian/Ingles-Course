@@ -8,8 +8,7 @@ import { cn } from '@/lib/utils';
 export const Tabs = TabsPrimitive.Root;
 
 /**
- * Pestañas con subrayado. Radix aporta la navegación por flechas y la
- * relación `aria-controls` entre pestaña y panel.
+ * Pestañas modernas con indicador y tipografía de alto contraste.
  */
 export const TabsList = forwardRef<
   React.ComponentRef<typeof TabsPrimitive.List>,
@@ -19,7 +18,7 @@ export const TabsList = forwardRef<
     <TabsPrimitive.List
       ref={ref}
       className={cn(
-        'flex gap-[18px] overflow-x-auto border-b border-line-soft scrollbar-none md:gap-[26px]',
+        'flex gap-6 overflow-x-auto border-b border-slate-200 scrollbar-none md:gap-8',
         className,
       )}
       {...props}
@@ -35,11 +34,11 @@ export const TabsTrigger = forwardRef<
     <TabsPrimitive.Trigger
       ref={ref}
       className={cn(
-        'shrink-0 cursor-pointer whitespace-nowrap border-b-2 border-transparent pb-3',
-        'font-sans text-body-sm font-bold text-fg-faint',
-        'transition-colors duration-[160ms] ease-[cubic-bezier(0.23,1,0.32,1)]',
-        'hover:text-fg-subtle',
-        'data-[state=active]:border-brand data-[state=active]:text-fg',
+        'relative shrink-0 cursor-pointer whitespace-nowrap border-b-2 border-transparent pb-3.5 pt-1',
+        'font-sans text-body-sm font-bold text-slate-500',
+        'transition-[color,border-color] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)]',
+        'hover:text-slate-900',
+        'data-[state=active]:border-brand data-[state=active]:text-brand font-extrabold',
         className,
       )}
       {...props}
@@ -48,8 +47,7 @@ export const TabsTrigger = forwardRef<
 });
 
 /**
- * El panel entra con un fundido corto y sin desplazamiento: cambiar de
- * pestaña es una acción frecuente y el movimiento la haría sentir lenta.
+ * Panel de contenido con entrada suave.
  */
 export const TabsContent = forwardRef<
   React.ComponentRef<typeof TabsPrimitive.Content>,
@@ -59,7 +57,7 @@ export const TabsContent = forwardRef<
     <TabsPrimitive.Content
       ref={ref}
       className={cn(
-        'pt-[18px] outline-none',
+        'pt-5 outline-none',
         'motion-safe:data-[state=active]:animate-fade-in',
         className,
       )}
@@ -67,3 +65,4 @@ export const TabsContent = forwardRef<
     />
   );
 });
+

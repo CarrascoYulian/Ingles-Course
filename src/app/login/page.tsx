@@ -2,15 +2,14 @@ import type { Metadata } from 'next';
 import Image from 'next/image';
 import { Suspense } from 'react';
 
+import { ThemeToggle } from '@/components/shared/theme-toggle';
 import { Card } from '@/components/ui/card';
 import { LoginForm } from '@/features/auth/components/login-form';
 
 export const metadata: Metadata = { title: 'Entrar' };
 
 /**
- * Diseño split-screen: panel izquierdo con el formulario sobre fondo claro,
- * panel derecho con el póster de marca "Online English Program" (assets en
- * public/login/, provistos por el cliente).
+ * Diseño split-screen estilo Coursera & MasterClass.
  */
 export default function LoginPage() {
   return (
@@ -18,13 +17,7 @@ export default function LoginPage() {
       id="contenido-principal"
       className="relative grid min-h-dvh overflow-x-hidden bg-canvas lg:grid-cols-[60%_40%]"
     >
-      {/* Waves decorativos (estilo getwaves.io), a lo ancho de TODA la
-          página (no sólo el panel del formulario) — antes vivían dentro del
-          panel izquierdo con `overflow-hidden`, así que `w-full` medía el
-          60 % de la pantalla y la curva se cortaba en seco justo donde
-          empezaba el póster, en vez de llegar al borde real. Van como
-          hermanos de los dos paneles (ambos ya `relative`) para pintarse
-          detrás de los dos sin taparlos. */}
+      {/* Waves decorativos originales estilo getwaves.io */}
       <svg
         aria-hidden
         viewBox="0 0 1440 320"
@@ -70,20 +63,25 @@ export default function LoginPage() {
         />
       </svg>
 
+      {/* Botón de cambio de tema en Login */}
+      <div className="absolute top-4 right-4 z-30">
+        <ThemeToggle />
+      </div>
+
       <div className="relative flex min-h-0 items-center justify-center overflow-y-auto px-5 py-[clamp(0.75rem,3vh,2.5rem)]">
         <div className="relative z-10 w-full max-w-[420px]">
           <Card
             radius="2xl"
             padding="none"
-            className="relative overflow-visible p-6 pt-[clamp(3rem,10vh,6rem)] shadow-card"
+            className="relative overflow-visible p-6 pt-[clamp(3rem,10vh,6rem)] shadow-card border border-line"
           >
-            {/* Hueco: círculo del color de fondo de la página, más grande que el logo. */}
+            {/* Hueco: círculo del color de fondo de la página, más grande que el logo */}
             <div
               aria-hidden
-              className="absolute left-1/2 top-0 size-[clamp(100px,14vh,140px)] -translate-x-1/2 -translate-y-1/2 rounded-full bg-canvas"
+              className="absolute left-1/2 top-0 size-[clamp(100px,14vh,140px)] -translate-x-1/2 -translate-y-1/2 rounded-full bg-canvas border border-line/60"
             />
-            {/* Logo: la "pieza" que encaja en el hueco, ligeramente más chica y por encima. */}
-            <div className="absolute left-1/2 top-0 z-10 size-[clamp(80px,11vh,112px)] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full">
+            {/* Logo: la pieza redonda que encaja en el hueco */}
+            <div className="absolute left-1/2 top-0 z-10 size-[clamp(80px,11vh,112px)] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full shadow-sm">
               <Image
                 src="/login/logo.jpeg"
                 alt="Bertho Community"
@@ -136,3 +134,4 @@ export default function LoginPage() {
     </main>
   );
 }
+

@@ -1,22 +1,23 @@
 import { cn } from '@/lib/utils';
 
-type ProgressTone = 'success' | 'accent' | 'warning' | 'danger' | 'brand' | 'ink';
+type ProgressTone = 'success' | 'accent' | 'warning' | 'danger' | 'brand' | 'ink' | 'cyan';
 
 const TONE_CLASS: Record<ProgressTone, string> = {
-  success: 'bg-success',
-  accent: 'bg-accent',
-  warning: 'bg-warning',
-  danger: 'bg-danger',
-  brand: 'bg-brand',
-  ink: 'bg-accent',
+  success: 'bg-gradient-to-r from-emerald-500 to-emerald-400',
+  accent: 'bg-gradient-to-r from-blue-600 to-indigo-500',
+  warning: 'bg-gradient-to-r from-amber-500 to-amber-400',
+  danger: 'bg-gradient-to-r from-rose-500 to-red-400',
+  brand: 'bg-gradient-to-r from-blue-600 to-cyan-500',
+  ink: 'bg-gradient-to-r from-cyan-400 to-blue-400',
+  cyan: 'bg-gradient-to-r from-cyan-500 to-teal-400',
 };
 
 const HEIGHT_CLASS = {
   4: 'h-1',
-  5: 'h-[5px]',
-  6: 'h-1.5',
-  8: 'h-2',
-  9: 'h-[9px]',
+  5: 'h-1.5',
+  6: 'h-2',
+  8: 'h-2.5',
+  9: 'h-3',
 } as const;
 
 export interface ProgressProps {
@@ -24,13 +25,11 @@ export interface ProgressProps {
   value: number;
   tone?: ProgressTone;
   /**
-   * Color CSS explícito (p. ej. un `rgb()` interpolado) — sobreescribe
-   * `tone` cuando la barra necesita un degradado continuo en vez de un
-   * color fijo por umbral. Ver `StorageUsageWidget`/`storageBarColor`.
+   * Color CSS explícito
    */
   color?: string;
   height?: keyof typeof HEIGHT_CLASS;
-  /** Pista oscura, para el reproductor sobre fondo #0B1620. */
+  /** Pista oscura */
   onInk?: boolean;
   className?: string;
   /** Etiqueta accesible. Si se omite, la barra se marca decorativa. */
@@ -38,16 +37,13 @@ export interface ProgressProps {
 }
 
 /**
- * Barra de progreso. Se anima `width` con una transición de 300 ms, y
- * `background-color` con una de 500 ms (más lenta a propósito: un cambio de
- * color debe leerse como una advertencia que aparece gradualmente, no como
- * un parpadeo).
+ * Barra de progreso con gradiente y acabado de alta fidelidad.
  */
 export function Progress({
   value,
   tone = 'success',
   color,
-  height = 4,
+  height = 6,
   onInk = false,
   className,
   label,
@@ -62,19 +58,24 @@ export function Progress({
       aria-valuemin={label ? 0 : undefined}
       aria-valuemax={label ? 100 : undefined}
       className={cn(
-        'w-full overflow-hidden rounded-pill',
+        'w-full overflow-hidden rounded-full shadow-inner',
         HEIGHT_CLASS[height],
-        onInk ? 'bg-ink-line' : 'bg-line-soft',
+        onInk ? 'bg-slate-800' : 'bg-slate-100 border border-slate-200/50',
         className,
       )}
     >
       <div
         className={cn(
-          'h-full rounded-pill transition-[width,background-color] duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] [transition-duration:300ms,500ms]',
+          'h-full rounded-full transition-[width,background-color] duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] relative',
           !color && TONE_CLASS[tone],
         )}
         style={{ width: `${clamped}%`, backgroundColor: color }}
-      />
+      >
+        {clamped > 0 && clamped < 100 && (
+          <span className="absolute right-0 top-0 h-full w-2 bg-white/40 blur-[1px] rounded-full" />
+        )}
+      </div>
     </div>
   );
 }
+

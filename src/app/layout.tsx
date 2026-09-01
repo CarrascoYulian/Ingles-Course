@@ -57,8 +57,21 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className={jakarta.variable}>
-      <body className="min-h-dvh bg-canvas font-sans antialiased">
+    <html lang="es" className={jakarta.variable} suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                const theme = localStorage.getItem('bertho_theme_preference');
+                const isDark = theme === 'dark' || (!theme || theme === 'system') && window.matchMedia('(prefers-color-scheme: dark)').matches;
+                if (isDark) document.documentElement.classList.add('dark');
+              } catch (e) {}
+            `,
+          }}
+        />
+      </head>
+      <body className="min-h-dvh bg-canvas font-sans antialiased text-fg">
         <a
           href="#contenido-principal"
           className="sr-only-focusable absolute left-4 top-4 z-100 rounded-lg bg-brand px-4 py-2 text-body-sm font-bold text-white"

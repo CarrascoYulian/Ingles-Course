@@ -112,19 +112,22 @@ export function AudioRecorder({ onRecorded }: AudioRecorderProps) {
 
   if (state === 'denied') {
     return (
-      <p className="text-meta text-danger-strong">
-        No se pudo acceder al micrófono — revisá los permisos del navegador para este sitio.
-      </p>
+      <div className="rounded-2xl border border-rose-200 bg-rose-50 p-3.5 text-center">
+        <p className="text-caption font-bold text-rose-700">
+          No se pudo acceder al micrófono. Por favor habilita los permisos de audio en tu navegador.
+        </p>
+      </div>
     );
   }
 
   if (state === 'recorded' && previewUrl) {
     return (
-      <div className="flex flex-col gap-2">
-        <audio src={previewUrl} controls className="w-full" />
-        <Button variant="ghost" size="sm" onClick={recordAgain}>
-          <RotateCcw className="size-4" />
-          Grabar de nuevo
+      <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <p className="text-caption font-extrabold text-slate-700">Grabación lista para enviar:</p>
+        <audio src={previewUrl} controls className="w-full h-10 rounded-lg" />
+        <Button variant="ghost" size="sm" onClick={recordAgain} className="w-fit font-extrabold text-slate-700">
+          <RotateCcw className="size-3.5 text-slate-500" />
+          Grabar nuevamente
         </Button>
       </div>
     );
@@ -132,17 +135,30 @@ export function AudioRecorder({ onRecorded }: AudioRecorderProps) {
 
   if (state === 'recording') {
     return (
-      <Button variant="danger" size="sm" onClick={stopRecording}>
-        <Square className="size-4" />
-        Detener grabación
-      </Button>
+      <div className="flex flex-col items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50/70 p-5 text-center animate-pulse">
+        {/* Visualizador de ondas animadas en vivo */}
+        <div className="flex items-center gap-1.5 h-8">
+          <span className="w-1.5 bg-rose-500 rounded-full animate-bounce [animation-delay:0ms] h-6" />
+          <span className="w-1.5 bg-rose-600 rounded-full animate-bounce [animation-delay:150ms] h-8" />
+          <span className="w-1.5 bg-rose-500 rounded-full animate-bounce [animation-delay:300ms] h-5" />
+          <span className="w-1.5 bg-rose-600 rounded-full animate-bounce [animation-delay:450ms] h-7" />
+          <span className="w-1.5 bg-rose-500 rounded-full animate-bounce [animation-delay:200ms] h-4" />
+        </div>
+        <p className="text-caption font-black text-rose-700 uppercase tracking-wider">
+          Grabando audio de tu pronunciación…
+        </p>
+        <Button variant="danger" size="md" onClick={stopRecording} className="gap-2 font-extrabold shadow-sm">
+          <Square className="size-4 fill-white" />
+          Finalizar y guardar grabación
+        </Button>
+      </div>
     );
   }
 
   return (
-    <Button variant="outline" size="sm" onClick={startRecording}>
-      <Mic className="size-4" />
-      Grabar audio
+    <Button variant="glass" size="md" onClick={startRecording} className="gap-2 font-extrabold text-brand border-brand/30 hover:bg-blue-50">
+      <Mic className="size-4.5 text-brand" />
+      Iniciar grabación de audio
     </Button>
   );
 }

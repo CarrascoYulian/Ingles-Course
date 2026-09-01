@@ -151,18 +151,31 @@ export function CertificateView({ courseId, studentName }: CertificateViewProps)
 
   return (
     <div className="mx-auto max-w-[980px] px-5 py-8 lg:px-[30px] lg:py-12 print:max-w-none print:p-0">
-      <div className="mb-4 flex items-center justify-between print:hidden">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3 print:hidden">
         <Link
           href={ROUTES.student.curso}
-          className="flex items-center gap-1.5 text-tiny font-bold text-fg-dim hover:text-fg"
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-caption font-extrabold text-slate-700 shadow-sm transition-all hover:border-brand/40 hover:text-brand"
         >
-          <ArrowLeft aria-hidden size={14} strokeWidth={2.4} />
+          <ArrowLeft aria-hidden className="size-3.5" />
           Volver a mis cursos
         </Link>
-        <Button size="sm" onClick={() => window.print()}>
-          <Printer aria-hidden size={14} strokeWidth={2.4} />
-          Descargar PDF
-        </Button>
+        <div className="flex items-center gap-2.5">
+          <Button
+            size="md"
+            variant="glass"
+            onClick={() => {
+              const shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(window.location.href)}`;
+              window.open(shareUrl, '_blank');
+            }}
+            className="font-extrabold gap-2 text-blue-700 border-blue-200"
+          >
+            Compartir en LinkedIn
+          </Button>
+          <Button size="md" variant="glow" onClick={() => window.print()} className="font-extrabold gap-2">
+            <Printer aria-hidden className="size-4" />
+            Descargar / Imprimir PDF
+          </Button>
+        </div>
       </div>
 
       <div
