@@ -40,6 +40,11 @@ export function StudentNavbar({ name, enrollmentCode, avatarColor, streakDays }:
               <Link
                 key={href}
                 href={href}
+                onClick={() => {
+                  if (href === ROUTES.student.curso) {
+                    window.dispatchEvent(new CustomEvent('nav-student-courses'));
+                  }
+                }}
                 aria-current={active ? 'page' : undefined}
                 className={cn(
                   'relative rounded-xl px-3.5 py-1.5 text-body-sm font-extrabold transition-all duration-150',

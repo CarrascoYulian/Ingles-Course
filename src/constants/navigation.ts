@@ -58,7 +58,7 @@ export const ADMIN_NAV: readonly NavItem[] = [
 
 /** Plataforma del alumno. */
 export const STUDENT_NAV: readonly NavItem[] = [
-  { href: ROUTES.student.curso, label: 'Mi curso', shortLabel: 'Mi curso', icon: PlaySquare },
+  { href: ROUTES.student.curso, label: 'Mis cursos', shortLabel: 'Mis cursos', icon: PlaySquare },
   { href: ROUTES.practice.root, label: 'BerthoGo', shortLabel: 'BerthoGo', icon: Star },
   { href: ROUTES.student.tareas, label: 'Tareas', shortLabel: 'Tareas', icon: ClipboardList },
   { href: ROUTES.student.logros, label: 'Logros', shortLabel: 'Logros', icon: Trophy },

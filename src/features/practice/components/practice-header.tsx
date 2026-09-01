@@ -67,7 +67,7 @@ export function PracticeHeader({
         <div className="flex items-center gap-4">
           <Link
             href={ROUTES.student.curso}
-            aria-label="Volver a mi curso"
+            aria-label="Volver a mis cursos"
             className="grid size-[34px] place-items-center rounded-lg bg-surface-sunken text-fg-muted transition-colors duration-[160ms] hover:bg-line [@media(hover:hover)_and_(pointer:fine)]:active:scale-[0.97]"
           >
             <ArrowLeft aria-hidden size={16} strokeWidth={2.2} />
@@ -92,7 +92,7 @@ export function PracticeHeader({
         <div className="flex items-center gap-2.5">
           <Link
             href={ROUTES.student.curso}
-            aria-label="Volver a mi curso"
+            aria-label="Volver a mis cursos"
             className="grid size-[30px] shrink-0 place-items-center rounded-md bg-surface-sunken text-fg-muted"
           >
             <ArrowLeft aria-hidden size={15} strokeWidth={2.2} />

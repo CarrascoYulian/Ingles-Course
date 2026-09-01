@@ -3,7 +3,7 @@
 import { ArrowLeft, Layers, LayoutList, Lock, MessagesSquare } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import { CourseUnitsModal } from '@/components/student/course-units-modal';
@@ -62,27 +62,35 @@ export function CourseView({
   const router = useRouter();
   const [isTheater, setIsTheater] = useState(false);
 
-  // Antes esta pantalla resolvía "el" módulo global sin importar en qué
-  // curso(s) estuviera matriculado el alumno. Ahora se resuelve primero a qué curso(s) pertenece.
+  // Resuelve los cursos matriculados del alumno. Por defecto no auto-selecciona
+  // ningún curso para que el estudiante siempre vea primero su lista de cursos matriculados.
   const { data: courses, isPending: isCoursesPending } = useMyCourses();
   const [selectedCourseId, setSelectedCourseId] = useState('');
-  const syncedCourses = useRef(false);
 
   useEffect(() => {
-    if (!courses || courses.length === 0 || syncedCourses.current) return;
+    if (!courses || courses.length === 0) return;
     if (level) {
       const match = courses.find((c) => c.level.toLowerCase() === level.toLowerCase());
       if (match) {
-        syncedCourses.current = true;
         setSelectedCourseId(match.id);
         return;
       }
+    } else {
+      setSelectedCourseId('');
     }
-    if (lessonOrder !== undefined || courses.length === 1) {
-      syncedCourses.current = true;
-      setSelectedCourseId(courses[0]?.id ?? '');
-    }
-  }, [courses, level, lessonOrder]);
+  }, [courses, level]);
+
+  // Permite volver a la lista general al hacer clic en "Mis cursos" desde la barra de navegación
+  useEffect(() => {
+    const onNavCourses = () => {
+      setSelectedCourseId('');
+      if (level || lessonOrder !== undefined || moduleSlugOrId) {
+        router.push(ROUTES.student.curso);
+      }
+    };
+    window.addEventListener('nav-student-courses', onNavCourses);
+    return () => window.removeEventListener('nav-student-courses', onNavCourses);
+  }, [level, lessonOrder, moduleSlugOrId, router]);
 
   const course = courses?.find((c) => c.id === selectedCourseId);
   const { data: module, isPending: isModulePending } = useCurrentModule(selectedCourseId);
@@ -261,7 +269,12 @@ export function CourseView({
     <div className="flex flex-wrap items-center justify-between gap-2.5 px-5 pt-3 lg:px-8">
       <button
         type="button"
-        onClick={() => setSelectedCourseId('')}
+        onClick={() => {
+          setSelectedCourseId('');
+          if (level || lessonOrder !== undefined || moduleSlugOrId) {
+            router.push(ROUTES.student.curso);
+          }
+        }}
         className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3.5 py-1.5 text-caption font-extrabold text-slate-700 dark:text-slate-200 shadow-sm transition-all hover:border-brand/40 hover:text-brand"
       >
         <ArrowLeft aria-hidden className="size-3.5" />

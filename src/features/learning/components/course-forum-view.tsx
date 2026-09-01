@@ -45,7 +45,7 @@ export function CourseForumView({ courseId }: CourseForumViewProps) {
             className="flex w-fit items-center gap-1.5 text-tiny font-bold text-fg-dim hover:text-fg"
           >
             <ArrowLeft aria-hidden size={14} strokeWidth={2.4} />
-            Mi curso
+            Mis cursos
           </Link>
           <h1 className="mt-2 text-heading-sm font-extrabold tracking-heading text-fg">
             Foro {course ? `de ${course.name}` : 'del curso'}

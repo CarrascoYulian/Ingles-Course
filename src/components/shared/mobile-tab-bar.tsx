@@ -32,6 +32,11 @@ export function MobileTabBar({ variant }: { variant: 'admin' | 'student' }) {
           <Link
             key={href}
             href={href}
+            onClick={() => {
+              if (href === ROUTES.student.curso) {
+                window.dispatchEvent(new CustomEvent('nav-student-courses'));
+              }
+            }}
             aria-current={active ? 'page' : undefined}
             className={cn(
               'relative flex min-h-11 flex-1 flex-col items-center justify-center gap-1 rounded-xl py-1',

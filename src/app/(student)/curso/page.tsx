@@ -4,7 +4,7 @@ import { CourseView } from '@/features/learning/components/course-view';
 import { getCurrentProfile } from '@/lib/auth/session';
 
 export const metadata: Metadata = {
-  title: 'Mi curso',
+  title: 'Mis cursos',
 };
 
 export default async function CoursePage() {
