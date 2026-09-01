@@ -30,7 +30,7 @@ export function StudentNavbar({ name, enrollmentCode, avatarColor, streakDays }:
   const { data: unreadMessages = 0 } = useUnreadMessageCount();
 
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between gap-6 border-b border-slate-200/80 bg-white/85 backdrop-blur-md px-5 py-3 lg:px-8 lg:py-3.5 shadow-sm transition-all">
+    <header className="sticky top-0 z-30 flex items-center justify-between gap-6 border-b border-slate-200/80 dark:border-slate-800/80 bg-white/90 dark:bg-slate-950/90 backdrop-blur-md px-5 py-3 lg:px-8 lg:py-3.5 shadow-sm transition-colors">
       <div className="flex min-w-0 items-center gap-8">
         <Logo />
         <nav aria-label="Secciones del curso" className="hidden gap-1.5 lg:flex">
@@ -44,15 +44,15 @@ export function StudentNavbar({ name, enrollmentCode, avatarColor, streakDays }:
                 className={cn(
                   'relative rounded-xl px-3.5 py-1.5 text-body-sm font-extrabold transition-all duration-150',
                   active
-                    ? 'bg-blue-50 text-brand shadow-sm'
-                    : 'text-slate-600 hover:bg-slate-100/70 hover:text-slate-900',
+                    ? 'bg-blue-50 dark:bg-blue-950/70 text-brand dark:text-blue-400 shadow-sm border border-blue-200/50 dark:border-blue-800/50'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100/70 dark:hover:bg-slate-800/70 hover:text-slate-900 dark:hover:text-white',
                 )}
               >
                 {label}
                 {href === ROUTES.student.mensajes && unreadMessages > 0 && (
                   <span
                     aria-hidden
-                    className="absolute right-1 top-1 size-2 rounded-full bg-rose-500 ring-2 ring-white animate-pulse"
+                    className="absolute right-1 top-1 size-2 rounded-full bg-rose-500 ring-2 ring-white dark:ring-slate-900 animate-pulse"
                   />
                 )}
               </Link>
@@ -65,7 +65,7 @@ export function StudentNavbar({ name, enrollmentCode, avatarColor, streakDays }:
         {/* Racha con llama brillante animada */}
         <div
           title={`${streakDays} días consecutivos practicando`}
-          className="flex items-center gap-1.5 rounded-full border border-amber-300/80 bg-gradient-to-r from-amber-50 to-orange-50 px-3 py-1 text-amber-900 shadow-sm"
+          className="flex items-center gap-1.5 rounded-full border border-amber-300/80 dark:border-amber-700/60 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/40 dark:to-orange-950/40 px-3 py-1 text-amber-900 dark:text-amber-200 shadow-sm"
         >
           <Flame aria-hidden className="size-4 fill-amber-500 text-amber-500 animate-pulse" />
           <span className="text-caption font-extrabold tabular-nums">

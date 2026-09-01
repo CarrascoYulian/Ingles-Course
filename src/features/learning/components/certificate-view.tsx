@@ -142,36 +142,36 @@ export function CertificateView({ courseId, studentName }: CertificateViewProps)
         <Card
           radius="2xl"
           padding="none"
-          className="relative overflow-hidden border border-amber-200/90 bg-white p-6 shadow-xl sm:p-10"
+          className="relative overflow-hidden border border-amber-200/90 dark:border-amber-700/60 bg-white dark:bg-slate-900 p-6 shadow-xl sm:p-10"
         >
           {/* Fondo sutil decorativo */}
-          <div className="pointer-events-none absolute -right-12 -top-12 size-48 rounded-full bg-amber-100/50 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-12 -left-12 size-48 rounded-full bg-blue-100/50 blur-3xl" />
+          <div className="pointer-events-none absolute -right-12 -top-12 size-48 rounded-full bg-amber-100/50 dark:bg-amber-950/30 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-12 -left-12 size-48 rounded-full bg-blue-100/50 dark:bg-blue-950/30 blur-3xl" />
 
           <div className="relative z-10 flex flex-col items-center text-center">
-            <div className="grid size-18 place-items-center rounded-3xl bg-amber-100/80 text-amber-700 shadow-inner">
+            <div className="grid size-18 place-items-center rounded-3xl bg-amber-100/80 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300 shadow-inner">
               <Lock aria-hidden className="size-9" />
             </div>
 
-            <span className="mt-5 inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200/80 px-3 py-1 text-micro font-extrabold uppercase tracking-wider text-amber-800">
+            <span className="mt-5 inline-flex items-center gap-1.5 rounded-full bg-amber-50 dark:bg-amber-950/60 border border-amber-200/80 dark:border-amber-700/60 px-3 py-1 text-micro font-extrabold uppercase tracking-wider text-amber-800 dark:text-amber-200">
               <ShieldAlert aria-hidden className="size-3.5" />
               Certificado Oficial Protegido
             </span>
 
-            <h1 className="mt-3 text-heading font-black tracking-tight text-slate-900 sm:text-heading-lg">
+            <h1 className="mt-3 text-heading font-black tracking-tight text-slate-900 dark:text-white sm:text-heading-lg">
               Aún no has completado este curso
             </h1>
 
-            <p className="mt-2.5 max-w-lg text-body-sm font-medium leading-relaxed text-slate-600 sm:text-body">
+            <p className="mt-2.5 max-w-lg text-body-sm font-medium leading-relaxed text-slate-600 dark:text-slate-300 sm:text-body">
               Para obtener y descargar tu certificado oficial de{' '}
-              <strong className="font-extrabold text-slate-900">“{course.name}”</strong>, debes completar el 100% de
+              <strong className="font-extrabold text-slate-900 dark:text-white">“{course.name}”</strong>, debes completar el 100% de
               todos los módulos, lecciones y evaluaciones correspondientes.
             </p>
 
-            <div className="mt-7 w-full max-w-md rounded-2xl border border-slate-100 bg-slate-50/80 p-5 text-left">
+            <div className="mt-7 w-full max-w-md rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-950/60 p-5 text-left">
               <div className="flex items-center justify-between">
-                <span className="text-caption font-extrabold text-slate-700">Tu progreso actual</span>
-                <span className="text-caption font-black text-brand tabular-nums">{effectiveProgress}%</span>
+                <span className="text-caption font-extrabold text-slate-700 dark:text-slate-200">Tu progreso actual</span>
+                <span className="text-caption font-black text-brand dark:text-blue-400 tabular-nums">{effectiveProgress}%</span>
               </div>
 
               <Progress
@@ -182,7 +182,7 @@ export function CertificateView({ courseId, studentName }: CertificateViewProps)
                 label="Progreso hacia el certificado"
               />
 
-              <p className="mt-3 text-micro font-bold text-slate-500">
+              <p className="mt-3 text-micro font-bold text-slate-500 dark:text-slate-400">
                 Te falta un {Math.max(0, 100 - effectiveProgress)}% para desbloquear la descarga e impresión en PDF.
               </p>
             </div>
@@ -212,7 +212,7 @@ export function CertificateView({ courseId, studentName }: CertificateViewProps)
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3 print:hidden">
         <Link
           href={ROUTES.student.curso}
-          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-caption font-extrabold text-slate-700 shadow-sm transition-all hover:border-brand/40 hover:text-brand"
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3.5 py-2 text-caption font-extrabold text-slate-700 dark:text-slate-200 shadow-sm transition-all hover:border-brand/40 hover:text-brand"
         >
           <ArrowLeft aria-hidden className="size-3.5" />
           Volver a mis cursos

@@ -14,7 +14,7 @@ const cardVariants = cva(
         hover:
           'bg-surface border border-line shadow-card hover:shadow-card-hover hover:border-brand/30 hover:-translate-y-0.5 cursor-pointer',
         /** Tarjeta con vidrio translúcido y blur tecnológico */
-        glass: 'bg-white/90 backdrop-blur-md border border-white/80 shadow-card',
+        glass: 'bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-white/80 dark:border-slate-800 shadow-card',
         /** Superficie oscura tecnológica para reproductor o paneles cinema */
         ink: 'bg-ink text-white border border-ink-line shadow-player',
         /** Tarjeta con resplandor azul de enfoque / en curso */
@@ -22,7 +22,7 @@ const cardVariants = cva(
         /** Placeholder / zona de soltar archivos */
         dashed: 'bg-surface-sunken border-[1.5px] border-dashed border-line-dashed hover:border-brand/40',
         /** Insignia obtenida / logro desbloqueado */
-        earned: 'bg-gradient-to-br from-amber-50/80 to-amber-100/50 border border-amber-200/90 shadow-glow-gold text-fg',
+        earned: 'bg-gradient-to-br from-amber-50/80 to-amber-100/50 dark:from-amber-950/40 dark:to-amber-900/20 border border-amber-200/90 dark:border-amber-700/60 shadow-glow-gold text-fg',
       },
       padding: {
         none: '',

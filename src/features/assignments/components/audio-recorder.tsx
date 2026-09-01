@@ -122,11 +122,11 @@ export function AudioRecorder({ onRecorded }: AudioRecorderProps) {
 
   if (state === 'recorded' && previewUrl) {
     return (
-      <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-        <p className="text-caption font-extrabold text-slate-700">Grabación lista para enviar:</p>
+      <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 p-4">
+        <p className="text-caption font-extrabold text-slate-700 dark:text-slate-200">Grabación lista para enviar:</p>
         <audio src={previewUrl} controls className="w-full h-10 rounded-lg" />
-        <Button variant="ghost" size="sm" onClick={recordAgain} className="w-fit font-extrabold text-slate-700">
-          <RotateCcw className="size-3.5 text-slate-500" />
+        <Button variant="ghost" size="sm" onClick={recordAgain} className="w-fit font-extrabold text-slate-700 dark:text-slate-200">
+          <RotateCcw className="size-3.5 text-slate-500 dark:text-slate-400" />
           Grabar nuevamente
         </Button>
       </div>
@@ -135,7 +135,7 @@ export function AudioRecorder({ onRecorded }: AudioRecorderProps) {
 
   if (state === 'recording') {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50/70 p-5 text-center animate-pulse">
+      <div className="flex flex-col items-center gap-3 rounded-2xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/70 dark:bg-rose-950/50 p-5 text-center animate-pulse">
         {/* Visualizador de ondas animadas en vivo */}
         <div className="flex items-center gap-1.5 h-8">
           <span className="w-1.5 bg-rose-500 rounded-full animate-bounce [animation-delay:0ms] h-6" />
@@ -144,7 +144,7 @@ export function AudioRecorder({ onRecorded }: AudioRecorderProps) {
           <span className="w-1.5 bg-rose-600 rounded-full animate-bounce [animation-delay:450ms] h-7" />
           <span className="w-1.5 bg-rose-500 rounded-full animate-bounce [animation-delay:200ms] h-4" />
         </div>
-        <p className="text-caption font-black text-rose-700 uppercase tracking-wider">
+        <p className="text-caption font-black text-rose-700 dark:text-rose-300 uppercase tracking-wider">
           Grabando audio de tu pronunciación…
         </p>
         <Button variant="danger" size="md" onClick={stopRecording} className="gap-2 font-extrabold shadow-sm">

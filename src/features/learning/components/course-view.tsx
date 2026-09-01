@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowLeft, FolderTree, Layers, Lock, MessagesSquare } from 'lucide-react';
+import { ArrowLeft, Layers, LayoutList, Lock, MessagesSquare } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -231,10 +231,10 @@ export function CourseView({
         </div>
 
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-heading-sm font-extrabold text-slate-900">
+          <h2 className="text-heading-sm font-extrabold text-slate-900 dark:text-white">
             Tus programas matriculados
           </h2>
-          <span className="text-caption font-extrabold text-slate-500 tabular-nums">
+          <span className="text-caption font-extrabold text-slate-500 dark:text-slate-400 tabular-nums">
             {courses.length} {courses.length === 1 ? 'curso disponible' : 'cursos disponibles'}
           </span>
         </div>
@@ -262,22 +262,21 @@ export function CourseView({
       <button
         type="button"
         onClick={() => setSelectedCourseId('')}
-        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-caption font-extrabold text-slate-700 shadow-sm transition-all hover:border-brand/40 hover:text-brand"
+        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3.5 py-1.5 text-caption font-extrabold text-slate-700 dark:text-slate-200 shadow-sm transition-all hover:border-brand/40 hover:text-brand"
       >
         <ArrowLeft aria-hidden className="size-3.5" />
         <span>Volver a Mis cursos</span>
       </button>
 
-      {allModules && allModules.length > 0 && (
-        <button
-          type="button"
-          onClick={() => setUnitsModalOpen(true)}
-          className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 px-3.5 py-1.5 text-caption font-extrabold text-brand shadow-sm hover:from-brand hover:to-indigo-600 hover:text-white transition-all"
-        >
-          <FolderTree aria-hidden size={15} />
-          <span>Plan de estudios ({allModules.length} {allModules.length === 1 ? 'unidad' : 'unidades'})</span>
-        </button>
-      )}
+      {/* Selector de unidad actual */}
+      <button
+        type="button"
+        onClick={() => setUnitsModalOpen(true)}
+        className="inline-flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3.5 py-1.5 text-caption font-extrabold text-slate-800 dark:text-slate-200 shadow-sm transition-all hover:border-brand/40 hover:text-brand"
+      >
+        <LayoutList aria-hidden className="size-3.5 text-brand dark:text-blue-400" />
+        <span>Plan de estudios ({allModules?.length ?? 0} unidades)</span>
+      </button>
     </div>
   );
 
@@ -459,28 +458,28 @@ export function CourseView({
             {course.level}
           </span>
           <div className="min-w-0 flex-1">
-            <span className="text-micro font-extrabold tracking-widest text-brand uppercase">
+            <span className="text-micro font-extrabold tracking-widest text-brand dark:text-blue-400 uppercase">
               {moduleLabel}
             </span>
-            <h1 className="mt-1 text-heading-sm font-black tracking-tight text-slate-900 text-pretty lg:text-heading">
+            <h1 className="mt-1 text-heading-sm font-black tracking-tight text-slate-900 dark:text-white text-pretty lg:text-heading">
               {lessonTitle}
             </h1>
           </div>
         </div>
 
         <ul className="mt-3.5 flex flex-wrap gap-2">
-          <li className="rounded-lg border border-slate-200/80 bg-slate-50 px-3 py-1 text-caption font-bold text-slate-600">
+          <li className="rounded-lg border border-slate-200/80 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 px-3 py-1 text-caption font-bold text-slate-600 dark:text-slate-300">
             ⏱ Duración: {currentLesson?.duration ?? '—'}
           </li>
-          <li className="rounded-lg border border-slate-200/80 bg-slate-50 px-3 py-1 text-caption font-bold text-slate-600">
+          <li className="rounded-lg border border-slate-200/80 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 px-3 py-1 text-caption font-bold text-slate-600 dark:text-slate-300">
             📊 Nivel: {course.level}
           </li>
-          <li className="rounded-lg border border-blue-100 bg-blue-50/70 px-3 py-1 text-caption font-bold text-brand">
+          <li className="rounded-lg border border-blue-100 dark:border-blue-900/50 bg-blue-50/70 dark:bg-blue-950/60 px-3 py-1 text-caption font-bold text-brand dark:text-blue-400">
             📚 {completed} de {total} completadas
           </li>
         </ul>
 
-        <div className="mt-5 pt-4 border-t border-slate-100">
+        <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800">
           <LessonTabs
             description={currentLesson?.description ?? null}
             transcript={currentLesson?.transcript ?? null}
@@ -523,16 +522,16 @@ export function CourseView({
           variant="hover"
           padding="md"
           radius="xl"
-          className="flex items-center gap-3 border border-slate-200 bg-white shadow-sm hover:border-brand/40"
+          className="flex items-center gap-3 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm hover:border-brand/40"
         >
-          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-blue-50 text-brand shadow-sm group-hover:bg-brand group-hover:text-white transition-colors">
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-blue-50 dark:bg-blue-950/70 text-brand dark:text-blue-400 shadow-sm group-hover:bg-brand group-hover:text-white transition-colors">
             <MessagesSquare aria-hidden size={18} strokeWidth={2.2} />
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block text-body-sm font-extrabold text-slate-900 group-hover:text-brand transition-colors">
+            <span className="block text-body-sm font-extrabold text-slate-900 dark:text-white group-hover:text-brand dark:group-hover:text-blue-400 transition-colors">
               Foro del curso
             </span>
-            <span className="block text-caption font-medium text-slate-500">
+            <span className="block text-caption font-medium text-slate-500 dark:text-slate-400">
               Preguntas y respuestas con tus compañeros
             </span>
           </span>
@@ -540,20 +539,20 @@ export function CourseView({
       </Link>
 
       {allModules && allModules.length > 1 && (
-        <Card padding="md" radius="xl" className="border border-slate-200 bg-white shadow-sm">
+        <Card padding="md" radius="xl" className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <span className="grid size-7 place-items-center rounded-lg bg-blue-50 text-brand">
+              <span className="grid size-7 place-items-center rounded-lg bg-blue-50 dark:bg-blue-950/70 text-brand dark:text-blue-400">
                 <Layers aria-hidden size={14} />
               </span>
-              <p className="text-caption font-extrabold uppercase tracking-wider text-slate-700">
+              <p className="text-caption font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300">
                 Unidades del curso
               </p>
             </div>
             <button
               type="button"
               onClick={() => setUnitsModalOpen(true)}
-              className="text-[11px] font-extrabold text-brand hover:underline"
+              className="text-[11px] font-extrabold text-brand dark:text-blue-400 hover:underline"
             >
               Ver temario →
             </button>
@@ -570,15 +569,15 @@ export function CourseView({
                   className={cn(
                     'group flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-left transition-all',
                     isSelected
-                      ? 'border border-blue-200 bg-blue-50/90 text-brand shadow-sm font-black'
-                      : 'border border-slate-100 hover:bg-slate-50 text-slate-700 font-bold',
+                      ? 'border border-blue-200 dark:border-blue-800 bg-blue-50/90 dark:bg-blue-950/70 text-brand dark:text-blue-300 shadow-sm font-black'
+                      : 'border border-slate-100 dark:border-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-800/60 text-slate-700 dark:text-slate-300 font-bold',
                   )}
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <span
                       className={cn(
                         'grid size-5 shrink-0 place-items-center rounded-md text-[10px] font-black',
-                        isSelected ? 'bg-brand text-white' : 'bg-slate-100 text-slate-500',
+                        isSelected ? 'bg-brand text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400',
                       )}
                     >
                       {idx + 1}
@@ -586,7 +585,7 @@ export function CourseView({
                     <span className="truncate text-caption">{m.title}</span>
                   </div>
                   {isSelected && (
-                    <span className="shrink-0 rounded-full bg-blue-100 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-brand">
+                    <span className="shrink-0 rounded-full bg-blue-100 dark:bg-blue-900/60 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-brand dark:text-blue-300">
                       Activa
                     </span>
                   )}
@@ -597,10 +596,10 @@ export function CourseView({
         </Card>
       )}
 
-      <Card padding="lg" radius="xl" className="border border-slate-200 bg-white shadow-sm">
+      <Card padding="lg" radius="xl" className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
         <div className="mb-3.5 flex items-center justify-between">
-          <h2 className="text-body font-extrabold text-slate-900">Contenido de la unidad</h2>
-          <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-micro font-extrabold text-slate-600 tabular-nums">
+          <h2 className="text-body font-extrabold text-slate-900 dark:text-white">Contenido de la unidad</h2>
+          <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 text-micro font-extrabold text-slate-600 dark:text-slate-300 tabular-nums">
             {completed} / {total}
           </span>
         </div>
@@ -640,13 +639,13 @@ export function CourseView({
           />
         )}
 
-        <div className="mt-4 flex items-start gap-2.5 rounded-2xl bg-blue-50/50 p-3 border border-blue-100">
+        <div className="mt-4 flex items-start gap-2.5 rounded-2xl bg-blue-50/50 dark:bg-blue-950/40 p-3 border border-blue-100 dark:border-blue-900/40">
           <Lock
             aria-hidden
             size={16}
-            className="mt-0.5 shrink-0 text-blue-600"
+            className="mt-0.5 shrink-0 text-blue-600 dark:text-blue-400"
           />
-          <span className="text-caption font-medium leading-relaxed text-blue-950">
+          <span className="text-caption font-medium leading-relaxed text-blue-950 dark:text-blue-200">
             Las unidades se desbloquean al completar el 100% de la anterior. Tu progreso se guarda automáticamente.
           </span>
         </div>

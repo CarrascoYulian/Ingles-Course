@@ -24,7 +24,7 @@ export function Chip({ className, active = false, ...props }: ChipProps) {
         '[@media(hover:hover)_and_(pointer:fine)]:active:scale-[0.97]',
         active
           ? 'border-brand bg-brand text-white shadow-[0_0_14px_-2px_rgba(37,99,235,0.35)]'
-          : 'border-slate-200 bg-white text-slate-600 hover:border-brand/40 hover:text-brand shadow-sm',
+          : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:border-brand/40 hover:text-brand shadow-sm',
         className,
       )}
       {...props}

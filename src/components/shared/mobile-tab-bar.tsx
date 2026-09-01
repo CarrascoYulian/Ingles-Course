@@ -24,7 +24,7 @@ export function MobileTabBar({ variant }: { variant: 'admin' | 'student' }) {
   return (
     <nav
       aria-label="Navegación principal"
-      className="sticky bottom-0 z-30 flex border-t border-slate-200/80 bg-white/90 backdrop-blur-lg px-3 pb-[max(18px,env(safe-area-inset-bottom))] pt-2 lg:hidden shadow-lg"
+      className="sticky bottom-0 z-30 flex border-t border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-950/90 backdrop-blur-lg px-3 pb-[max(18px,env(safe-area-inset-bottom))] pt-2 lg:hidden shadow-lg"
     >
       {items.map(({ href, shortLabel, icon: Icon }) => {
         const active = pathname === href || pathname.startsWith(`${href}/`);
@@ -38,8 +38,8 @@ export function MobileTabBar({ variant }: { variant: 'admin' | 'student' }) {
               'transition-all duration-150 ease-[cubic-bezier(0.23,1,0.32,1)]',
               '[@media(hover:hover)_and_(pointer:fine)]:active:scale-[0.96]',
               active
-                ? 'text-brand font-extrabold'
-                : 'text-slate-400 hover:text-slate-700 font-bold',
+                ? 'text-brand dark:text-blue-400 font-extrabold'
+                : 'text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 font-bold',
             )}
           >
             <span className="relative">

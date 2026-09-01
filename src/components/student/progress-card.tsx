@@ -25,9 +25,9 @@ export function ProgressCard({ percent, level, hours, lessons, badges, courseId 
   const isComplete = percent >= 100;
 
   return (
-    <Card padding="lg" radius="xl" className="border border-slate-200/90 shadow-card bg-white">
+    <Card padding="lg" radius="xl" className="border border-slate-200/90 dark:border-slate-800 shadow-card bg-white dark:bg-slate-900">
       <div className="flex items-center justify-between">
-        <h2 className="text-body font-extrabold text-slate-900">Tu avance</h2>
+        <h2 className="text-body font-extrabold text-slate-900 dark:text-white">Tu avance</h2>
         <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-micro font-extrabold shadow-sm ${LEVEL_BADGE[level]}`}>
           NIVEL {level}
         </span>
@@ -35,12 +35,12 @@ export function ProgressCard({ percent, level, hours, lessons, badges, courseId 
 
       <div className="mt-4 flex items-baseline justify-between">
         <div className="flex items-baseline gap-1">
-          <span className="text-display-sm font-extrabold tracking-tight text-slate-900 tabular-nums">
+          <span className="text-display-sm font-extrabold tracking-tight text-slate-900 dark:text-white tabular-nums">
             {percent}
           </span>
-          <span className="text-title-xs font-bold text-slate-500">% completado</span>
+          <span className="text-title-xs font-bold text-slate-500 dark:text-slate-400">% completado</span>
         </div>
-        <span className="text-caption font-bold text-slate-400">Objetivo del curso</span>
+        <span className="text-caption font-bold text-slate-400 dark:text-slate-500">Objetivo del curso</span>
       </div>
 
       <Progress
@@ -51,29 +51,29 @@ export function ProgressCard({ percent, level, hours, lessons, badges, courseId 
         label="Progreso general del curso"
       />
 
-      <div className="mt-5 grid grid-cols-3 gap-2 rounded-2xl bg-slate-50 p-3 border border-slate-100">
+      <div className="mt-5 grid grid-cols-3 gap-2 rounded-2xl bg-slate-50 dark:bg-slate-950/60 p-3 border border-slate-100 dark:border-slate-800/80">
         <div className="flex flex-col items-center text-center">
-          <span className="mb-1 grid size-7 place-items-center rounded-lg bg-blue-100/70 text-brand">
+          <span className="mb-1 grid size-7 place-items-center rounded-lg bg-blue-100/70 dark:bg-blue-950/80 text-brand dark:text-blue-400">
             <Clock aria-hidden className="size-3.5" />
           </span>
-          <span className="text-title-xs font-extrabold text-slate-900 tabular-nums">{hours}h</span>
-          <span className="text-micro font-bold text-slate-500">Estudio</span>
+          <span className="text-title-xs font-extrabold text-slate-900 dark:text-white tabular-nums">{hours}h</span>
+          <span className="text-micro font-bold text-slate-500 dark:text-slate-400">Estudio</span>
         </div>
 
-        <div className="flex flex-col items-center text-center border-x border-slate-200/70 px-1">
-          <span className="mb-1 grid size-7 place-items-center rounded-lg bg-emerald-100/70 text-emerald-600">
+        <div className="flex flex-col items-center text-center border-x border-slate-200/70 dark:border-slate-800 px-1">
+          <span className="mb-1 grid size-7 place-items-center rounded-lg bg-emerald-100/70 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400">
             <BookOpen aria-hidden className="size-3.5" />
           </span>
-          <span className="text-title-xs font-extrabold text-slate-900 tabular-nums">{lessons}</span>
-          <span className="text-micro font-bold text-slate-500">Lecciones</span>
+          <span className="text-title-xs font-extrabold text-slate-900 dark:text-white tabular-nums">{lessons}</span>
+          <span className="text-micro font-bold text-slate-500 dark:text-slate-400">Lecciones</span>
         </div>
 
         <div className="flex flex-col items-center text-center">
-          <span className="mb-1 grid size-7 place-items-center rounded-lg bg-amber-100/70 text-amber-600">
+          <span className="mb-1 grid size-7 place-items-center rounded-lg bg-amber-100/70 dark:bg-amber-950/80 text-amber-600 dark:text-amber-400">
             <Trophy aria-hidden className="size-3.5" />
           </span>
-          <span className="text-title-xs font-extrabold text-amber-600 tabular-nums">{badges}</span>
-          <span className="text-micro font-bold text-slate-500">Insignias</span>
+          <span className="text-title-xs font-extrabold text-amber-600 dark:text-amber-400 tabular-nums">{badges}</span>
+          <span className="text-micro font-bold text-slate-500 dark:text-slate-400">Insignias</span>
         </div>
       </div>
 

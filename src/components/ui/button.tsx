@@ -26,11 +26,11 @@ const buttonVariants = cva(
         glow:
           'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-glow-brand hover:brightness-110 active:brightness-95',
         tactile:
-          'bg-brand text-white border-b-4 border-blue-800 rounded-xl hover:bg-brand-hover active:border-b-0 active:translate-y-1',
+          'bg-brand text-white border-b-4 border-blue-800 dark:border-blue-950 rounded-xl hover:bg-brand-hover active:border-b-0 active:translate-y-1',
         tactileSuccess:
-          'bg-success text-white border-b-4 border-emerald-800 rounded-xl hover:bg-success-strong active:border-b-0 active:translate-y-1',
+          'bg-success text-white border-b-4 border-emerald-800 dark:border-emerald-950 rounded-xl hover:bg-success-strong active:border-b-0 active:translate-y-1',
         glass:
-          'bg-white/80 backdrop-blur-md text-fg-strong border border-line-strong hover:bg-white hover:border-brand/40 shadow-sm',
+          'bg-white/80 dark:bg-slate-900/80 backdrop-blur-md text-fg-strong border border-line-strong hover:bg-white dark:hover:bg-slate-800 hover:border-brand/40 shadow-sm',
         ghost:
           'bg-surface text-fg-muted border border-line-strong hover:border-brand/40 hover:text-brand shadow-sm',
         danger:

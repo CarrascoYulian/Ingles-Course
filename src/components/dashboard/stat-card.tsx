@@ -13,9 +13,9 @@ export interface StatCardProps {
 }
 
 const DELTA_TONE = {
-  success: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  neutral: 'bg-slate-100 text-slate-700 border-slate-200',
-  warning: 'bg-amber-50 text-amber-700 border-amber-200',
+  success: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/80',
+  neutral: 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700',
+  warning: 'bg-amber-50 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/80',
 } as const;
 
 /**
@@ -26,10 +26,10 @@ export function StatCard({ label, value, delta, visual, caption, className }: St
     <Card
       padding="none"
       radius="xl"
-      className={cn('border border-slate-200/90 bg-white p-5 shadow-card transition-all hover:border-slate-300', className)}
+      className={cn('border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-card transition-all hover:border-slate-300 dark:hover:border-slate-700', className)}
     >
       <div className="flex items-center justify-between">
-        <p className="text-caption font-extrabold text-slate-500 uppercase tracking-wider">{label}</p>
+        <p className="text-caption font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{label}</p>
         {delta?.label && (
           <span
             className={cn(
@@ -43,13 +43,13 @@ export function StatCard({ label, value, delta, visual, caption, className }: St
       </div>
 
       <div className="mt-3">
-        <p className="text-display-sm md:text-display font-black tracking-tight text-slate-900 tabular-nums leading-none">
+        <p className="text-display-sm md:text-display font-black tracking-tight text-slate-900 dark:text-white tabular-nums leading-none">
           {value}
         </p>
       </div>
 
       {visual && <div className="mt-4">{visual}</div>}
-      {caption && <p className="mt-2 text-caption font-medium text-slate-400">{caption}</p>}
+      {caption && <p className="mt-2 text-caption font-medium text-slate-400 dark:text-slate-500">{caption}</p>}
     </Card>
   );
 }

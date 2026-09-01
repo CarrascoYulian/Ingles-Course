@@ -16,14 +16,14 @@ export interface QuizOptionProps {
 }
 
 const SHELL: Record<OptionState, string> = {
-  idle: 'border border-slate-200 border-b-4 border-b-slate-300 bg-white text-slate-900 hover:bg-slate-50 hover:border-slate-300 active:border-b-0 active:translate-y-1',
-  selected: 'border-2 border-blue-500 border-b-4 border-b-blue-700 bg-blue-50/90 text-blue-950 shadow-sm',
-  correct: 'border-2 border-emerald-500 border-b-4 border-b-emerald-700 bg-emerald-50 text-emerald-950 shadow-glow-emerald',
-  incorrect: 'border-2 border-rose-500 border-b-4 border-b-rose-700 bg-rose-50 text-rose-950',
+  idle: 'border border-slate-200 dark:border-slate-800 border-b-4 border-b-slate-300 dark:border-b-slate-950 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-700 active:border-b-0 active:translate-y-1',
+  selected: 'border-2 border-blue-500 border-b-4 border-b-blue-700 dark:border-b-blue-900 bg-blue-50/90 dark:bg-blue-950/70 text-blue-950 dark:text-blue-100 shadow-sm',
+  correct: 'border-2 border-emerald-500 border-b-4 border-b-emerald-700 dark:border-b-emerald-900 bg-emerald-50 dark:bg-emerald-950/70 text-emerald-950 dark:text-emerald-100 shadow-glow-emerald',
+  incorrect: 'border-2 border-rose-500 border-b-4 border-b-rose-700 dark:border-b-rose-900 bg-rose-50 dark:bg-rose-950/70 text-rose-950 dark:text-rose-100',
 };
 
 const KEY_SHELL: Record<OptionState, string> = {
-  idle: 'border border-slate-200 bg-slate-100 text-slate-700',
+  idle: 'border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200',
   selected: 'bg-brand text-white shadow-sm',
   correct: 'bg-emerald-500 text-white shadow-sm',
   incorrect: 'bg-rose-500 text-white shadow-sm',

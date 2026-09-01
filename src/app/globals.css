@@ -78,70 +78,22 @@
   }
 }
 
-/* Glassmorphism en modo oscuro */
-.dark .glass-header {
-  background-color: rgba(15, 23, 42, 0.85);
-  border-bottom-color: rgba(255, 255, 255, 0.08);
-}
-
-.dark .glass-card {
-  background-color: rgba(15, 23, 42, 0.88);
-  border-color: rgba(255, 255, 255, 0.08);
-}
-
-.dark .glass-dock {
-  background-color: rgba(15, 23, 42, 0.92);
-  border-color: rgba(255, 255, 255, 0.12);
-}
-
-/* Adaptaciones fluidas para modo oscuro */
-.dark .bg-white {
-  background-color: #0f172a;
-}
-.dark .bg-slate-50,
-.dark .bg-slate-50\/40,
-.dark .bg-slate-50\/50,
-.dark .bg-slate-50\/70,
-.dark .bg-slate-50\/80 {
-  background-color: #1e293b;
-}
-.dark .bg-slate-100 {
-  background-color: #334155;
-}
-.dark .border-slate-100,
-.dark .border-slate-200,
-.dark .border-slate-200\/70,
-.dark .border-slate-200\/80,
-.dark .border-slate-200\/90 {
-  border-color: rgba(255, 255, 255, 0.1);
-}
-.dark .text-slate-900 {
-  color: #f8fafc;
-}
-.dark .text-slate-800 {
-  color: #f1f5f9;
-}
-.dark .text-slate-700 {
-  color: #e2e8f0;
-}
-.dark .text-slate-600 {
-  color: #cbd5e1;
-}
-.dark .text-slate-500 {
-  color: #94a3b8;
-}
-
-
 /* ============================================================================
  * UTILIDADES DE PRODUCTO & HIGH-TECH UI
  * ========================================================================== */
 
-/* Paneles y barras estilo Glassmorphism */
+/* Paneles y barras estilo Glassmorphism con soporte automático para Modo Oscuro */
 @utility glass-header {
   background-color: rgba(255, 255, 255, 0.88);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+:root.dark .glass-header,
+.dark .glass-header {
+  background-color: rgba(15, 23, 42, 0.85) !important;
+  border-bottom-color: rgba(255, 255, 255, 0.08) !important;
 }
 
 @utility glass-card {
@@ -152,12 +104,24 @@
   box-shadow: var(--shadow-card);
 }
 
+:root.dark .glass-card,
+.dark .glass-card {
+  background-color: rgba(15, 23, 42, 0.88) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
 @utility glass-dock {
   background-color: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(226, 232, 240, 0.8);
   box-shadow: var(--shadow-toast);
+}
+
+:root.dark .glass-dock,
+.dark .glass-dock {
+  background-color: rgba(15, 23, 42, 0.92) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
 }
 
 /* Halos luminosos sutiles */

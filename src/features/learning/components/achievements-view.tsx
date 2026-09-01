@@ -53,8 +53,8 @@ export function AchievementsView() {
 
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h2 className="text-heading-sm font-extrabold text-slate-900">Colección de medallas</h2>
-          <p className="text-caption font-semibold text-slate-500">
+          <h2 className="text-heading-sm font-extrabold text-slate-900 dark:text-white">Colección de medallas</h2>
+          <p className="text-caption font-semibold text-slate-500 dark:text-slate-400">
             {badges ? `${earned} de ${badges.length} insignias desbloqueadas` : 'Cargando vitrina…'}
           </p>
         </div>

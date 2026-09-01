@@ -28,7 +28,7 @@ export function CoursePickerCard({ course, onSelect }: CoursePickerCardProps) {
         variant="hover"
         padding="none"
         radius="xl"
-        className="flex h-full flex-col overflow-hidden border border-slate-200/90 bg-white"
+        className="flex h-full flex-col overflow-hidden border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-card"
       >
         {/* Banner superior con gradiente de nivel y badges flotantes */}
         <div className="relative h-24 w-full bg-gradient-to-br from-blue-600 via-indigo-600 to-slate-900 p-3.5 flex items-start justify-between">
@@ -53,18 +53,18 @@ export function CoursePickerCard({ course, onSelect }: CoursePickerCardProps) {
 
         <div className="flex flex-1 flex-col justify-between p-5">
           <div>
-            <h3 className="text-title font-extrabold tracking-tight text-slate-900 group-hover:text-brand transition-colors">
+            <h3 className="text-title font-extrabold tracking-tight text-slate-900 dark:text-white group-hover:text-brand dark:group-hover:text-blue-400 transition-colors">
               {course.name}
             </h3>
-            <p className="mt-1 text-meta font-medium text-slate-500 line-clamp-2">
+            <p className="mt-1 text-meta font-medium text-slate-500 dark:text-slate-400 line-clamp-2">
               Programa estructurado con ejercicios guiados y evaluaciones.
             </p>
           </div>
 
-          <div className="mt-5 pt-3 border-t border-slate-100">
-            <div className="flex items-center justify-between text-caption font-bold text-slate-600 mb-1.5">
+          <div className="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-between text-caption font-bold text-slate-600 dark:text-slate-400 mb-1.5">
               <span>Progreso de estudio</span>
-              <span className="font-extrabold tabular-nums text-slate-900">{course.progress}%</span>
+              <span className="font-extrabold tabular-nums text-slate-900 dark:text-white">{course.progress}%</span>
             </div>
             <Progress
               value={course.progress}
@@ -74,10 +74,10 @@ export function CoursePickerCard({ course, onSelect }: CoursePickerCardProps) {
             />
 
             <div className="mt-4 flex items-center justify-between">
-              <span className="text-caption font-bold text-slate-400">
+              <span className="text-caption font-bold text-slate-400 dark:text-slate-500">
                 {completed ? 'Repasar contenido' : 'Continuar lección'}
               </span>
-              <span className="inline-flex items-center gap-1 text-body-sm font-extrabold text-brand group-hover:translate-x-1 transition-transform">
+              <span className="inline-flex items-center gap-1 text-body-sm font-extrabold text-brand dark:text-blue-400 group-hover:translate-x-1 transition-transform">
                 Entrar
                 <ArrowRight aria-hidden className="size-4" />
               </span>
