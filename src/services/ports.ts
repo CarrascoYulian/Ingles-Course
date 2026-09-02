@@ -336,6 +336,8 @@ export interface AssignmentPort {
   updateAssignment(id: string, input: Omit<CreateAssignmentInput, 'moduleId'>): Promise<Assignment>;
   /** Borra la tarea y, en cascada, todas sus entregas. */
   removeAssignment(id: string): Promise<void>;
+  /** Reordenar por arrastre/botones — mismo patrón que `moveBlock`. */
+  moveAssignment(moduleId: string, assignmentId: string, direction: -1 | 1): Promise<Assignment[]>;
   /**
    * TODAS las entregas de TODAS las tareas de un módulo, en una sola
    * consulta — la vista docente filtra client-side por `assignmentId` para

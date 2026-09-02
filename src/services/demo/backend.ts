@@ -872,7 +872,11 @@ export const demoBackend: Backend = {
 
   assignments: {
     listAssignments: (moduleId: string) =>
-      latency(demoAssignments.filter((a) => a.moduleId === moduleId)),
+      latency(
+        demoAssignments
+          .filter((a) => a.moduleId === moduleId)
+          .sort((a, b) => a.order - b.order),
+      ),
     createAssignment: (input: CreateAssignmentInput) => {
       const assignment: Assignment = {
         id: crypto.randomUUID(),
@@ -883,6 +887,7 @@ export const demoBackend: Backend = {
         fileName: input.attachment?.fileName ?? null,
         dueAt: input.dueAt,
         createdAt: new Date().toISOString(),
+        order: demoAssignments.filter((a) => a.moduleId === input.moduleId).length,
       };
       demoAssignments = [...demoAssignments, assignment];
       return latency(assignment);
@@ -914,6 +919,25 @@ export const demoBackend: Backend = {
       demoAssignments = demoAssignments.filter((a) => a.id !== id);
       demoSubmissions = demoSubmissions.filter((s) => s.assignmentId !== id);
       return latency(undefined);
+    },
+    moveAssignment: (moduleId: string, assignmentId: string, direction: -1 | 1) => {
+      const list = [...demoAssignments]
+        .filter((a) => a.moduleId === moduleId)
+        .sort((a, b) => a.order - b.order);
+      const from = list.findIndex((a) => a.id === assignmentId);
+      const to = from + direction;
+      if (from >= 0 && to >= 0 && to < list.length) {
+        [list[from], list[to]] = [list[to]!, list[from]!];
+        const reordered = list.map((a, index) => ({ ...a, order: index }));
+        demoAssignments = demoAssignments.map(
+          (a) => reordered.find((r) => r.id === a.id) ?? a,
+        );
+      }
+      return latency(
+        demoAssignments
+          .filter((a) => a.moduleId === moduleId)
+          .sort((a, b) => a.order - b.order),
+      );
     },
     listSubmissionsForModule: (moduleId: string) => {
       const assignmentIds = new Set(

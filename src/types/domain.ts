@@ -180,6 +180,8 @@ export interface Assignment {
   fileName: string | null;
   dueAt: string;
   createdAt: string;
+  /** Orden manual dentro del módulo — arrastrable, independiente de `dueAt`. */
+  order: number;
 }
 
 /** Ubica una tarea puntual para que una notificación pueda llevar directo ahí. */

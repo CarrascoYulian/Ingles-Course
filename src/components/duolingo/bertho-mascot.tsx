@@ -109,7 +109,7 @@ export function BerthoMascot({
                   ? 'bg-amber-500 text-white shadow-amber-500/20'
                   : mood === 'thinking'
                     ? 'bg-blue-600 text-white shadow-blue-600/20'
-                    : 'border border-slate-200 bg-white text-slate-800 shadow-slate-200/50',
+                    : 'border border-slate-200 bg-white text-slate-800 shadow-slate-200/50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:shadow-none',
             )}
           >
             <span>{currentMessage}</span>
@@ -123,7 +123,7 @@ export function BerthoMascot({
                     ? 'bg-amber-500'
                     : mood === 'thinking'
                       ? 'bg-blue-600'
-                      : 'bg-white border-b border-r border-slate-200',
+                      : 'bg-white border-b border-r border-slate-200 dark:bg-slate-800 dark:border-slate-700',
               )}
             />
           </motion.div>
@@ -509,8 +509,8 @@ export function BerthoLevelUpCelebration({
       >
         {/* Bertho cruzando y dando un giro en el centro */}
         <motion.div
-          initial={{ x: -160, rotate: 0 }}
-          animate={{ x: [ -160, 0, 0 ], rotate: [0, 360, 720] }}
+          initial={{ x: -90, rotate: 0 }}
+          animate={{ x: [ -90, 0, 0 ], rotate: [0, 360, 720] }}
           transition={{ duration: 1.4, ease: 'easeOut' }}
           className="mx-auto size-36 mb-2"
         >

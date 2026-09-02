@@ -1799,7 +1799,7 @@ export const supabaseBackend: Backend = {
   assignments: {
     async listAssignments(moduleId) {
       const rows = unwrap<Row<'assignments'>[]>(
-        await db().from('assignments').select('*').eq('module_id', moduleId).order('due_at'),
+        await db().from('assignments').select('*').eq('module_id', moduleId).order('position'),
       );
       return rows.map(toAssignment);
     },
@@ -1809,6 +1809,11 @@ export const supabaseBackend: Backend = {
         data: { user },
       } = await db().auth.getUser();
       if (!user) throw new Error('No autenticado');
+
+      const { count } = await db()
+        .from('assignments')
+        .select('*', { count: 'exact', head: true })
+        .eq('module_id', input.moduleId);
 
       const row = unwrap<Row<'assignments'>>(
         await db()
@@ -1821,6 +1826,7 @@ export const supabaseBackend: Backend = {
             media_key: input.attachment?.mediaKey ?? null,
             file_name: input.attachment?.fileName ?? null,
             created_by: user.id,
+            position: count ?? 0,
           })
           .select('*')
           .single(),
@@ -1858,6 +1864,22 @@ export const supabaseBackend: Backend = {
     async removeAssignment(id) {
       const { error } = await db().from('assignments').delete().eq('id', id);
       if (error) throw new Error(error.message);
+    },
+
+    async moveAssignment(moduleId, assignmentId, direction) {
+      const assignments = await supabaseBackend.assignments.listAssignments(moduleId);
+      const from = assignments.findIndex((a) => a.id === assignmentId);
+      const to = from + direction;
+      if (from < 0 || to < 0 || to >= assignments.length) return assignments;
+
+      const a = assignments[from]!;
+      const b = assignments[to]!;
+      const { error } = await db().rpc('swap_assignment_position', {
+        assignment_a_id: a.id,
+        assignment_b_id: b.id,
+      });
+      if (error) throw new Error(error.message);
+      return supabaseBackend.assignments.listAssignments(moduleId);
     },
 
     async listSubmissionsForModule(moduleId) {

@@ -169,7 +169,7 @@ export function QuizCard({
       </div>
 
       {/* Barra de acción inferior */}
-      <div className="mt-8 flex flex-col gap-4 border-t border-slate-100 pt-5 md:flex-row md:items-center md:justify-between">
+      <div className="mt-8 flex flex-col gap-4 border-t border-slate-100 pt-5 dark:border-slate-800 md:flex-row md:items-center md:justify-between">
         <div className="min-w-0 flex-1">
           <QuizFeedback
             result={result}

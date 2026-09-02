@@ -18,9 +18,9 @@ export interface BarChartProps {
 
 const HEIGHT_CLASS = {
   96: 'h-24',
-  110: 'h-[110px]',
-  180: 'h-[180px]',
-  200: 'h-[200px]',
+  110: 'h-[90px] sm:h-[110px]',
+  180: 'h-[130px] sm:h-[180px]',
+  200: 'h-[140px] sm:h-[200px]',
 } as const;
 
 /**

@@ -1,5 +1,19 @@
 'use client';
 
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifiers';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
 import { useMutation } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 
@@ -20,6 +34,8 @@ import {
   useCreateAssignment,
   useGradeSubmission,
   useModuleSubmissions,
+  useMoveAssignment,
+  useReorderAssignment,
   useRemoveAssignment,
   useUpdateAssignment,
 } from '../hooks/use-assignments';
@@ -40,7 +56,25 @@ export function ModuleAssignmentsPanel({
   const createAssignment = useCreateAssignment(moduleId);
   const updateAssignment = useUpdateAssignment(moduleId);
   const removeAssignment = useRemoveAssignment(moduleId);
+  const moveAssignment = useMoveAssignment(moduleId);
+  const reorderAssignment = useReorderAssignment(moduleId);
   const confirmDialog = useConfirmDialog();
+  const sensors = useSensors(
+    // `activationConstraint` con distancia mínima: sin esto, cualquier click
+    // normal en la fila se interpretaba como el inicio de un arrastre y
+    // bloqueaba el click simple — mismo ajuste que `ContentView`.
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id || !assignments) return;
+    const from = assignments.findIndex((a) => a.id === active.id);
+    const to = assignments.findIndex((a) => a.id === over.id);
+    if (from < 0 || to < 0) return;
+    reorderAssignment.mutate({ assignmentId: String(active.id), from, to });
+  };
 
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingAssignmentId, setEditingAssignmentId] = useState<string | null>(null);
@@ -116,61 +150,72 @@ export function ModuleAssignmentsPanel({
       )}
 
       {!isAssignmentsPending && assignments && assignments.length > 0 && (
-        <ol className="flex flex-col gap-2.5">
-          {assignments.map((assignment) => {
-            const isOpen = assignment.id === openAssignmentId;
-            const theseSubmissions = (moduleSubmissions ?? []).filter(
-              (s) => s.assignmentId === assignment.id,
-            );
-            const isHighlighted = assignment.id === highlightAssignmentId;
-            return (
-              <div key={assignment.id} className="flex flex-col gap-2">
-                <AssignmentRow
-                  assignment={assignment}
-                  submissionCount={theseSubmissions.length}
-                  gradedCount={theseSubmissions.filter((s) => s.gradedAt).length}
-                  highlighted={isHighlighted}
-                  onOpen={() => setOpenAssignmentId(isOpen ? null : assignment.id)}
-                  onEdit={() => {
-                    setEditingAssignmentId(assignment.id);
-                    setEditorOpen(true);
-                  }}
-                  onDelete={() =>
-                    confirmDialog.confirm({
-                      title: 'Eliminar la tarea',
-                      body: `“${assignment.title}” se eliminará junto con todas las entregas de los alumnos. Esta acción no se puede deshacer.`,
-                      confirmLabel: 'Sí, eliminar',
-                      onConfirm: () => removeAssignment.mutateAsync(assignment.id),
-                    })
-                  }
-                />
-                {isOpen && (
-                  <div className="pl-2">
-                    {isSubmissionsPending ? (
-                      <Skeleton className="h-24 rounded-3xl" />
-                    ) : (
-                      <AssignmentSubmissionsTable
-                        assignment={assignment}
-                        submissions={theseSubmissions}
-                        highlightUngraded={isHighlighted}
-                        onGrade={(submission) => {
-                          setGradingSubmission(submission);
-                          setFileUrl(null);
-                          gradingRequestRef.current = submission.id;
-                          fileUrlMutation.mutate(submission.mediaKey, {
-                            onSuccess: (url) => {
-                              if (gradingRequestRef.current === submission.id) setFileUrl(url);
-                            },
-                          });
-                        }}
-                      />
+        <DndContext
+          sensors={sensors}
+          modifiers={[restrictToVerticalAxis, restrictToParentElement]}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext items={assignments.map((a) => a.id)} strategy={verticalListSortingStrategy}>
+            <ol className="flex flex-col gap-2.5">
+              {assignments.map((assignment, index) => {
+                const isOpen = assignment.id === openAssignmentId;
+                const theseSubmissions = (moduleSubmissions ?? []).filter(
+                  (s) => s.assignmentId === assignment.id,
+                );
+                const isHighlighted = assignment.id === highlightAssignmentId;
+                return (
+                  <div key={assignment.id} className="flex flex-col gap-2">
+                    <AssignmentRow
+                      assignment={assignment}
+                      index={index}
+                      total={assignments.length}
+                      submissionCount={theseSubmissions.length}
+                      gradedCount={theseSubmissions.filter((s) => s.gradedAt).length}
+                      highlighted={isHighlighted}
+                      onOpen={() => setOpenAssignmentId(isOpen ? null : assignment.id)}
+                      onEdit={() => {
+                        setEditingAssignmentId(assignment.id);
+                        setEditorOpen(true);
+                      }}
+                      onMove={(direction) => moveAssignment.mutate({ assignmentId: assignment.id, direction })}
+                      onDelete={() =>
+                        confirmDialog.confirm({
+                          title: 'Eliminar la tarea',
+                          body: `“${assignment.title}” se eliminará junto con todas las entregas de los alumnos. Esta acción no se puede deshacer.`,
+                          confirmLabel: 'Sí, eliminar',
+                          onConfirm: () => removeAssignment.mutateAsync(assignment.id),
+                        })
+                      }
+                    />
+                    {isOpen && (
+                      <div className="pl-2">
+                        {isSubmissionsPending ? (
+                          <Skeleton className="h-24 rounded-3xl" />
+                        ) : (
+                          <AssignmentSubmissionsTable
+                            assignment={assignment}
+                            submissions={theseSubmissions}
+                            highlightUngraded={isHighlighted}
+                            onGrade={(submission) => {
+                              setGradingSubmission(submission);
+                              setFileUrl(null);
+                              gradingRequestRef.current = submission.id;
+                              fileUrlMutation.mutate(submission.mediaKey, {
+                                onSuccess: (url) => {
+                                  if (gradingRequestRef.current === submission.id) setFileUrl(url);
+                                },
+                              });
+                            }}
+                          />
+                        )}
+                      </div>
                     )}
                   </div>
-                )}
-              </div>
-            );
-          })}
-        </ol>
+                );
+              })}
+            </ol>
+          </SortableContext>
+        </DndContext>
       )}
 
       <AssignmentEditorDialog
