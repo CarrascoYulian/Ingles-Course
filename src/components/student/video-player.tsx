@@ -258,18 +258,56 @@ export function VideoPlayer({
     }
   }, [volume, muted]);
 
-  // Detección de Fullscreen
+  // Detección de Fullscreen (incluye prefijo -webkit y el fullscreen nativo
+  // del <video> en iOS Safari, que no soporta Fullscreen API en otros elementos)
   useEffect(() => {
-    const onFullscreenChange = () => setIsFullscreen(document.fullscreenElement === sectionRef.current);
+    const doc = document as Document & { webkitFullscreenElement?: Element | null };
+    const onFullscreenChange = () => {
+      const fsEl = doc.fullscreenElement ?? doc.webkitFullscreenElement ?? null;
+      setIsFullscreen(fsEl === sectionRef.current);
+    };
     document.addEventListener('fullscreenchange', onFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', onFullscreenChange);
+
+    const video = videoRef.current;
+    const onIosBegin = () => setIsFullscreen(true);
+    const onIosEnd = () => setIsFullscreen(false);
+    video?.addEventListener('webkitbeginfullscreen', onIosBegin);
+    video?.addEventListener('webkitendfullscreen', onIosEnd);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', onFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', onFullscreenChange);
+      video?.removeEventListener('webkitbeginfullscreen', onIosBegin);
+      video?.removeEventListener('webkitendfullscreen', onIosEnd);
+    };
   }, []);
 
   const toggleFullscreen = () => {
-    if (document.fullscreenElement) {
-      document.exitFullscreen().catch(() => undefined);
-    } else {
-      sectionRef.current?.requestFullscreen().catch(() => undefined);
+    const doc = document as Document & {
+      webkitFullscreenElement?: Element | null;
+      webkitExitFullscreen?: () => void;
+    };
+    const el = sectionRef.current as (HTMLElement & { webkitRequestFullscreen?: () => void }) | null;
+    const video = videoRef.current as (HTMLVideoElement & { webkitEnterFullscreen?: () => void }) | null;
+
+    if (doc.fullscreenElement ?? doc.webkitFullscreenElement) {
+      if (document.exitFullscreen) {
+        document.exitFullscreen().catch(() => undefined);
+      } else {
+        doc.webkitExitFullscreen?.();
+      }
+      return;
+    }
+
+    if (el?.requestFullscreen) {
+      el.requestFullscreen().catch(() => undefined);
+    } else if (el?.webkitRequestFullscreen) {
+      el.webkitRequestFullscreen();
+    } else if (video?.webkitEnterFullscreen) {
+      // iOS Safari: solo el <video> soporta pantalla completa, no el contenedor.
+      // Muestra los controles nativos de iOS en vez de los nuestros.
+      video.webkitEnterFullscreen();
     }
   };
 
@@ -453,9 +491,9 @@ export function VideoPlayer({
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
       className={cn(
-        'group relative overflow-hidden bg-black text-white shadow-2xl select-none',
-        isFullscreen ? 'size-full rounded-none' : 'w-full rounded-2xl md:rounded-3xl',
-        'aspect-video md:aspect-[16/9]',
+        'group relative overflow-hidden bg-black text-white select-none',
+        isFullscreen ? 'size-full rounded-none' : 'w-full rounded-none sm:rounded-2xl md:rounded-3xl sm:shadow-2xl',
+        'aspect-video',
       )}
     >
       {/* Video Element */}
@@ -788,7 +826,7 @@ export function VideoPlayer({
               title={`Avance automático: ${autoplay ? 'Activado' : 'Desactivado'}`}
               aria-label="Avance automático"
               className={cn(
-                'relative flex items-center gap-1.5 rounded-full px-2.5 py-1 text-caption font-extrabold transition-colors',
+                'relative hidden items-center gap-1.5 rounded-full px-2.5 py-1 text-caption font-extrabold transition-colors sm:flex',
                 autoplay ? 'bg-brand/30 text-brand-light border border-brand/40' : 'bg-white/10 text-white/60 hover:bg-white/20',
               )}
             >
