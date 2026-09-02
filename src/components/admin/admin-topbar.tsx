@@ -37,17 +37,17 @@ export function AdminTopbar({ subtitle, teacherName, action }: AdminTopbarProps)
   const ariaLabel = pathname === ROUTES.admin.cursos ? 'Buscar curso' : 'Buscar estudiante';
 
   return (
-    <header className="border-b border-line bg-surface px-5 py-3 lg:px-[30px] lg:py-[22px]">
-      <div className="flex items-center justify-between gap-5">
+    <header className="border-b border-line bg-surface px-3.5 py-2.5 sm:px-5 lg:px-[30px] lg:py-[22px]">
+      <div className="flex items-center justify-between gap-2 sm:gap-5">
         <div className="min-w-0">
           <p className="text-meta font-bold text-fg-ghost lg:hidden">Panel docente</p>
-          <h1 className="truncate text-[20px] font-extrabold tracking-heading text-fg lg:text-heading">
+          <h1 className="truncate text-[18px] sm:text-[20px] font-extrabold tracking-heading text-fg lg:text-heading">
             {meta?.title ?? 'Panel docente'}
           </h1>
           <p className="mt-0.5 hidden text-body-sm font-medium text-fg-dim lg:block">{subtitle}</p>
         </div>
 
-        <div className="flex shrink-0 items-center gap-2.5">
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2.5">
           {searchable && (
             <Input
               type="search"

@@ -18,16 +18,16 @@ export function AchievementsView() {
   const totalXp = session?.xp ?? 0;
 
   return (
-    <div className="mx-auto max-w-7xl px-5 py-8 lg:px-10 lg:py-10">
+    <div className="mx-auto max-w-7xl px-3.5 py-6 sm:px-5 sm:py-8 lg:px-10 lg:py-10">
       {/* Banner de Salón de Logros */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-amber-600 via-orange-600 to-amber-800 p-6 md:p-8 text-white shadow-xl mb-8">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-amber-600 via-orange-600 to-amber-800 p-5 sm:p-6 md:p-8 text-white shadow-xl mb-8">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
           <div>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-caption font-extrabold uppercase tracking-wider backdrop-blur-md text-amber-100">
               <Trophy aria-hidden className="size-3.5" />
               Vitrina de Logros
             </span>
-            <h1 className="mt-3 text-display-sm md:text-display font-extrabold tracking-tight text-white">
+            <h1 className="mt-3 text-heading sm:text-display-sm md:text-display font-extrabold tracking-tight text-white">
               Tus Insignias y Recompensas
             </h1>
             <p className="mt-2 text-body-sm md:text-body font-medium text-amber-100 max-w-xl">
@@ -35,13 +35,13 @@ export function AchievementsView() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="rounded-2xl bg-white/10 p-4 backdrop-blur-md border border-white/20 text-center min-w-[110px]">
-              <span className="text-display-sm font-black text-white">{earned}</span>
+          <div className="flex items-center gap-2.5 sm:gap-3 w-full md:w-auto">
+            <div className="flex-1 sm:flex-initial rounded-2xl bg-white/10 p-3 sm:p-4 backdrop-blur-md border border-white/20 text-center min-w-[90px] sm:min-w-[110px]">
+              <span className="text-heading sm:text-display-sm font-black text-white">{earned}</span>
               <span className="block text-micro font-bold text-amber-200 uppercase">Insignias</span>
             </div>
-            <div className="rounded-2xl bg-white/10 p-4 backdrop-blur-md border border-white/20 text-center min-w-[110px]">
-              <span className="text-display-sm font-black text-amber-200">{formatInteger(totalXp)}</span>
+            <div className="flex-1 sm:flex-initial rounded-2xl bg-white/10 p-3 sm:p-4 backdrop-blur-md border border-white/20 text-center min-w-[90px] sm:min-w-[110px]">
+              <span className="text-heading sm:text-display-sm font-black text-amber-200">{formatInteger(totalXp)}</span>
               <span className="block text-micro font-bold text-amber-200 uppercase">XP Total</span>
             </div>
           </div>
@@ -59,7 +59,7 @@ export function AchievementsView() {
           </p>
         </div>
 
-        <Button asChild variant="tactile" size="md" className="hidden sm:inline-flex">
+        <Button asChild variant="tactile" size="md" className="hidden sm:inline-flex whitespace-nowrap">
           <Link href={ROUTES.practice.root}>
             <Sparkles aria-hidden className="size-4" />
             Practicar para ganar XP

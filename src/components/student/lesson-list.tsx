@@ -172,15 +172,16 @@ export function LessonList({ lessons, quiz, onSelect, onSelectQuiz }: LessonList
               >
                 Evaluación del Módulo
               </p>
-              <div className="mt-0.5 flex items-center gap-2 text-micro font-bold text-slate-500 dark:text-slate-400">
+              <div className="mt-0.5 flex items-center gap-2 text-micro font-bold text-slate-500 dark:text-slate-400 truncate">
                 <span
-                  className={
+                  className={cn(
+                    'truncate',
                     quiz.state === 'done'
                       ? 'text-emerald-700 dark:text-emerald-400 font-extrabold'
                       : quiz.state === 'available'
                         ? 'text-amber-700 dark:text-amber-400 font-extrabold'
-                        : 'text-slate-400 dark:text-slate-600'
-                  }
+                        : 'text-slate-400 dark:text-slate-600',
+                  )}
                 >
                   {quiz.state === 'done' ? '✓ Aprobada' : quiz.state === 'available' ? '★ Obligatoria para avanzar' : 'Bloqueada'}
                 </span>

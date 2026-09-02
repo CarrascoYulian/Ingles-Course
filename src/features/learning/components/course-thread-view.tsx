@@ -127,7 +127,7 @@ export function CourseThreadView({ courseId, threadId, currentUserId, canModerat
         <Button
           type="submit"
           size="md"
-          className="w-fit self-end font-extrabold"
+          className="w-full sm:w-fit self-end font-extrabold whitespace-nowrap"
           disabled={!replyBody.trim() || addReply.isPending}
         >
           {addReply.isPending ? 'Publicando…' : 'Responder'}

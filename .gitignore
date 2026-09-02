@@ -17,3 +17,4 @@ next-env.d.ts
 # Archivos subidos en modo demo (sin Supabase Storage configurado).
 public/demo-uploads/*
 !public/demo-uploads/.gitkeep
+videos/

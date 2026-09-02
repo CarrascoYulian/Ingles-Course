@@ -30,8 +30,8 @@ export function StudentNavbar({ name, enrollmentCode, avatarColor, streakDays }:
   const { data: unreadMessages = 0 } = useUnreadMessageCount();
 
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between gap-6 border-b border-slate-200/80 dark:border-slate-800/80 bg-white/90 dark:bg-slate-950/90 backdrop-blur-md px-5 py-3 lg:px-8 lg:py-3.5 shadow-sm transition-colors">
-      <div className="flex min-w-0 items-center gap-8">
+    <header className="sticky top-0 z-30 flex items-center justify-between gap-2 sm:gap-6 border-b border-slate-200/80 dark:border-slate-800/80 bg-white/90 dark:bg-slate-950/90 backdrop-blur-md px-3.5 py-2.5 sm:px-5 lg:px-8 lg:py-3.5 shadow-sm transition-colors">
+      <div className="flex min-w-0 items-center gap-4 lg:gap-8">
         <Logo />
         <nav aria-label="Secciones del curso" className="hidden gap-1.5 lg:flex">
           {STUDENT_NAV.map(({ href, label }) => {
@@ -66,16 +66,17 @@ export function StudentNavbar({ name, enrollmentCode, avatarColor, streakDays }:
         </nav>
       </div>
 
-      <div className="flex shrink-0 items-center gap-3">
+      <div className="flex shrink-0 items-center gap-1.5 sm:gap-2.5">
         {/* Racha con llama brillante animada */}
         <div
           title={`${streakDays} días consecutivos practicando`}
-          className="flex items-center gap-1.5 rounded-full border border-amber-300/80 dark:border-amber-700/60 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/40 dark:to-orange-950/40 px-3 py-1 text-amber-900 dark:text-amber-200 shadow-sm"
+          className="flex items-center gap-1 sm:gap-1.5 rounded-full border border-amber-300/80 dark:border-amber-700/60 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/40 dark:to-orange-950/40 px-2 py-0.5 sm:px-3 sm:py-1 text-amber-900 dark:text-amber-200 shadow-sm"
         >
-          <Flame aria-hidden className="size-4 fill-amber-500 text-amber-500 animate-pulse" />
+          <Flame aria-hidden className="size-3.5 sm:size-4 fill-amber-500 text-amber-500 animate-pulse" />
           <span className="text-caption font-extrabold tabular-nums">
             <span className="hidden sm:inline">Racha </span>
-            {streakDays} <span className="hidden sm:inline">días</span>
+            {streakDays}
+            <span className="hidden sm:inline"> días</span>
           </span>
         </div>
 
@@ -83,8 +84,8 @@ export function StudentNavbar({ name, enrollmentCode, avatarColor, streakDays }:
 
         <ThemeToggle />
 
-        <div className="flex items-center gap-2.5 rounded-xl p-1 hover:bg-slate-100/60 dark:hover:bg-slate-800 transition-colors">
-          <Avatar name={name} color={avatarColor} size={34} className="ring-2 ring-white dark:ring-slate-800 shadow-sm" />
+        <div className="flex items-center gap-2 rounded-xl p-0.5 sm:p-1 hover:bg-slate-100/60 dark:hover:bg-slate-800 transition-colors">
+          <Avatar name={name} color={avatarColor} size={32} className="ring-2 ring-white dark:ring-slate-800 shadow-sm" />
           <span className="hidden flex-col leading-tight sm:flex text-left">
             <span className="text-meta font-extrabold text-slate-900 dark:text-slate-100">{firstName}</span>
             <span className="text-micro font-bold text-slate-500 dark:text-slate-400 font-mono tracking-wider">{enrollmentCode}</span>

@@ -209,15 +209,15 @@ export function CertificateView({ courseId, studentName }: CertificateViewProps)
 
   return (
     <div className="mx-auto max-w-[980px] px-5 py-8 lg:px-[30px] lg:py-12 print:max-w-none print:p-0">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3 print:hidden">
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 print:hidden">
         <Link
           href={ROUTES.student.curso}
-          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3.5 py-2 text-caption font-extrabold text-slate-700 dark:text-slate-200 shadow-sm transition-all hover:border-brand/40 hover:text-brand"
+          className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3.5 py-2 text-caption font-extrabold text-slate-700 dark:text-slate-200 shadow-sm transition-all hover:border-brand/40 hover:text-brand whitespace-nowrap w-full sm:w-auto"
         >
-          <ArrowLeft aria-hidden className="size-3.5" />
-          Volver a mis cursos
+          <ArrowLeft aria-hidden className="size-3.5 shrink-0" />
+          <span>Volver a mis cursos</span>
         </Link>
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
           <Button
             size="md"
             variant="glass"
@@ -225,13 +225,14 @@ export function CertificateView({ courseId, studentName }: CertificateViewProps)
               const shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(window.location.href)}`;
               window.open(shareUrl, '_blank');
             }}
-            className="font-extrabold gap-2 text-blue-700 border-blue-200"
+            className="font-extrabold gap-2 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800 whitespace-nowrap w-full sm:w-auto justify-center"
           >
             Compartir en LinkedIn
           </Button>
-          <Button size="md" variant="glow" onClick={() => window.print()} className="font-extrabold gap-2">
-            <Printer aria-hidden className="size-4" />
-            Descargar / Imprimir PDF
+          <Button size="md" variant="glow" onClick={() => window.print()} className="font-extrabold gap-2 whitespace-nowrap w-full sm:w-auto justify-center">
+            <Printer aria-hidden className="size-4 shrink-0" />
+            <span className="hidden sm:inline">Descargar / Imprimir PDF</span>
+            <span className="sm:hidden">Descargar PDF</span>
           </Button>
         </div>
       </div>

@@ -184,19 +184,19 @@ export function LessonTabs({
       {/* Pestaña: Notas */}
       <TabsContent value="notes" className="space-y-4">
         {!composing && (
-          <div className="flex items-center justify-between rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm">
-            <div className="flex items-center gap-2.5">
-              <span className="grid size-8 place-items-center rounded-lg bg-blue-50 dark:bg-blue-950/70 text-brand dark:text-blue-400">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-3.5 sm:p-4 shadow-sm">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-blue-50 dark:bg-blue-950/70 text-brand dark:text-blue-400">
                 <Clock aria-hidden className="size-4" />
               </span>
-              <div>
+              <div className="min-w-0">
                 <p className="text-body-sm font-extrabold text-slate-900 dark:text-white">Tomar nota rápida</p>
-                <p className="text-caption font-medium text-slate-500 dark:text-slate-400">
-                  Se sincronizará en el minuto <span className="font-mono font-bold text-brand dark:text-blue-400">{formatTimestamp(currentTimeSeconds)}</span>
+                <p className="text-caption font-medium text-slate-500 dark:text-slate-400 truncate">
+                  Sincronizado en <span className="font-mono font-bold text-brand dark:text-blue-400">{formatTimestamp(currentTimeSeconds)}</span>
                 </p>
               </div>
             </div>
-            <Button size="sm" onClick={() => setComposing(true)} className="gap-1.5 font-extrabold">
+            <Button size="sm" onClick={() => setComposing(true)} className="gap-1.5 font-extrabold w-full sm:w-auto shrink-0 whitespace-nowrap">
               <Plus aria-hidden className="size-4" />
               Nueva nota
             </Button>

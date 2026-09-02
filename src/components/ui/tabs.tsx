@@ -18,7 +18,7 @@ export const TabsList = forwardRef<
     <TabsPrimitive.List
       ref={ref}
       className={cn(
-        'flex gap-6 overflow-x-auto border-b border-slate-200 scrollbar-none md:gap-8',
+        'flex gap-3 sm:gap-6 overflow-x-auto border-b border-slate-200 dark:border-slate-800 scrollbar-none md:gap-8 pb-px',
         className,
       )}
       {...props}
@@ -34,11 +34,11 @@ export const TabsTrigger = forwardRef<
     <TabsPrimitive.Trigger
       ref={ref}
       className={cn(
-        'relative shrink-0 cursor-pointer whitespace-nowrap border-b-2 border-transparent pb-3.5 pt-1',
-        'font-sans text-body-sm font-bold text-slate-500',
+        'relative shrink-0 cursor-pointer whitespace-nowrap border-b-2 border-transparent pb-3 pt-1',
+        'font-sans text-caption sm:text-body-sm font-bold text-slate-500 dark:text-slate-400',
         'transition-[color,border-color] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)]',
-        'hover:text-slate-900',
-        'data-[state=active]:border-brand data-[state=active]:text-brand font-extrabold',
+        'hover:text-slate-900 dark:hover:text-white',
+        'data-[state=active]:border-brand data-[state=active]:text-brand dark:data-[state=active]:border-blue-400 dark:data-[state=active]:text-blue-400 font-extrabold',
         className,
       )}
       {...props}

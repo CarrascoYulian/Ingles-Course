@@ -70,33 +70,33 @@ export function CourseUnitsModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent width={720} className="max-h-[85vh] overflow-hidden p-0 rounded-3xl">
+      <DialogContent width={720} className="max-h-[85vh] overflow-hidden p-0 rounded-3xl dark:bg-slate-900 border-slate-200 dark:border-slate-800">
         {/* Encabezado del modal estilo Coursera / LinkedIn Learning */}
-        <div className="border-b border-slate-100 bg-slate-50/80 px-6 py-5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <span className="grid size-9 place-items-center rounded-xl bg-brand text-white shadow-sm">
+        <div className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-950/80 px-4 py-4 sm:px-6 sm:py-5">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-brand text-white shadow-sm">
                 <GraduationCap aria-hidden size={20} />
               </span>
-              <div>
-                <span className="text-micro font-extrabold uppercase tracking-widest text-brand">
+              <div className="min-w-0 flex-1">
+                <span className="text-micro font-extrabold uppercase tracking-widest text-brand dark:text-blue-400">
                   Plan de Estudios Oficial
                 </span>
-                <DialogTitle className="text-title font-extrabold text-slate-900">
+                <DialogTitle className="truncate text-body sm:text-title font-extrabold text-slate-900 dark:text-white">
                   {courseTitle}
                 </DialogTitle>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <span className="rounded-full bg-blue-100 px-3 py-1 text-caption font-extrabold text-brand">
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              <span className="hidden sm:inline-flex rounded-full bg-blue-100 dark:bg-blue-950 px-3 py-1 text-caption font-extrabold text-brand dark:text-blue-300">
                 Nivel {courseLevel}
               </span>
               <button
                 type="button"
                 onClick={() => onOpenChange(false)}
                 aria-label="Cerrar temario"
-                className="grid size-8 place-items-center rounded-xl text-slate-400 hover:bg-slate-200/70 hover:text-slate-700 transition-colors"
+                className="grid size-8 place-items-center rounded-xl text-slate-400 hover:bg-slate-200/70 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-white transition-colors"
               >
                 <X aria-hidden size={18} strokeWidth={2.4} />
               </button>
@@ -170,8 +170,8 @@ function UnitAccordionItem({
       className={cn(
         'rounded-2xl border transition-all duration-200 overflow-hidden',
         isActive
-          ? 'border-brand/50 bg-blue-50/20 shadow-sm ring-1 ring-brand/30'
-          : 'border-slate-200 bg-white hover:border-slate-300',
+          ? 'border-brand/50 bg-blue-50/20 dark:bg-blue-950/20 shadow-sm ring-1 ring-brand/30'
+          : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-700',
         isModuleLocked && 'opacity-65',
       )}
     >
@@ -179,19 +179,19 @@ function UnitAccordionItem({
       <button
         type="button"
         onClick={onToggle}
-        className="flex w-full items-center justify-between gap-4 p-4 text-left hover:bg-slate-50/70 transition-colors"
+        className="flex w-full items-center justify-between gap-3 p-3 sm:p-4 text-left hover:bg-slate-50/70 dark:hover:bg-slate-800/60 transition-colors"
       >
-        <div className="flex items-center gap-3.5 min-w-0">
+        <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
           <div
             className={cn(
-              'grid size-10 shrink-0 place-items-center rounded-xl font-extrabold text-caption shadow-sm transition-all',
+              'grid size-9 sm:size-10 shrink-0 place-items-center rounded-xl font-extrabold text-caption shadow-sm transition-all',
               isModuleDone
                 ? 'bg-emerald-500 text-white'
                 : isActive
                   ? 'bg-brand text-white shadow-glow'
                   : isModuleLocked
-                    ? 'bg-slate-100 text-slate-400'
-                    : 'bg-slate-100 text-slate-700',
+                    ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200',
             )}
           >
             {isModuleDone ? (
@@ -204,22 +204,22 @@ function UnitAccordionItem({
           </div>
 
           <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="text-micro font-extrabold uppercase tracking-wider text-slate-400">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <span className="text-micro font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                 Unidad {unitIndex}
               </span>
               {isActive && (
-                <span className="rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-black text-brand uppercase">
+                <span className="rounded-full bg-brand/10 dark:bg-brand/20 px-2 py-0.5 text-[10px] font-black text-brand dark:text-blue-300 uppercase">
                   En curso
                 </span>
               )}
               {isModuleDone && (
-                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-black text-emerald-700 uppercase">
+                <span className="rounded-full bg-emerald-100 dark:bg-emerald-950 px-2 py-0.5 text-[10px] font-black text-emerald-700 dark:text-emerald-300 uppercase">
                   Completada
                 </span>
               )}
             </div>
-            <h3 className="text-body-sm font-extrabold text-slate-900 truncate">
+            <h3 className="text-body-sm font-extrabold text-slate-900 dark:text-white truncate">
               {module.title}
             </h3>
           </div>
@@ -227,7 +227,7 @@ function UnitAccordionItem({
 
         <div className="flex items-center gap-3 shrink-0">
           <div className="hidden sm:flex flex-col items-end">
-            <span className="text-caption font-extrabold text-slate-700 tabular-nums">
+            <span className="text-caption font-extrabold text-slate-700 dark:text-slate-200 tabular-nums">
               {completedCount} / {totalLessons} lecciones
             </span>
             <span className="text-micro font-medium text-slate-400">{progressPercent}% completado</span>

@@ -41,8 +41,8 @@ export function QuizOption({ option, state, disabled, onSelect, role = 'radio' }
       disabled={disabled}
       onClick={onSelect}
       className={cn(
-        'group flex w-full items-center gap-3.5 rounded-2xl px-4 py-3.5 text-left md:px-5 md:py-4',
-        'font-sans text-body md:text-body-lg font-extrabold',
+        'group flex w-full items-center gap-2.5 sm:gap-3.5 rounded-2xl px-3.5 py-3 sm:px-4 sm:py-3.5 md:px-5 md:py-4 text-left',
+        'font-sans text-body-sm sm:text-body md:text-body-lg font-extrabold',
         'cursor-pointer transition-all duration-100 ease-[cubic-bezier(0.23,1,0.32,1)]',
         'disabled:cursor-default',
         SHELL[state],
@@ -51,20 +51,20 @@ export function QuizOption({ option, state, disabled, onSelect, role = 'radio' }
       <span
         aria-hidden
         className={cn(
-          'grid size-8 shrink-0 place-items-center rounded-xl text-caption font-black font-mono',
+          'grid size-7.5 sm:size-8 shrink-0 place-items-center rounded-xl text-caption font-black font-mono',
           'transition-all duration-100',
           KEY_SHELL[state],
         )}
       >
         {state === 'correct' ? (
-          <Check aria-hidden className="size-4.5 stroke-[3]" />
+          <Check aria-hidden className="size-4 sm:size-4.5 stroke-[3]" />
         ) : state === 'incorrect' ? (
-          <X aria-hidden className="size-4.5 stroke-[3]" />
+          <X aria-hidden className="size-4 sm:size-4.5 stroke-[3]" />
         ) : (
           option.key
         )}
       </span>
-      <span className="flex-1 text-pretty">{option.text}</span>
+      <span className="min-w-0 flex-1 text-pretty break-words leading-snug">{option.text}</span>
     </button>
   );
 }

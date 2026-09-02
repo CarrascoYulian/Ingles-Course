@@ -85,7 +85,7 @@ export function LessonFileView({
           >
             Anterior
           </Button>
-          <Button size="lg" onClick={onNext} className="max-md:px-4 max-md:py-2 max-md:text-meta">
+          <Button size="lg" onClick={onNext} className="max-md:px-4 max-md:py-2 max-md:text-meta whitespace-nowrap">
             Siguiente lección
           </Button>
         </div>
@@ -126,7 +126,7 @@ export function LessonFileView({
         >
           Anterior
         </Button>
-        <Button size="lg" onClick={onNext} className="max-md:px-4 max-md:py-2 max-md:text-meta">
+        <Button size="lg" onClick={onNext} className="max-md:px-4 max-md:py-2 max-md:text-meta whitespace-nowrap">
           Siguiente lección
         </Button>
       </div>

@@ -51,7 +51,7 @@ export function CourseForumView({ courseId }: CourseForumViewProps) {
             Foro {course ? `de ${course.name}` : 'del curso'}
           </h1>
         </div>
-        <Button size="md" onClick={() => setNewThreadOpen(true)}>
+        <Button size="md" onClick={() => setNewThreadOpen(true)} className="whitespace-nowrap shrink-0">
           <Plus aria-hidden size={15} strokeWidth={2.4} />
           Nuevo tema
         </Button>

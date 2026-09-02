@@ -266,7 +266,7 @@ export function CourseView({
   }
 
   const courseSwitcher = (
-    <div className="flex flex-wrap items-center justify-between gap-2.5 px-5 pt-3 lg:px-8">
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-3.5 pt-3 sm:px-5 lg:px-8">
       <button
         type="button"
         onClick={() => {
@@ -275,19 +275,20 @@ export function CourseView({
             router.push(ROUTES.student.curso);
           }
         }}
-        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3.5 py-1.5 text-caption font-extrabold text-slate-700 dark:text-slate-200 shadow-sm transition-all hover:border-brand/40 hover:text-brand"
+        className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2 sm:px-3.5 sm:py-1.5 text-caption font-extrabold text-slate-700 dark:text-slate-200 shadow-sm transition-all hover:border-brand/40 hover:text-brand whitespace-nowrap w-full sm:w-auto"
       >
-        <ArrowLeft aria-hidden className="size-3.5" />
-        <span>Volver a Mis cursos</span>
+        <ArrowLeft aria-hidden className="size-3.5 shrink-0" />
+        <span className="hidden sm:inline">Volver a Mis cursos</span>
+        <span className="sm:hidden">Volver a Cursos</span>
       </button>
 
       {/* Selector de unidad actual */}
       <button
         type="button"
         onClick={() => setUnitsModalOpen(true)}
-        className="inline-flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3.5 py-1.5 text-caption font-extrabold text-slate-800 dark:text-slate-200 shadow-sm transition-all hover:border-brand/40 hover:text-brand"
+        className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2 sm:px-3.5 sm:py-1.5 text-caption font-extrabold text-slate-800 dark:text-slate-200 shadow-sm transition-all hover:border-brand/40 hover:text-brand whitespace-nowrap w-full sm:w-auto"
       >
-        <LayoutList aria-hidden className="size-3.5 text-brand dark:text-blue-400" />
+        <LayoutList aria-hidden className="size-3.5 shrink-0 text-brand dark:text-blue-400" />
         <span>Plan de estudios ({allModules?.length ?? 0} unidades)</span>
       </button>
     </div>
@@ -454,13 +455,13 @@ export function CourseView({
     );
 
   const lessonDetailsCard = (
-    <div className={cn('px-5 lg:px-0', isTheater && 'w-full')}>
+    <div className={cn('px-3.5 sm:px-5 lg:px-0', isTheater && 'w-full')}>
       <Card
-        padding="lg"
+        padding="none"
         radius="xl"
-        className="border border-slate-200/90 bg-white shadow-card p-6"
+        className="border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-card p-4 sm:p-6"
       >
-        <div className="flex items-start gap-4">
+        <div className="flex items-start gap-3 sm:gap-4">
           <span
             aria-hidden
             className="mt-0.5 hidden size-10 shrink-0 rounded-2xl sm:grid place-items-center text-white font-extrabold shadow-sm"
@@ -480,14 +481,14 @@ export function CourseView({
           </div>
         </div>
 
-        <ul className="mt-3.5 flex flex-wrap gap-2">
-          <li className="rounded-lg border border-slate-200/80 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 px-3 py-1 text-caption font-bold text-slate-600 dark:text-slate-300">
+        <ul className="mt-3.5 flex flex-wrap gap-1.5 sm:gap-2">
+          <li className="rounded-lg border border-slate-200/80 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 px-2.5 py-1 sm:px-3 text-caption font-bold text-slate-600 dark:text-slate-300 whitespace-nowrap">
             ⏱ Duración: {currentLesson?.duration ?? '—'}
           </li>
-          <li className="rounded-lg border border-slate-200/80 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 px-3 py-1 text-caption font-bold text-slate-600 dark:text-slate-300">
+          <li className="rounded-lg border border-slate-200/80 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 px-2.5 py-1 sm:px-3 text-caption font-bold text-slate-600 dark:text-slate-300 whitespace-nowrap">
             📊 Nivel: {course.level}
           </li>
-          <li className="rounded-lg border border-blue-100 dark:border-blue-900/50 bg-blue-50/70 dark:bg-blue-950/60 px-3 py-1 text-caption font-bold text-brand dark:text-blue-400">
+          <li className="rounded-lg border border-blue-100 dark:border-blue-900/50 bg-blue-50/70 dark:bg-blue-950/60 px-2.5 py-1 sm:px-3 text-caption font-bold text-brand dark:text-blue-400 whitespace-nowrap">
             📚 {completed} de {total} completadas
           </li>
         </ul>
@@ -517,7 +518,7 @@ export function CourseView({
   );
 
   const sidebarElement = (
-    <aside className="flex flex-col gap-4 px-5 pb-5 lg:w-aside lg:shrink-0 lg:px-0 lg:pb-0">
+    <aside className="flex flex-col gap-4 px-3.5 sm:px-5 pb-5 lg:w-aside lg:shrink-0 lg:px-0 lg:pb-0">
       {isProgressPending && <Skeleton className="h-[220px] rounded-3xl" />}
       {progress && (
         <ProgressCard

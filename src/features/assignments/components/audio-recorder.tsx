@@ -147,18 +147,19 @@ export function AudioRecorder({ onRecorded }: AudioRecorderProps) {
         <p className="text-caption font-black text-rose-700 dark:text-rose-300 uppercase tracking-wider">
           Grabando audio de tu pronunciación…
         </p>
-        <Button variant="danger" size="md" onClick={stopRecording} className="gap-2 font-extrabold shadow-sm">
-          <Square className="size-4 fill-white" />
-          Finalizar y guardar grabación
+        <Button variant="danger" size="md" onClick={stopRecording} className="w-full sm:w-auto gap-2 font-extrabold shadow-sm whitespace-nowrap">
+          <Square className="size-4 shrink-0 fill-white" />
+          <span className="hidden sm:inline">Finalizar y guardar grabación</span>
+          <span className="sm:hidden">Finalizar grabación</span>
         </Button>
       </div>
     );
   }
 
   return (
-    <Button variant="glass" size="md" onClick={startRecording} className="gap-2 font-extrabold text-brand border-brand/30 hover:bg-blue-50">
-      <Mic className="size-4.5 text-brand" />
-      Iniciar grabación de audio
+    <Button variant="glass" size="md" onClick={startRecording} className="w-full sm:w-auto gap-2 font-extrabold text-brand border-brand/30 hover:bg-blue-50 whitespace-nowrap">
+      <Mic className="size-4.5 shrink-0 text-brand" />
+      <span>Iniciar grabación de audio</span>
     </Button>
   );
 }

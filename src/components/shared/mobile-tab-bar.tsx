@@ -61,7 +61,7 @@ export function MobileTabBar({ variant }: { variant: 'admin' | 'student' }) {
                 />
               )}
             </span>
-            <span className="text-micro">{shortLabel}</span>
+            <span className="text-micro font-bold truncate max-w-full">{shortLabel}</span>
           </Link>
         );
       })}

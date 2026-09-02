@@ -91,7 +91,7 @@ export function QuizCard({
     <Card
       radius="xl"
       padding="none"
-      className="flex flex-col border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 md:p-8 shadow-card"
+      className="flex flex-col border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-5 md:p-8 shadow-card"
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -99,27 +99,27 @@ export function QuizCard({
             {question.category}
           </Badge>
           {multiSelect && (
-            <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 text-micro font-bold text-slate-600 dark:text-slate-300">
+            <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 text-micro font-bold text-slate-600 dark:text-slate-300 whitespace-nowrap">
               Selección múltiple ({question.answerCount})
             </span>
           )}
         </div>
 
-        <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-700/60 px-3 py-1 text-caption font-extrabold text-amber-800 dark:text-amber-200 shadow-sm">
+        <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-700/60 px-2.5 py-0.5 sm:px-3 sm:py-1 text-caption font-extrabold text-amber-800 dark:text-amber-200 shadow-sm whitespace-nowrap">
           <Sparkles aria-hidden className="size-3 text-amber-500" />
           +{question.xpReward} XP
         </span>
       </div>
 
       <div className="mt-4 flex flex-col md:flex-row items-center md:items-start gap-5">
-        <div className="flex-1 min-w-0">
-          <h1 className="text-heading font-black tracking-tight text-slate-900 dark:text-white md:text-heading-lg text-pretty">
+        <div className="flex-1 min-w-0 w-full">
+          <h1 className="text-title sm:text-heading font-black tracking-tight text-slate-900 dark:text-white md:text-heading-lg text-pretty">
             {question.prompt}
           </h1>
 
           {/* Caja de frase / fuente con pronunciación */}
-          <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-blue-100 dark:border-blue-900/50 bg-blue-50/40 dark:bg-blue-950/40 p-4 md:p-5">
-            <p className="text-body-lg md:text-title font-extrabold text-slate-900 dark:text-white leading-relaxed">
+          <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-blue-100 dark:border-blue-900/50 bg-blue-50/40 dark:bg-blue-950/40 p-3.5 sm:p-4 md:p-5">
+            <p className="text-body sm:text-body-lg md:text-title font-extrabold text-slate-900 dark:text-white leading-relaxed break-words">
               {question.sourceText}
             </p>
 
@@ -129,14 +129,14 @@ export function QuizCard({
                 size="sm"
                 onClick={playAudio}
                 disabled={audioState === 'loading'}
-                className="w-fit rounded-xl gap-2 font-extrabold text-brand"
+                className="w-full sm:w-fit rounded-xl gap-2 font-extrabold text-brand whitespace-nowrap justify-center"
               >
-                <Volume2 aria-hidden className="size-4 animate-pulse" />
+                <Volume2 aria-hidden className="size-4 animate-pulse shrink-0" />
                 <span>
                   {audioState === 'loading'
                     ? 'Cargando voz…'
                     : audioState === 'playing'
-                      ? 'Pausar pronunciación'
+                      ? 'Pausar audio'
                       : 'Escuchar pronunciación'}
                 </span>
               </Button>
