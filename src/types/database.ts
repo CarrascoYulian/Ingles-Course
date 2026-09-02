@@ -109,6 +109,7 @@ export type Database = {
           instructions: string
           media_key: string | null
           module_id: string
+          position: number
           title: string
         }
         Insert: {
@@ -120,6 +121,7 @@ export type Database = {
           instructions?: string
           media_key?: string | null
           module_id: string
+          position?: number
           title: string
         }
         Update: {
@@ -131,6 +133,7 @@ export type Database = {
           instructions?: string
           media_key?: string | null
           module_id?: string
+          position?: number
           title?: string
         }
         Relationships: [
@@ -1178,6 +1181,10 @@ export type Database = {
       }
       swap_course_position: {
         Args: { course_a_id: string; course_b_id: string }
+        Returns: undefined
+      }
+      swap_assignment_position: {
+        Args: { assignment_a_id: string; assignment_b_id: string }
         Returns: undefined
       }
       swap_lesson_position: {

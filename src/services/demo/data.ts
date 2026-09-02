@@ -135,6 +135,7 @@ export const DEMO_ASSIGNMENT: Assignment = {
   fileName: null,
   dueAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
   createdAt: new Date().toISOString(),
+  order: 0,
 };
 
 export const DEMO_STUDENTS: StudentSummary[] = [

@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { QUERY_KEYS } from '@/constants';
 import { backend } from '@/services';
 import type { CreateAssignmentInput } from '@/services';
+import type { Assignment } from '@/types';
 
 /** Autoría docente — lista de tareas del módulo. */
 export function useAssignments(moduleId: string) {
@@ -50,6 +51,83 @@ export function useRemoveAssignment(moduleId: string) {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.assignments(moduleId) });
     },
     onError: () => toast.error('No se pudo eliminar la tarea'),
+  });
+}
+
+export function useMoveAssignment(moduleId: string) {
+  const queryClient = useQueryClient();
+  const key = QUERY_KEYS.assignments(moduleId);
+
+  return useMutation({
+    mutationFn: ({ assignmentId, direction }: { assignmentId: string; direction: -1 | 1 }) =>
+      backend.assignments.moveAssignment(moduleId, assignmentId, direction),
+
+    onMutate: async ({ assignmentId, direction }) => {
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData<Assignment[]>(key);
+
+      queryClient.setQueryData<Assignment[]>(key, (assignments) => {
+        if (!assignments) return assignments;
+        const from = assignments.findIndex((a) => a.id === assignmentId);
+        const to = from + direction;
+        if (from < 0 || to < 0 || to >= assignments.length) return assignments;
+        const next = [...assignments];
+        [next[from], next[to]] = [next[to]!, next[from]!];
+        return next.map((assignment, index) => ({ ...assignment, order: index }));
+      });
+
+      return { previous };
+    },
+
+    onError: (_error, _variables, context) => {
+      if (context?.previous) queryClient.setQueryData(key, context.previous);
+      toast.error('No se pudo reordenar la tarea.');
+    },
+
+    onSettled: () => queryClient.invalidateQueries({ queryKey: key }),
+  });
+}
+
+/**
+ * Arrastrar una fila a una posición arbitraria (drag-and-drop). Mismo
+ * patrón que `useReorderBlock`: no hay RPC de "mover a la posición N", se
+ * camina paso a paso con el swap atómico (`moveAssignment`) desde `from`
+ * hasta `to`.
+ */
+export function useReorderAssignment(moduleId: string) {
+  const queryClient = useQueryClient();
+  const key = QUERY_KEYS.assignments(moduleId);
+
+  return useMutation({
+    mutationFn: async ({ assignmentId, from, to }: { assignmentId: string; from: number; to: number }) => {
+      const direction = to > from ? 1 : -1;
+      for (let position = from; position !== to; position += direction) {
+        await backend.assignments.moveAssignment(moduleId, assignmentId, direction);
+      }
+    },
+
+    onMutate: async ({ from, to }) => {
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData<Assignment[]>(key);
+
+      queryClient.setQueryData<Assignment[]>(key, (assignments) => {
+        if (!assignments) return assignments;
+        const next = [...assignments];
+        const [moved] = next.splice(from, 1);
+        if (!moved) return assignments;
+        next.splice(to, 0, moved);
+        return next.map((assignment, index) => ({ ...assignment, order: index }));
+      });
+
+      return { previous };
+    },
+
+    onError: (_error, _variables, context) => {
+      if (context?.previous) queryClient.setQueryData(key, context.previous);
+      toast.error('No se pudo reordenar la tarea.');
+    },
+
+    onSettled: () => queryClient.invalidateQueries({ queryKey: key }),
   });
 }
 

@@ -87,6 +87,7 @@ export function toAssignment(row: Row<'assignments'>): Assignment {
     fileName: row.file_name,
     dueAt: row.due_at,
     createdAt: row.created_at,
+    order: row.position,
   };
 }
 
