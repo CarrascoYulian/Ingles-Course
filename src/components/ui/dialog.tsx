@@ -44,7 +44,7 @@ export const DialogContent = forwardRef<
           ref={ref}
           style={{ maxWidth: width }}
           className={cn(
-            'relative w-full origin-center rounded-9xl bg-surface px-7 py-[26px] shadow-dialog',
+            'relative max-h-[calc(100vh-3rem)] w-full origin-center overflow-y-auto rounded-9xl bg-surface px-7 py-[26px] shadow-dialog',
             // Entrada con @starting-style: sin useEffect ni estado "mounted".
             // Desde scale(.96), nunca desde 0.
             'motion-safe:scale-100 motion-safe:opacity-100',

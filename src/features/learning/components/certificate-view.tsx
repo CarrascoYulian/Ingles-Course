@@ -248,7 +248,7 @@ export function CertificateView({ courseId, studentName }: CertificateViewProps)
           aria-hidden
           width={300}
           height={247}
-          className="pointer-events-none absolute left-1 top-1 z-[3] h-[84px] w-[102px] object-contain drop-shadow-[0_4px_8px_rgba(10,15,30,0.3)] sm:left-2 sm:top-2 sm:h-[148px] sm:w-[180px]"
+          className="pointer-events-none absolute left-1 top-1 z-[3] h-[56px] w-[68px] object-contain drop-shadow-[0_4px_8px_rgba(10,15,30,0.3)] min-[381px]:h-[84px] min-[381px]:w-[102px] sm:left-2 sm:top-2 sm:h-[148px] sm:w-[180px]"
         />
         <Image
           src="/branding/certificate-globe-icon.png"
@@ -256,12 +256,12 @@ export function CertificateView({ courseId, studentName }: CertificateViewProps)
           aria-hidden
           width={300}
           height={300}
-          className="pointer-events-none absolute bottom-1 right-1 z-[3] size-[84px] object-contain drop-shadow-[0_4px_8px_rgba(10,15,30,0.3)] sm:bottom-2 sm:right-2 sm:size-[148px]"
+          className="pointer-events-none absolute bottom-1 right-1 z-[3] size-[56px] object-contain drop-shadow-[0_4px_8px_rgba(10,15,30,0.3)] min-[381px]:size-[84px] sm:bottom-2 sm:right-2 sm:size-[148px]"
         />
 
         <div className="relative rounded-[4px] border-2 border-[#b22234] bg-white px-5 py-12 text-center sm:px-[60px] sm:py-14">
-          <CertificateFlagBadge className="absolute -top-3.5 left-1/2 z-[4] h-[46px] w-[72px] -translate-x-1/2 drop-shadow-[0_4px_8px_rgba(0,0,0,0.25)] sm:-top-[18px] sm:h-[58px] sm:w-[92px]" />
-          <CertificateMedal className="absolute -top-3 right-3 z-[4] w-[84px] drop-shadow-[0_8px_14px_rgba(0,0,0,0.3)] sm:-top-4 sm:right-7 sm:w-[130px]" />
+          <CertificateFlagBadge className="absolute -top-2.5 left-1/2 z-[4] h-[34px] w-[54px] -translate-x-1/2 drop-shadow-[0_4px_8px_rgba(0,0,0,0.25)] min-[381px]:-top-3.5 min-[381px]:h-[46px] min-[381px]:w-[72px] sm:-top-[18px] sm:h-[58px] sm:w-[92px]" />
+          <CertificateMedal className="absolute -top-2 right-2 z-[4] w-[62px] drop-shadow-[0_8px_14px_rgba(0,0,0,0.3)] min-[381px]:-top-3 min-[381px]:right-3 min-[381px]:w-[84px] sm:-top-4 sm:right-7 sm:w-[130px]" />
 
           <div className="relative z-[2]">
             <span className="inline-block text-[11.5px] font-extrabold uppercase tracking-badge text-[#16204a] opacity-75">

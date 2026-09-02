@@ -832,7 +832,7 @@ export function VideoPlayer({
               {/* Popover de Configuración */}
               {settingsOpen && (
                 <div
-                  className="absolute bottom-full right-0 mb-3 w-48 rounded-xl bg-black/95 p-2 shadow-2xl backdrop-blur-xl border border-white/15 z-50 animate-in fade-in slide-in-from-bottom-2 duration-150"
+                  className="absolute bottom-full right-0 mb-3 w-48 max-w-[calc(100%-1.5rem)] rounded-xl bg-black/95 p-2 shadow-2xl backdrop-blur-xl border border-white/15 z-50 animate-in fade-in slide-in-from-bottom-2 duration-150"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <p className="px-2.5 py-1.5 text-caption font-extrabold text-white/40 uppercase tracking-wider">

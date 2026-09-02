@@ -50,12 +50,12 @@ export function AssignmentSubmissionsTable({
 
   return (
     <div className="overflow-x-auto rounded-3xl border border-line">
-      <table className="w-full min-w-[560px] text-left text-body-sm">
+      <table className="w-full min-w-[420px] text-left text-body-sm">
         <thead className="bg-surface-muted text-tiny font-extrabold uppercase tracking-eyebrow text-fg-ghost">
           <tr>
             <th className="px-4 py-3">Alumno</th>
             <th className="px-4 py-3">Estado</th>
-            <th className="px-4 py-3">Entregado</th>
+            <th className="hidden px-4 py-3 sm:table-cell">Entregado</th>
             <th className="px-4 py-3">Nota</th>
             <th className="px-4 py-3" />
           </tr>
@@ -81,7 +81,7 @@ export function AssignmentSubmissionsTable({
                     {STATUS_LABEL[status]}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-fg-dim">
+                <td className="hidden px-4 py-3 text-fg-dim sm:table-cell">
                   {new Date(submission.submittedAt).toLocaleDateString('es-DO', {
                     day: '2-digit',
                     month: 'short',
