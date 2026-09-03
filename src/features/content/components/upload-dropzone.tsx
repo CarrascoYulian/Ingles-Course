@@ -168,7 +168,7 @@ export function UploadDropzone({ courseId, moduleId, onUploaded, className }: Up
           void handleFiles(event.dataTransfer.files);
         }}
         className={cn(
-          'w-full cursor-pointer rounded-6xl border-[1.5px] border-dashed p-[22px] text-center',
+          'w-full cursor-pointer rounded-6xl border-[1.5px] border-dashed p-4 sm:p-[22px] text-center',
           'transition-[background-color,border-color] duration-[160ms] ease-[cubic-bezier(0.23,1,0.32,1)]',
           dragging
             ? 'border-brand bg-brand-soft'
@@ -177,7 +177,7 @@ export function UploadDropzone({ courseId, moduleId, onUploaded, className }: Up
       >
         <span className="block text-body-sm font-bold text-fg-subtle">
           {queue === null
-            ? 'Suelta aquí uno o varios archivos para añadirlos a la unidad'
+            ? 'Suelta o toca aquí para subir archivos a la unidad'
             : `Subiendo ${queue.index + 1}/${queue.total} · “${queue.fileName}” — ${Math.round(queue.percent)} %`}
         </span>
         <span className="mt-[3px] block text-tiny font-semibold text-fg-disabled">

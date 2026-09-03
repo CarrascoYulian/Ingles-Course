@@ -5,6 +5,7 @@ import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
+import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { uploadFile, type UploadResult } from '@/features/content/upload';
 import { formatBytes } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -14,6 +15,8 @@ export interface ReplaceMediaButtonProps {
   moduleId: string;
   title: string;
   onReplaced: (result: UploadResult & { fileName: string; sizeLabel: string }) => Promise<unknown>;
+  className?: string;
+  trigger?: 'button' | 'menu-item';
 }
 
 /**
@@ -21,7 +24,14 @@ export interface ReplaceMediaButtonProps {
  * borrar+resubir pierde el `id` de la fila, y con él los comentarios y el
  * progreso de alumnos ya guardados contra ese id.
  */
-export function ReplaceMediaButton({ courseId, moduleId, title, onReplaced }: ReplaceMediaButtonProps) {
+export function ReplaceMediaButton({
+  courseId,
+  moduleId,
+  title,
+  onReplaced,
+  className,
+  trigger = 'button',
+}: ReplaceMediaButtonProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [progress, setProgress] = useState<number | null>(null);
 
@@ -52,22 +62,41 @@ export function ReplaceMediaButton({ courseId, moduleId, title, onReplaced }: Re
           if (file) void handleFile(file);
         }}
       />
-      <Button
-        variant="icon"
-        size="square"
-        onClick={() => inputRef.current?.click()}
-        disabled={progress !== null}
-        aria-label={`Reemplazar archivo de “${title}”`}
-        title="Reemplazar archivo (mantiene comentarios y progreso de alumnos)"
-        className="hover:border-brand hover:text-brand disabled:opacity-40"
-      >
-        <RefreshCw
-          aria-hidden
-          size={13}
-          strokeWidth={2.4}
-          className={cn(progress !== null && 'animate-spin')}
-        />
-      </Button>
+      {trigger === 'menu-item' ? (
+        <DropdownMenuItem
+          onSelect={(event) => {
+            event.preventDefault();
+            inputRef.current?.click();
+          }}
+          disabled={progress !== null}
+          className={className}
+        >
+          <RefreshCw
+            aria-hidden
+            size={14}
+            strokeWidth={2.4}
+            className={cn('mr-2 shrink-0', progress !== null && 'animate-spin')}
+          />
+          Reemplazar archivo
+        </DropdownMenuItem>
+      ) : (
+        <Button
+          variant="icon"
+          size="square"
+          onClick={() => inputRef.current?.click()}
+          disabled={progress !== null}
+          aria-label={`Reemplazar archivo de “${title}”`}
+          title="Reemplazar archivo (mantiene comentarios y progreso de alumnos)"
+          className={cn('hover:border-brand hover:text-brand disabled:opacity-40', className)}
+        >
+          <RefreshCw
+            aria-hidden
+            size={13}
+            strokeWidth={2.4}
+            className={cn(progress !== null && 'animate-spin')}
+          />
+        </Button>
+      )}
     </>
   );
 }

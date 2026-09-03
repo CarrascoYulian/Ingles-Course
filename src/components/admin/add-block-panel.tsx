@@ -3,6 +3,7 @@
 import { FileAudio, FileText, Video } from 'lucide-react';
 
 import { Card } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 import { BLOCK_TYPES, type BlockType } from '@/types';
 
 /**
@@ -28,9 +29,9 @@ const FILE_TYPES: Array<{ type: BlockType; label: string; icon: typeof Video }> 
  * cabecera (`QuizEditorDialog`, vía `useSaveQuizDraft`) — ese sí queda
  * funcional para el alumno.
  */
-export function AddBlockPanel() {
+export function AddBlockPanel({ className }: { className?: string }) {
   return (
-    <Card className="hidden flex-col gap-[9px] lg:flex">
+    <Card className={cn('flex flex-col gap-[9px]', className)}>
       <h2 className="text-body font-bold text-fg">Añadir bloque</h2>
 
       <div className="flex flex-col gap-1 rounded-2xl bg-surface-muted p-[13px]">

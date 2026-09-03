@@ -14,7 +14,15 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import { ArrowLeft } from 'lucide-react';
+import {
+  ArrowLeft,
+  ClipboardCheck,
+  Eye,
+  FileText,
+  FolderArchive,
+  Info,
+  Plus,
+} from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -287,10 +295,10 @@ export function ContentView() {
 
       <div
         className={cn(
-          'grid items-start gap-4 px-5 pb-4 lg:gap-[18px] lg:px-[30px] lg:pb-6',
+          'grid items-start gap-4 px-3.5 pb-4 sm:px-5 lg:gap-[18px] lg:px-[30px] lg:pb-6',
           hasModuleRail
-            ? 'lg:grid-cols-[var(--spacing-rail)_1fr_300px]'
-            : 'lg:grid-cols-[1fr_300px]',
+            ? 'lg:grid-cols-[var(--spacing-rail)_1fr] 2xl:grid-cols-[var(--spacing-rail)_1fr_280px]'
+            : '2xl:grid-cols-[1fr_280px]',
         )}
       >
       {hasModuleRail && (
@@ -339,37 +347,59 @@ export function ContentView() {
 
         <Card
           radius="md"
-          className="hidden min-w-0 flex-wrap items-center justify-between gap-x-4 gap-y-2 px-[18px] py-3.5 lg:flex"
+          className="flex min-w-0 flex-col gap-3 px-4 py-3 sm:px-[18px] sm:py-3.5 xl:flex-row xl:items-center xl:justify-between"
         >
-          <div className="min-w-[220px] flex-1">
+          <div className="min-w-0 flex-1">
             <h2 className="truncate text-body-lg font-bold text-fg">{activeModule.title}</h2>
             <p className="mt-0.5 truncate text-meta font-semibold text-fg-ghost">{contextLine}</p>
           </div>
-          <div className="flex flex-wrap items-center justify-end gap-2">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
             {!hasModuleRail && (
-              <Button variant="ghost" size="sm" onClick={() => setCreateModuleOpen(true)}>
-                + Nueva unidad
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setCreateModuleOpen(true)}
+                className="gap-1.5 font-semibold"
+              >
+                <Plus aria-hidden size={14} strokeWidth={2.4} />
+                Nueva unidad
               </Button>
             )}
-            <Button variant="ghost" size="sm" onClick={() => setQuizDialogOpen(true)}>
-              {quizDraft ? 'Evaluación de la unidad' : '+ Evaluación'}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setQuizDialogOpen(true)}
+              className="gap-1.5 font-semibold"
+            >
+              <ClipboardCheck aria-hidden size={14} strokeWidth={2.2} />
+              {quizDraft ? 'Evaluación' : '+ Evaluación'}
+            </Button>
+            <Button
+              variant={assignmentsOpen ? 'soft' : 'ghost'}
+              size="sm"
+              onClick={() => setAssignmentsOpen((open) => !open)}
+              className="gap-1.5 font-semibold"
+            >
+              <FileText aria-hidden size={14} strokeWidth={2.2} />
+              {assignmentsOpen ? 'Ocultar tareas' : 'Tareas'}
             </Button>
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setAssignmentsOpen((open) => !open)}
+              onClick={() => setMediaLibraryOpen(true)}
+              className="gap-1.5 font-semibold"
             >
-              {assignmentsOpen ? 'Ocultar tareas' : 'Tareas'}
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => setMediaLibraryOpen(true)}>
+              <FolderArchive aria-hidden size={14} strokeWidth={2.2} />
               Reutilizar archivo
             </Button>
             <Button
               variant="ghost"
               size="sm"
               onClick={() => window.open(ROUTES.student.curso, '_blank', 'noopener,noreferrer')}
+              className="gap-1.5 font-semibold"
             >
-              Vista previa del alumno
+              <Eye aria-hidden size={14} strokeWidth={2.2} />
+              Vista previa
             </Button>
           </div>
         </Card>
@@ -506,8 +536,17 @@ export function ContentView() {
           onUploaded={(result) =>
             attachUpload.mutateAsync({ moduleId, ...result }).then(() => undefined)
           }
-          className="hidden lg:block"
         />
+
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-surface-muted/80 px-4 py-2.5 text-tiny font-medium text-fg-dim 2xl:hidden">
+          <span className="flex items-center gap-1.5">
+            <Info aria-hidden size={13} className="shrink-0 text-fg-ghost" />
+            Los bloques se muestran al alumno en este orden. Arrastra o usa las flechas para reordenar.
+          </span>
+          <span className="text-fg-ghost">
+            Formatos: MP4, MP3, PDF, imágenes · hasta 5 GB
+          </span>
+        </div>
 
         {assignmentsOpen && (
           <ModuleAssignmentsPanel
@@ -520,7 +559,7 @@ export function ContentView() {
 
       </div>
 
-      <AddBlockPanel />
+      <AddBlockPanel className="hidden 2xl:flex" />
 
       <CreateModuleDialog
         open={createModuleOpen}

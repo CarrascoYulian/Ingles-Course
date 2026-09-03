@@ -13,6 +13,7 @@ import {
   GripVertical,
   ListChecks,
   MessageSquare,
+  MoreVertical,
   Pencil,
   Video as VideoIcon,
   X,
@@ -20,6 +21,13 @@ import {
 import { useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { BLOCK_BADGE } from '@/constants/palettes';
 import { useBlockThumbnailUrl } from '@/features/content/hooks/use-content-blocks';
 import { cn } from '@/lib/utils';
@@ -143,7 +151,7 @@ export function ContentBlockRow({
       ref={setNodeRef}
       style={style}
       className={cn(
-        'flex items-center gap-4 rounded-5xl border border-line bg-surface p-4 transition-colors duration-[160ms] hover:border-fg-placeholder',
+        'flex items-center gap-2.5 sm:gap-3.5 md:gap-4 rounded-3xl sm:rounded-4xl md:rounded-5xl border border-line bg-surface p-2.5 sm:p-3.5 md:p-4 transition-colors duration-[160ms] hover:border-fg-placeholder',
         isDragging && 'relative z-10 shadow-lg',
       )}
     >
@@ -172,25 +180,25 @@ export function ContentBlockRow({
 
       <div
         className={cn(
-          'relative grid size-20 shrink-0 place-items-center overflow-hidden rounded-3xl',
+          'relative grid size-12 sm:size-16 md:size-20 shrink-0 place-items-center overflow-hidden rounded-xl sm:rounded-2xl md:rounded-3xl',
           BLOCK_BADGE[block.type],
         )}
       >
         {isVideo && thumbnailUrl ? (
           <VideoThumbnail url={thumbnailUrl} title={block.title} />
         ) : (
-          <Icon aria-hidden size={26} strokeWidth={1.8} />
+          <Icon aria-hidden size={20} strokeWidth={1.8} className="sm:size-[24px] md:size-[26px]" />
         )}
       </div>
 
       <div className="min-w-0 flex-1">
-        <p className="truncate text-body font-bold text-fg md:text-body-lg">{block.title}</p>
-        <p className="mt-0.5 text-tiny font-semibold text-fg-ghost md:text-meta">
+        <p className="truncate text-body-sm font-bold text-fg sm:text-body md:text-body-lg">{block.title}</p>
+        <p className="mt-0.5 truncate text-tiny font-semibold text-fg-ghost sm:text-meta">
           Bloque {index + 1} · {block.meta}
         </p>
       </div>
 
-      <div className="flex shrink-0 gap-[5px] md:gap-1.5">
+      <div className="flex shrink-0 items-center gap-1 sm:gap-1.5">
         {onEditLesson && (
           <Button
             variant="icon"
@@ -198,21 +206,9 @@ export function ContentBlockRow({
             onClick={onEditLesson}
             aria-label={`Editar título y descripción de “${block.title}”`}
             title="Editar título y descripción para el alumno"
-            className="hover:border-brand hover:text-brand"
+            className="size-7 sm:size-8 hover:border-brand hover:text-brand"
           >
             <Pencil aria-hidden size={13} strokeWidth={2.4} />
-          </Button>
-        )}
-        {onComments && (
-          <Button
-            variant="icon"
-            size="square"
-            onClick={onComments}
-            aria-label={`Ver comentarios de “${block.title}”`}
-            title="Ver y borrar los comentarios de los alumnos"
-            className="hover:border-brand hover:text-brand"
-          >
-            <MessageSquare aria-hidden size={13} strokeWidth={2.4} />
           </Button>
         )}
         {onPreview && (
@@ -222,9 +218,21 @@ export function ContentBlockRow({
             onClick={onPreview}
             aria-label={`Vista previa de “${block.title}”`}
             title="Ver el archivo tal cual lo ve el alumno"
-            className="hover:border-brand hover:text-brand"
+            className="size-7 sm:size-8 hover:border-brand hover:text-brand"
           >
             <Eye aria-hidden size={13} strokeWidth={2.4} />
+          </Button>
+        )}
+        {onComments && (
+          <Button
+            variant="icon"
+            size="square"
+            onClick={onComments}
+            aria-label={`Ver comentarios de “${block.title}”`}
+            title="Ver y borrar los comentarios de los alumnos"
+            className="hidden size-7 hover:border-brand hover:text-brand sm:inline-flex sm:size-8"
+          >
+            <MessageSquare aria-hidden size={13} strokeWidth={2.4} />
           </Button>
         )}
         {onOpenFile && (
@@ -235,7 +243,7 @@ export function ContentBlockRow({
             disabled={openFilePending}
             aria-label={`Ver archivo de “${block.title}”`}
             title="Verificar que el archivo existe y abrirlo"
-            className="hover:border-brand hover:text-brand disabled:opacity-40"
+            className="hidden size-7 hover:border-brand hover:text-brand disabled:opacity-40 sm:inline-flex sm:size-8"
           >
             <ExternalLink aria-hidden size={13} strokeWidth={2.4} />
           </Button>
@@ -246,6 +254,7 @@ export function ContentBlockRow({
             moduleId={onReplace.moduleId}
             title={block.title}
             onReplaced={onReplace.onReplaced}
+            className="hidden size-7 sm:inline-flex sm:size-8"
           />
         )}
         <Button
@@ -254,7 +263,7 @@ export function ContentBlockRow({
           onClick={() => onMove(-1)}
           disabled={isFirst}
           aria-label={`Subir “${block.title}”`}
-          className="disabled:opacity-40"
+          className="size-7 disabled:opacity-40 sm:size-8"
         >
           <ArrowUp aria-hidden size={13} strokeWidth={2.4} />
         </Button>
@@ -264,7 +273,7 @@ export function ContentBlockRow({
           onClick={() => onMove(1)}
           disabled={isLast}
           aria-label={`Bajar “${block.title}”`}
-          className="disabled:opacity-40"
+          className="size-7 disabled:opacity-40 sm:size-8"
         >
           <ArrowDown aria-hidden size={13} strokeWidth={2.4} />
         </Button>
@@ -274,10 +283,60 @@ export function ContentBlockRow({
             size="square"
             onClick={onDelete}
             aria-label={`Eliminar “${block.title}”`}
-            className="hover:border-danger-line hover:text-danger-strong"
+            className="hidden size-7 hover:border-danger-line hover:text-danger-strong sm:inline-flex sm:size-8"
           >
             <X aria-hidden size={13} strokeWidth={2.4} />
           </Button>
+        )}
+
+        {/* En móvil (< sm): acciones secundarias en menú desplegable */}
+        {(onComments || onOpenFile || onReplace || onDelete) && (
+          <div className="sm:hidden">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="icon"
+                  size="square"
+                  aria-label={`Más acciones para “${block.title}”`}
+                  className="size-7"
+                >
+                  <MoreVertical aria-hidden size={13} strokeWidth={2.4} />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {onComments && (
+                  <DropdownMenuItem onSelect={onComments}>
+                    <MessageSquare aria-hidden size={14} className="mr-2 shrink-0" strokeWidth={2} />
+                    Comentarios
+                  </DropdownMenuItem>
+                )}
+                {onOpenFile && (
+                  <DropdownMenuItem onSelect={onOpenFile} disabled={openFilePending}>
+                    <ExternalLink aria-hidden size={14} className="mr-2 shrink-0" strokeWidth={2} />
+                    Abrir archivo original
+                  </DropdownMenuItem>
+                )}
+                {onReplace && (
+                  <ReplaceMediaButton
+                    courseId={onReplace.courseId}
+                    moduleId={onReplace.moduleId}
+                    title={block.title}
+                    onReplaced={onReplace.onReplaced}
+                    trigger="menu-item"
+                  />
+                )}
+                {onDelete && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem variant="danger" onSelect={onDelete}>
+                      <X aria-hidden size={14} className="mr-2 shrink-0" strokeWidth={2.4} />
+                      Eliminar bloque
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         )}
       </div>
     </li>
