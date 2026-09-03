@@ -2,10 +2,10 @@ import {
   BarChart3,
   BookOpen,
   ClipboardList,
+  Dog,
   LayoutGrid,
   Mail,
   PlaySquare,
-  Star,
   Trophy,
   Users,
 } from 'lucide-react';
@@ -46,7 +46,7 @@ export const ADMIN_NAV: readonly NavItem[] = [
     href: ROUTES.admin.practica,
     label: 'BerthoGo',
     shortLabel: 'BerthoGo',
-    icon: Star,
+    icon: Dog,
   },
   {
     href: ROUTES.admin.reportes,
@@ -59,7 +59,7 @@ export const ADMIN_NAV: readonly NavItem[] = [
 /** Plataforma del alumno. */
 export const STUDENT_NAV: readonly NavItem[] = [
   { href: ROUTES.student.curso, label: 'Mis cursos', shortLabel: 'Mis cursos', icon: PlaySquare },
-  { href: ROUTES.practice.root, label: 'BerthoGo', shortLabel: 'BerthoGo', icon: Star },
+  { href: ROUTES.practice.root, label: 'BerthoGo', shortLabel: 'BerthoGo', icon: Dog },
   { href: ROUTES.student.tareas, label: 'Tareas', shortLabel: 'Tareas', icon: ClipboardList },
   { href: ROUTES.student.logros, label: 'Logros', shortLabel: 'Logros', icon: Trophy },
   { href: ROUTES.student.mensajes, label: 'Mensajes', shortLabel: 'Mensajes', icon: Mail },
