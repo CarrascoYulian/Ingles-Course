@@ -4,11 +4,12 @@ import {
   DndContext,
   KeyboardSensor,
   PointerSensor,
+  closestCenter,
   useSensor,
   useSensors,
   type DragEndEvent,
 } from '@dnd-kit/core';
-import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifiers';
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import {
   SortableContext,
   sortableKeyboardCoordinates,
@@ -152,7 +153,8 @@ export function ModuleAssignmentsPanel({
       {!isAssignmentsPending && assignments && assignments.length > 0 && (
         <DndContext
           sensors={sensors}
-          modifiers={[restrictToVerticalAxis, restrictToParentElement]}
+          collisionDetection={closestCenter}
+          modifiers={[restrictToVerticalAxis]}
           onDragEnd={handleDragEnd}
         >
           <SortableContext items={assignments.map((a) => a.id)} strategy={verticalListSortingStrategy}>
@@ -164,29 +166,29 @@ export function ModuleAssignmentsPanel({
                 );
                 const isHighlighted = assignment.id === highlightAssignmentId;
                 return (
-                  <div key={assignment.id} className="flex flex-col gap-2">
-                    <AssignmentRow
-                      assignment={assignment}
-                      index={index}
-                      total={assignments.length}
-                      submissionCount={theseSubmissions.length}
-                      gradedCount={theseSubmissions.filter((s) => s.gradedAt).length}
-                      highlighted={isHighlighted}
-                      onOpen={() => setOpenAssignmentId(isOpen ? null : assignment.id)}
-                      onEdit={() => {
-                        setEditingAssignmentId(assignment.id);
-                        setEditorOpen(true);
-                      }}
-                      onMove={(direction) => moveAssignment.mutate({ assignmentId: assignment.id, direction })}
-                      onDelete={() =>
-                        confirmDialog.confirm({
-                          title: 'Eliminar la tarea',
-                          body: `“${assignment.title}” se eliminará junto con todas las entregas de los alumnos. Esta acción no se puede deshacer.`,
-                          confirmLabel: 'Sí, eliminar',
-                          onConfirm: () => removeAssignment.mutateAsync(assignment.id),
-                        })
-                      }
-                    />
+                  <AssignmentRow
+                    key={assignment.id}
+                    assignment={assignment}
+                    index={index}
+                    total={assignments.length}
+                    submissionCount={theseSubmissions.length}
+                    gradedCount={theseSubmissions.filter((s) => s.gradedAt).length}
+                    highlighted={isHighlighted}
+                    onOpen={() => setOpenAssignmentId(isOpen ? null : assignment.id)}
+                    onEdit={() => {
+                      setEditingAssignmentId(assignment.id);
+                      setEditorOpen(true);
+                    }}
+                    onMove={(direction) => moveAssignment.mutate({ assignmentId: assignment.id, direction })}
+                    onDelete={() =>
+                      confirmDialog.confirm({
+                        title: 'Eliminar la tarea',
+                        body: `“${assignment.title}” se eliminará junto con todas las entregas de los alumnos. Esta acción no se puede deshacer.`,
+                        confirmLabel: 'Sí, eliminar',
+                        onConfirm: () => removeAssignment.mutateAsync(assignment.id),
+                      })
+                    }
+                  >
                     {isOpen && (
                       <div className="pl-2">
                         {isSubmissionsPending ? (
@@ -210,7 +212,7 @@ export function ModuleAssignmentsPanel({
                         )}
                       </div>
                     )}
-                  </div>
+                  </AssignmentRow>
                 );
               })}
             </ol>

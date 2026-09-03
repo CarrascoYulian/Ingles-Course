@@ -20,6 +20,7 @@ export interface AssignmentRowProps {
   onMove: (direction: -1 | 1) => void;
   /** Resalta un instante esta fila — llegada desde la campana de notificaciones. */
   highlighted?: boolean;
+  children?: React.ReactNode;
 }
 
 /**
@@ -39,6 +40,7 @@ export function AssignmentRow({
   onDelete,
   onMove,
   highlighted,
+  children,
 }: AssignmentRowProps) {
   const isFirst = index === 0;
   const isLast = index === total - 1;
@@ -60,80 +62,88 @@ export function AssignmentRow({
       ref={setNodeRef}
       style={style}
       className={cn(
-        'flex items-center gap-4 rounded-5xl border border-line bg-surface p-4 transition-colors duration-[160ms]',
-        highlighted && 'animate-highlight-flash',
-        isDragging && 'relative z-10 shadow-lg',
+        'flex flex-col gap-2',
+        isDragging && 'relative z-20',
       )}
     >
-      <span
-        aria-hidden={false}
-        aria-label={`Arrastrar para reordenar “${assignment.title}”`}
-        {...attributes}
-        {...listeners}
+      <div
         className={cn(
-          'hidden w-[18px] shrink-0 text-fg-placeholder md:block',
-          isDragging ? 'cursor-grabbing' : 'cursor-grab',
+          'flex items-center gap-4 rounded-5xl border border-line bg-surface p-4 transition-colors duration-[160ms]',
+          highlighted && 'animate-highlight-flash',
+          isDragging && 'shadow-lg border-brand/40',
         )}
       >
-        <GripVertical size={16} />
-      </span>
+        <span
+          aria-hidden={false}
+          aria-label={`Arrastrar para reordenar “${assignment.title}”`}
+          {...attributes}
+          {...listeners}
+          className={cn(
+            'hidden w-[18px] shrink-0 text-fg-placeholder md:block touch-none select-none',
+            isDragging ? 'cursor-grabbing' : 'cursor-grab',
+          )}
+        >
+          <GripVertical size={16} />
+        </span>
 
-      <button
-        type="button"
-        onClick={onOpen}
-        className="grid size-20 shrink-0 place-items-center rounded-3xl bg-brand-soft text-brand"
-      >
-        <ClipboardList aria-hidden size={26} strokeWidth={1.8} />
-      </button>
+        <button
+          type="button"
+          onClick={onOpen}
+          className="grid size-20 shrink-0 place-items-center rounded-3xl bg-brand-soft text-brand"
+        >
+          <ClipboardList aria-hidden size={26} strokeWidth={1.8} />
+        </button>
 
-      <button type="button" onClick={onOpen} className="min-w-0 flex-1 text-left">
-        <p className="truncate text-body font-bold text-fg md:text-body-lg">{assignment.title}</p>
-        <p className="mt-0.5 text-tiny font-semibold text-fg-ghost md:text-meta">
-          Vence {dueLabel} · {submissionCount} {submissionCount === 1 ? 'entrega' : 'entregas'} ·{' '}
-          {gradedCount} {gradedCount === 1 ? 'calificada' : 'calificadas'}
-        </p>
-      </button>
+        <button type="button" onClick={onOpen} className="min-w-0 flex-1 text-left">
+          <p className="truncate text-body font-bold text-fg md:text-body-lg">{assignment.title}</p>
+          <p className="mt-0.5 text-tiny font-semibold text-fg-ghost md:text-meta">
+            Vence {dueLabel} · {submissionCount} {submissionCount === 1 ? 'entrega' : 'entregas'} ·{' '}
+            {gradedCount} {gradedCount === 1 ? 'calificada' : 'calificadas'}
+          </p>
+        </button>
 
-      <div className="flex shrink-0 gap-[5px] md:gap-1.5">
-        <Button
-          variant="icon"
-          size="square"
-          onClick={onEdit}
-          aria-label="Editar tarea"
-          className="hover:border-brand hover:text-brand"
-        >
-          <Pencil aria-hidden size={13} strokeWidth={2.4} />
-        </Button>
-        <Button
-          variant="icon"
-          size="square"
-          onClick={() => onMove(-1)}
-          disabled={isFirst}
-          aria-label={`Subir “${assignment.title}”`}
-          className="disabled:opacity-40"
-        >
-          <ArrowUp aria-hidden size={13} strokeWidth={2.4} />
-        </Button>
-        <Button
-          variant="icon"
-          size="square"
-          onClick={() => onMove(1)}
-          disabled={isLast}
-          aria-label={`Bajar “${assignment.title}”`}
-          className="disabled:opacity-40"
-        >
-          <ArrowDown aria-hidden size={13} strokeWidth={2.4} />
-        </Button>
-        <Button
-          variant="icon"
-          size="square"
-          onClick={onDelete}
-          aria-label="Eliminar tarea"
-          className="hover:border-danger-line hover:text-danger-strong"
-        >
-          <Trash2 aria-hidden size={13} strokeWidth={2.4} />
-        </Button>
+        <div className="flex shrink-0 gap-[5px] md:gap-1.5">
+          <Button
+            variant="icon"
+            size="square"
+            onClick={onEdit}
+            aria-label="Editar tarea"
+            className="hover:border-brand hover:text-brand"
+          >
+            <Pencil aria-hidden size={13} strokeWidth={2.4} />
+          </Button>
+          <Button
+            variant="icon"
+            size="square"
+            onClick={() => onMove(-1)}
+            disabled={isFirst}
+            aria-label={`Subir “${assignment.title}”`}
+            className="disabled:opacity-40"
+          >
+            <ArrowUp aria-hidden size={13} strokeWidth={2.4} />
+          </Button>
+          <Button
+            variant="icon"
+            size="square"
+            onClick={() => onMove(1)}
+            disabled={isLast}
+            aria-label={`Bajar “${assignment.title}”`}
+            className="disabled:opacity-40"
+          >
+            <ArrowDown aria-hidden size={13} strokeWidth={2.4} />
+          </Button>
+          <Button
+            variant="icon"
+            size="square"
+            onClick={onDelete}
+            aria-label="Eliminar tarea"
+            className="hover:border-danger-line hover:text-danger-strong"
+          >
+            <Trash2 aria-hidden size={13} strokeWidth={2.4} />
+          </Button>
+        </div>
       </div>
+      {children}
     </li>
   );
 }
